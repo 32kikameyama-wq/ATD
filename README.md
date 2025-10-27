@@ -1,7 +1,7 @@
 # ATD システム
 
 ## 概要
-ATD システムのプロジェクトリポジトリです。
+WEB SaaS 型のタスク管理アプリケーション
 
 ## セットアップ手順
 
@@ -31,6 +31,17 @@ pip install -r requirements.txt
 
 ## 開発
 
+### アプリケーションの起動
+```bash
+# 仮想環境をアクティベート
+source venv/bin/activate
+
+# Flask アプリを起動
+python app.py
+
+# ブラウザで http://localhost:5001 にアクセス
+```
+
 ### 仮想環境の使い方
 - 開発を開始する前に `source venv/bin/activate` で仮想環境をアクティベート
 - 開発終了時は `deactivate` で仮想環境を終了
@@ -40,29 +51,3 @@ pip install -r requirements.txt
 pip install <パッケージ名>
 pip freeze > requirements.txt
 ```
-
-## Git 運用
-
-### 初回セットアップ後のコミット
-```bash
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/32kikameyama-wq/ATD.git
-git push -u origin main
-```
-
-### 通常のワークフロー
-```bash
-# 変更をステージング
-git add .
-
-# コミット
-git commit -m "コミットメッセージ"
-
-# プッシュ
-git push
-```
-
-## ライセンス
-MIT License

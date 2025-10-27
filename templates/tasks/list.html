@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>タスク一覧</title>
+</head>
+<body>
+    <h1>タスク一覧</h1>
+    <p>ユーザー: {{ current_user.username }}</p>
+    <a href="{{ url_for('auth.logout') }}">ログアウト</a>
+    
+    <hr>
+    
+    <a href="{{ url_for('tasks.create_task') }}">新しいタスクを作成</a>
+    
+    <hr>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <p style="color: {% if category == 'success' %}green{% else %}red{% endif %};">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <h2>タスク一覧</h2>
+    {% if tasks %}
+        <ul>
+            {% for task in tasks %}
+                <li style="{% if task.completed %}text-decoration: line-through; opacity: 0.5;{% endif %}">
+                    <strong>{{ task.title }}</strong>
+                    {% if task.description %} - {{ task.description }}{% endif %}
+                    <br>
+                    <strong style="color: {% if task.completed %}green{% else %}orange{% endif %};">
+                        {% if task.completed %}✓ 完了{% else %}○ 未完了{% endif %}
+                    </strong>
+                    | 優先度: {{ task.priority }}
+                    {% if task.due_date %} | 期限: {{ task.due_date }}{% endif %}
+                    <br>
+                    <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}">編集</a> | 
+                    <form action="{{ url_for('tasks.delete_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                        <button type="submit" onclick="return confirm('削除しますか？')">削除</button>
+                    </form>
+                    <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                        <button type="submit">{% if task.completed %}未完了に{% else %}完了に{% endif %}</button>
+                    </form>
+                </li>
+                <hr>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>タスクがありません。新しいタスクを作成してください。</p>
+    {% endif %}
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>タスク編集</title>
+</head>
+<body>
+    <h1>タスク編集</h1>
+    <a href="{{ url_for('tasks.list_tasks') }}">タスク一覧に戻る</a>
+    
+    <hr>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <p style="color: {% if category == 'success' %}green{% else %}red{% endif %};">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <form method="POST">
+        <div>
+            <label for="title">タイトル *</label><br>
+            <input type="text" id="title" name="title" value="{{ task.title }}" required>
+        </div>
+        <br>
+        <div>
+            <label for="description">説明</label><br>
+            <textarea id="description" name="description" rows="4" cols="50">{{ task.description }}</textarea>
+        </div>
+        <br>
+        <div>
+            <label for="due_date">期限</label><br>
+            <input type="date" id="due_date" name="due_date" value="{{ task.due_date if task.due_date else '' }}">
+        </div>
+        <br>
+        <div>
+            <label for="priority">優先度</label><br>
+            <select id="priority" name="priority">
+                <option value="low" {% if task.priority == 'low' %}selected{% endif %}>低</option>
+                <option value="medium" {% if task.priority == 'medium' %}selected{% endif %}>中</option>
+                <option value="high" {% if task.priority == 'high' %}selected{% endif %}>高</option>
+            </select>
+        </div>
+        <br>
+        <button type="submit">更新</button>
+    </form>
+</body>
+</html>

@@ -46,3 +46,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Database
+instance/
+*.db
+*.sqlite

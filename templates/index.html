@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATD タスク管理システム</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .status {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .tech-stack {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .tech-stack h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        li:last-child {
+            border-bottom: none;
+        }
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+        .free-badge {
+            background: #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 ATD タスク管理システム</h1>
+        <p class="subtitle">WEB SaaS 型タスク管理アプリ</p>
+        
+        <div class="status">
+            <strong>✅ 環境構築完了！</strong><br>
+            Flask が正常に動作しています。
+        </div>
+
+        <div class="tech-stack">
+            <h3>📦 技術スタック</h3>
+            <ul>
+                <li><span class="badge free-badge">無料</span>Python + Flask</li>
+                <li><span class="badge free-badge">無料</span>SQLite (開発用)</li>
+                <li><span class="badge free-badge">無料</span>PostgreSQL (本番用)</li>
+                <li><span class="badge free-badge">無料</span>Render.com (デプロイ)</li>
+                <li><span class="badge">Total Cost</span><strong>¥0/月</strong></li>
+            </ul>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #fff3cd; border-radius: 10px;">
+            <strong>🚀 次のステップ:</strong><br>
+            1. ユーザー認証機能の実装<br>
+            2. タスク CRUD 機能の実装<br>
+            3. データベース設計<br>
+            4. Render.com にデプロイ
+        </div>
+    </div>
+</body>
+</html>
