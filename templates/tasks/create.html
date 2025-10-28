@@ -2,48 +2,131 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>タスク作成</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タスク作成 - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <h1>新しいタスクを作成</h1>
-    <a href="{{ url_for('tasks.list_tasks') }}">タスク一覧に戻る</a>
-    
-    <hr>
-    
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <p style="color: {% if category == 'success' %}green{% else %}red{% endif %};">{{ message }}</p>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-    
-    <form method="POST">
-        <div>
-            <label for="title">タイトル *</label><br>
-            <input type="text" id="title" name="title" required>
+    <div class="app-layout">
+        <!-- 左サイドバー -->
+        <aside class="sidebar">
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('main.dashboard') }}" class="sidebar-item">
+                    <span class="sidebar-icon">●</span>
+                </a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="sidebar-item active">
+                    <span class="sidebar-icon">📋</span>
+                </a>
+                <a href="{{ url_for('main.personal_tasks') }}" class="sidebar-item">
+                    <span class="sidebar-icon">👤</span>
+                </a>
+                <a href="{{ url_for('main.team_management') }}" class="sidebar-item">
+                    <span class="sidebar-icon">👥</span>
+                </a>
+                <a href="{{ url_for('main.mindmap') }}" class="sidebar-item">
+                    <span class="sidebar-icon">🧠</span>
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="sidebar-item">
+                    <span class="sidebar-icon">⚙️</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- メインコンテンツエリア -->
+        <div class="main-layout">
+            <!-- ナビゲーションバー -->
+            <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-left">
+                    <div class="navbar-brand">ATD</div>
+                    <div class="navbar-menu">
+                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">
+                            ダッシュボード
+                        </a>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item active">
+                            タスク管理
+                        </a>
+                        <a href="{{ url_for('main.personal_tasks') }}" class="navbar-item">
+                            個人タスク
+                        </a>
+                        <a href="{{ url_for('main.team_management') }}" class="navbar-item">
+                            チーム管理
+                        </a>
+                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">
+                            マインドマップ
+                        </a>
+                        <a href="{{ url_for('main.profile') }}" class="navbar-item">
+                            プロフィール
+                        </a>
+                    </div>
+                </div>
+                <div class="navbar-right">
+                    <div class="user-controls">
+                        <a href="#" class="user-control active">
+                            個人
+                        </a>
+                        <a href="#" class="user-control">
+                            チーム
+                        </a>
+                        <a href="{{ url_for('main.profile') }}" class="user-control">
+                            {{ current_user.username }}
+                        </a>
+                    </div>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">ログアウト</a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h1>新しいタスクを作成</h1>
+                    <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-secondary">タスク一覧に戻る</a>
+                </div>
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <form method="POST">
+                    <div class="form-group">
+                        <label for="title">タイトル *</label>
+                        <input type="text" id="title" name="title" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="description">説明</label>
+                        <textarea id="description" name="description" class="form-control" rows="4"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="due_date">期限</label>
+                        <input type="date" id="due_date" name="due_date" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="priority">優先度</label>
+                        <select id="priority" name="priority" class="form-control">
+                            <option value="low">低</option>
+                            <option value="medium" selected>中</option>
+                            <option value="high">高</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">作成</button>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-secondary">キャンセル</a>
+                    </div>
+                </form>
+            </div>
         </div>
-        <br>
-        <div>
-            <label for="description">説明</label><br>
-            <textarea id="description" name="description" rows="4" cols="50"></textarea>
         </div>
-        <br>
-        <div>
-            <label for="due_date">期限</label><br>
-            <input type="date" id="due_date" name="due_date">
-        </div>
-        <br>
-        <div>
-            <label for="priority">優先度</label><br>
-            <select id="priority" name="priority">
-                <option value="low">低</option>
-                <option value="medium" selected>中</option>
-                <option value="high">高</option>
-            </select>
-        </div>
-        <br>
-        <button type="submit">作成</button>
-    </form>
+    </div>
 </body>
 </html>

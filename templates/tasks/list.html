@@ -3,89 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>タスク一覧 - ATD</title>
+    <title>タスク管理 - ATD</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <!-- ナビゲーションバー -->
-        <nav class="navbar">
+    <div class="app-layout">
+        <!-- 左サイドバー -->
+        <aside class="sidebar">
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('main.dashboard') }}" class="sidebar-item">
+                    <span class="sidebar-icon">●</span>
+                </a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="sidebar-item active">
+                    <span class="sidebar-icon">📋</span>
+                </a>
+                <a href="{{ url_for('main.personal_tasks') }}" class="sidebar-item">
+                    <span class="sidebar-icon">👤</span>
+                </a>
+                <a href="{{ url_for('main.team_management') }}" class="sidebar-item">
+                    <span class="sidebar-icon">👥</span>
+                </a>
+                <a href="{{ url_for('main.mindmap') }}" class="sidebar-item">
+                    <span class="sidebar-icon">🧠</span>
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="sidebar-item">
+                    <span class="sidebar-icon">⚙️</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- メインコンテンツエリア -->
+        <div class="main-layout">
+            <!-- ナビゲーションバー -->
+            <nav class="navbar">
             <div class="navbar-content">
-                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-brand">🎯 ATD タスク管理</a>
-                <div class="navbar-menu">
-                    <span>{{ current_user.username }} さん</span>
-                    <a href="{{ url_for('auth.logout') }}" class="navbar-item">ログアウト</a>
+                <div class="navbar-left">
+                    <div class="navbar-brand">ATD</div>
+                    <div class="navbar-menu">
+                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">
+                            ダッシュボード
+                        </a>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item active">
+                            タスク管理
+                        </a>
+                        <a href="{{ url_for('main.personal_tasks') }}" class="navbar-item">
+                            個人タスク
+                        </a>
+                        <a href="{{ url_for('main.team_management') }}" class="navbar-item">
+                            チーム管理
+                        </a>
+                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">
+                            マインドマップ
+                        </a>
+                        <a href="{{ url_for('main.profile') }}" class="navbar-item">
+                            プロフィール
+                        </a>
+                    </div>
+                </div>
+                <div class="navbar-right">
+                    <div class="user-controls">
+                        <a href="#" class="user-control active">
+                            個人
+                        </a>
+                        <a href="#" class="user-control">
+                            チーム
+                        </a>
+                        <a href="{{ url_for('main.profile') }}" class="user-control">
+                            {{ current_user.username }}
+                        </a>
+                    </div>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">ログアウト</a>
                 </div>
             </div>
         </nav>
 
-        <!-- メインコンテンツ -->
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h1>マイタスク</h1>
-                <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">+ 新しいタスク</a>
-            </div>
+        <div class="container">
+            <!-- メインコンテンツ -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h1>マイタスク</h1>
+                    <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">+ 新しいタスク</a>
+                </div>
 
-            <!-- フラッシュメッセージ -->
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">
-                            {{ message }}
+                <!-- フラッシュメッセージ -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- タスク一覧 -->
+                {% if tasks %}
+                    {% for task in tasks %}
+                        <div class="task-card {% if task.completed %}completed{% endif %}">
+                            <h3 class="task-title">{{ task.title }}</h3>
+                            
+                            {% if task.description %}
+                                <p class="task-description">{{ task.description }}</p>
+                            {% endif %}
+                            
+                            <div class="task-meta">
+                                <span class="task-meta-item">
+                                    {% if task.completed %}
+                                        <span style="color: var(--success-color); font-weight: bold;">✓ 完了</span>
+                                    {% else %}
+                                        <span style="color: var(--warning-color); font-weight: bold;">○ 未完了</span>
+                                    {% endif %}
+                                </span>
+                                
+                                <span class="task-meta-item">
+                                    <span class="badge badge-{{ task.priority }}">{{ task.priority }}</span>
+                                </span>
+                                
+                                {% if task.due_date %}
+                                    <span class="task-meta-item">{{ task.due_date }}</span>
+                                {% endif %}
+                            </div>
+                            
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-secondary">編集</a>
+                                <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                    <button type="submit" class="btn btn-success">
+                                        {% if task.completed %}未完了に{% else %}完了に{% endif %}
+                                    </button>
+                                </form>
+                                <form action="{{ url_for('tasks.delete_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                    <button type="submit" class="btn btn-danger" onclick="return confirm('削除しますか？')">削除</button>
+                                </form>
+                            </div>
                         </div>
                     {% endfor %}
-                {% endif %}
-            {% endwith %}
-
-            <!-- タスク一覧 -->
-            {% if tasks %}
-                {% for task in tasks %}
-                    <div class="task-card {% if task.completed %}completed{% endif %}">
-                        <h3 class="task-title">{{ task.title }}</h3>
-                        
-                        {% if task.description %}
-                            <p class="task-description">{{ task.description }}</p>
-                        {% endif %}
-                        
-                        <div class="task-meta">
-                            <span class="task-meta-item">
-                                {% if task.completed %}
-                                    <span style="color: var(--success-color); font-weight: bold;">✓ 完了</span>
-                                {% else %}
-                                    <span style="color: var(--warning-color); font-weight: bold;">○ 未完了</span>
-                                {% endif %}
-                            </span>
-                            
-                            <span class="task-meta-item">
-                                <span class="badge badge-{{ task.priority }}">{{ task.priority }}</span>
-                            </span>
-                            
-                            {% if task.due_date %}
-                                <span class="task-meta-item">📅 {{ task.due_date }}</span>
-                            {% endif %}
-                        </div>
-                        
-                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                            <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-secondary">編集</a>
-                            <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
-                                <button type="submit" class="btn btn-success">
-                                    {% if task.completed %}未完了に{% else %}完了に{% endif %}
-                                </button>
-                            </form>
-                            <form action="{{ url_for('tasks.delete_task', task_id=task.id) }}" method="POST" style="display:inline;">
-                                <button type="submit" class="btn btn-danger" onclick="return confirm('削除しますか？')">削除</button>
-                            </form>
-                        </div>
+                {% else %}
+                    <div class="text-center" style="padding: 3rem;">
+                        <p style="color: var(--text-secondary); font-size: 1.125rem; margin-bottom: 1rem;">
+                            タスクがありません
+                        </p>
+                        <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">最初のタスクを作成</a>
                     </div>
-                {% endfor %}
-            {% else %}
-                <div class="text-center" style="padding: 3rem;">
-                    <p style="color: var(--text-secondary); font-size: 1.125rem; margin-bottom: 1rem;">
-                        タスクがありません
-                    </p>
-                    <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">最初のタスクを作成</a>
-                </div>
-            {% endif %}
+                {% endif %}
+            </div>
+        </div>
         </div>
     </div>
 </body>
