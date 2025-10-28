@@ -15,31 +15,34 @@
                     <div class="navbar-brand">ATD</div>
                     <div class="navbar-menu">
                         <a href="{{ url_for('main.dashboard') }}" class="navbar-item">
-                            <span class="nav-icon">●</span>
                             ダッシュボード
                         </a>
                         <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">
-                            <span class="nav-icon">📋</span>
                             タスク管理
                         </a>
+                        <a href="{{ url_for('main.personal_tasks') }}" class="navbar-item">
+                            個人タスク
+                        </a>
+                        <a href="{{ url_for('main.team_management') }}" class="navbar-item">
+                            チーム管理
+                        </a>
                         <a href="{{ url_for('main.mindmap') }}" class="navbar-item">
-                            <span class="nav-icon">🧠</span>
                             マインドマップ
+                        </a>
+                        <a href="{{ url_for('main.profile') }}" class="navbar-item active">
+                            プロフィール
                         </a>
                     </div>
                 </div>
                 <div class="navbar-right">
                     <div class="user-controls">
                         <a href="#" class="user-control active">
-                            <span class="nav-icon">👤</span>
                             個人
                         </a>
                         <a href="#" class="user-control">
-                            <span class="nav-icon">👥</span>
                             チーム
                         </a>
                         <a href="{{ url_for('main.profile') }}" class="user-control active">
-                            <span class="nav-icon">👤</span>
                             {{ current_user.username }}
                         </a>
                     </div>
