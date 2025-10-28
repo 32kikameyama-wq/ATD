@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ダッシュボード - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- ナビゲーションバー -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-left">
+                    <div class="navbar-brand">ATD</div>
+                    <div class="navbar-menu">
+                        <a href="{{ url_for('dashboard') }}" class="navbar-item active">
+                            <span class="nav-icon">●</span>
+                            ダッシュボード
+                        </a>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">
+                            <span class="nav-icon">📋</span>
+                            タスク管理
+                        </a>
+                        <a href="{{ url_for('mindmap') }}" class="navbar-item">
+                            <span class="nav-icon">🧠</span>
+                            マインドマップ
+                        </a>
+                    </div>
+                </div>
+                <div class="navbar-right">
+                    <div class="user-controls">
+                        <a href="#" class="user-control active">
+                            <span class="nav-icon">👤</span>
+                            個人
+                        </a>
+                        <a href="#" class="user-control">
+                            <span class="nav-icon">👥</span>
+                            チーム
+                        </a>
+                        <a href="{{ url_for('profile') }}" class="user-control">
+                            <span class="nav-icon">👤</span>
+                            {{ current_user.username }}
+                        </a>
+                    </div>
+                    <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">+ タスク追加</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- メインコンテンツ -->
+        <div class="main-content">
+            <div class="page-header">
+                <h1>ダッシュボード</h1>
+                <div class="date-selector">
+                    <select class="form-control">
+                        <option>今日</option>
+                        <option>今週</option>
+                        <option>今月</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- 上段左：個人パフォーマンス -->
+                <div class="card performance-card">
+                    <div class="card-header">
+                        <h3>・個人パフォーマンス</h3>
+                    </div>
+                    <div class="performance-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">85%</div>
+                            <div class="stat-label">完了率</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">12</div>
+                            <div class="stat-label">完了タスク</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">5日</div>
+                            <div class="stat-label">連続達成</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 上段右：今日のタスク -->
+                <div class="card today-tasks-card">
+                    <div class="card-header">
+                        <h3>・今日のタスク (0件)</h3>
+                    </div>
+                    <div class="today-tasks-content">
+                        <!-- タスクがここに表示される -->
+                    </div>
+                </div>
+
+                <!-- 下段左：進捗分析 -->
+                <div class="card analysis-card">
+                    <div class="card-header">
+                        <h3>・進捗分析</h3>
+                    </div>
+                    <div class="analysis-content">
+                        <!-- グラフやチャートがここに表示される -->
+                    </div>
+                </div>
+
+                <!-- 下段右：時間分析 -->
+                <div class="card analysis-card">
+                    <div class="card-header">
+                        <h3>・時間分析</h3>
+                    </div>
+                    <div class="analysis-content">
+                        <!-- 時間分析のグラフがここに表示される -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 個人/チーム切り替え
+        document.querySelectorAll('.user-control').forEach(control => {
+            control.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                
+                const mode = this.textContent.trim();
+                console.log('切り替え:', mode);
+                // ここで個人/チームの切り替え処理を実装
+            });
+        });
+    </script>
+</body>
+</html>

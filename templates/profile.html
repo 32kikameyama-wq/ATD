@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>プロフィール - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- ナビゲーションバー -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-left">
+                    <div class="navbar-brand">ATD</div>
+                    <div class="navbar-menu">
+                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">
+                            <span class="nav-icon">●</span>
+                            ダッシュボード
+                        </a>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">
+                            <span class="nav-icon">📋</span>
+                            タスク管理
+                        </a>
+                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">
+                            <span class="nav-icon">🧠</span>
+                            マインドマップ
+                        </a>
+                    </div>
+                </div>
+                <div class="navbar-right">
+                    <div class="user-controls">
+                        <a href="#" class="user-control active">
+                            <span class="nav-icon">👤</span>
+                            個人
+                        </a>
+                        <a href="#" class="user-control">
+                            <span class="nav-icon">👥</span>
+                            チーム
+                        </a>
+                        <a href="{{ url_for('main.profile') }}" class="user-control active">
+                            <span class="nav-icon">👤</span>
+                            {{ current_user.username }}
+                        </a>
+                    </div>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">ログアウト</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- メインコンテンツ -->
+        <div class="main-content">
+            <div class="page-header">
+                <h1>プロフィール管理</h1>
+            </div>
+
+            <div class="profile-grid">
+                <!-- プロフィール編集 -->
+                <div class="card profile-form-card">
+                    <div class="card-header">
+                        <h3>・プロフィール編集</h3>
+                    </div>
+                    <form class="profile-form">
+                        <div class="form-group">
+                            <label for="username">ユーザー名</label>
+                            <input type="text" id="username" name="username" class="form-control" value="{{ current_user.username }}" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email">メールアドレス</label>
+                            <input type="email" id="email" name="email" class="form-control" value="{{ current_user.email }}" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="bio">自己紹介</label>
+                            <textarea id="bio" name="bio" class="form-control" rows="4" placeholder="自己紹介を入力してください"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="avatar">アバター</label>
+                            <input type="file" id="avatar" name="avatar" class="form-control" accept="image/*">
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">保存</button>
+                            <button type="button" class="btn btn-secondary">リセット</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- プロフィール情報 -->
+                <div class="card profile-info-card">
+                    <div class="card-header">
+                        <h3>・プロフィール情報</h3>
+                    </div>
+                    <div class="profile-info">
+                        <div class="profile-avatar">
+                            <div class="avatar-placeholder">{{ current_user.username[0].upper() }}</div>
+                        </div>
+                        <div class="profile-details">
+                            <h4>{{ current_user.username }}</h4>
+                            <p>{{ current_user.email }}</p>
+                            <p class="join-date">登録日: {{ current_user.created_at.strftime('%Y年%m月%d日') }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">12</div>
+                            <div class="stat-label">完了タスク</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">5</div>
+                            <div class="stat-label">進行中</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">85%</div>
+                            <div class="stat-label">完了率</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 個人/チーム切り替え
+        document.querySelectorAll('.user-control').forEach(control => {
+            control.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                
+                const mode = this.textContent.trim();
+                console.log('切り替え:', mode);
+                // ここで個人/チームの切り替え処理を実装
+            });
+        });
+
+        // プロフィールフォーム
+        document.querySelector('.profile-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('プロフィール保存');
+            // ここでプロフィール保存処理を実装
+        });
+    </script>
+</body>
+</html>

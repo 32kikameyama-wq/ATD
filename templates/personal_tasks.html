@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>個人タスク管理 - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- ナビゲーションバー -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-left">
+                    <div class="navbar-brand">ATD</div>
+                    <div class="navbar-menu">
+                        <a href="{{ url_for('dashboard') }}" class="navbar-item">
+                            <span class="nav-icon">●</span>
+                            ダッシュボード
+                        </a>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item active">
+                            <span class="nav-icon">📋</span>
+                            タスク管理
+                        </a>
+                        <a href="{{ url_for('mindmap') }}" class="navbar-item">
+                            <span class="nav-icon">🧠</span>
+                            マインドマップ
+                        </a>
+                    </div>
+                </div>
+                <div class="navbar-right">
+                    <div class="user-controls">
+                        <a href="#" class="user-control active">
+                            <span class="nav-icon">👤</span>
+                            個人
+                        </a>
+                        <a href="#" class="user-control">
+                            <span class="nav-icon">👥</span>
+                            チーム
+                        </a>
+                        <a href="{{ url_for('profile') }}" class="user-control">
+                            <span class="nav-icon">👤</span>
+                            {{ current_user.username }}
+                        </a>
+                    </div>
+                    <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">+ タスク追加</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- メインコンテンツ -->
+        <div class="main-content">
+            <div class="page-header">
+                <h1>個人タスク管理</h1>
+            </div>
+
+            <!-- フィルター -->
+            <div class="filter-section">
+                <div class="filter-controls">
+                    <select class="form-control">
+                        <option>全ての優先度</option>
+                        <option>高</option>
+                        <option>中</option>
+                        <option>低</option>
+                    </select>
+                    <select class="form-control">
+                        <option>全てのステータス</option>
+                        <option>未完了</option>
+                        <option>完了</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- タスクセクション -->
+            <div class="task-sections">
+                <!-- 今日のタスク -->
+                <div class="task-section">
+                    <div class="section-header">
+                        <h3>📅 今日のタスク 0件</h3>
+                    </div>
+                    <div class="task-list">
+                        <!-- タスクがここに表示される -->
+                    </div>
+                </div>
+
+                <!-- 明日のタスク -->
+                <div class="task-section">
+                    <div class="section-header">
+                        <h3>📅 明日のタスク 0件</h3>
+                    </div>
+                    <div class="task-list">
+                        <!-- タスクがここに表示される -->
+                    </div>
+                </div>
+
+                <!-- その他のタスク -->
+                <div class="task-section">
+                    <div class="section-header">
+                        <h3>📋 その他のタスク 0件</h3>
+                    </div>
+                    <div class="task-list">
+                        <!-- タスクがここに表示される -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 個人/チーム切り替え
+        document.querySelectorAll('.user-control').forEach(control => {
+            control.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                
+                const mode = this.textContent.trim();
+                console.log('切り替え:', mode);
+                // ここで個人/チームの切り替え処理を実装
+            });
+        });
+    </script>
+</body>
+</html>

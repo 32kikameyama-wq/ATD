@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>チーム管理 - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- ナビゲーションバー -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-left">
+                    <div class="navbar-brand">ATD</div>
+                    <div class="navbar-menu">
+                        <a href="{{ url_for('dashboard') }}" class="navbar-item">
+                            <span class="nav-icon">●</span>
+                            ダッシュボード
+                        </a>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">
+                            <span class="nav-icon">📋</span>
+                            タスク管理
+                        </a>
+                        <a href="#" class="navbar-item active">
+                            <span class="nav-icon">👥</span>
+                            チーム
+                        </a>
+                        <a href="{{ url_for('mindmap') }}" class="navbar-item">
+                            <span class="nav-icon">🧠</span>
+                            マインドマップ
+                        </a>
+                    </div>
+                </div>
+                <div class="navbar-right">
+                    <div class="user-controls">
+                        <a href="#" class="user-control">
+                            <span class="nav-icon">👤</span>
+                            個人
+                        </a>
+                        <a href="#" class="user-control active">
+                            <span class="nav-icon">👥</span>
+                            チーム
+                        </a>
+                        <a href="{{ url_for('profile') }}" class="user-control">
+                            <span class="nav-icon">👤</span>
+                            {{ current_user.username }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- メインコンテンツ -->
+        <div class="main-content">
+            <div class="page-header">
+                <h1>チーム管理</h1>
+                <div class="team-actions">
+                    <a href="#" class="btn btn-primary">+ チーム作成</a>
+                    <a href="#" class="btn btn-primary">+ メンバー招待</a>
+                </div>
+            </div>
+
+            <div class="team-dashboard-grid">
+                <!-- 左カラム -->
+                <div class="team-left">
+                    <!-- チーム全体 -->
+                    <div class="team-section">
+                        <div class="section-header">
+                            <h3>・チーム全体</h3>
+                        </div>
+                        <div class="team-stats-card">
+                            <div class="stat-box">
+                                <div class="stat-number">78%</div>
+                                <div class="stat-text">完了率</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-number">45</div>
+                                <div class="stat-text">完了タスク</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-number">2.3日</div>
+                                <div class="stat-text">平均リードタイム</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- チームタスク -->
+                    <div class="team-section">
+                        <div class="section-header">
+                            <h3>・チームタスク</h3>
+                        </div>
+                        <div class="team-tasks-content">
+                            <!-- チームタスクがここに表示される -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右カラム -->
+                <div class="team-right">
+                    <!-- メンバー別パフォーマンス -->
+                    <div class="team-section">
+                        <div class="section-header">
+                            <h3>・メンバー別パフォーマンス</h3>
+                        </div>
+                        <div class="member-performance-content">
+                            <!-- メンバー別パフォーマンスがここに表示される -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 個人/チーム切り替え
+        document.querySelectorAll('.user-control').forEach(control => {
+            control.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                
+                const mode = this.textContent.trim();
+                console.log('切り替え:', mode);
+                // ここで個人/チームの切り替え処理を実装
+            });
+        });
+    </script>
+</body>
+</html>

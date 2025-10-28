@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>マインドマップ - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- ナビゲーションバー -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-left">
+                    <div class="navbar-brand">ATD</div>
+                    <div class="navbar-menu">
+                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">
+                            <span class="nav-icon">●</span>
+                            ダッシュボード
+                        </a>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">
+                            <span class="nav-icon">📋</span>
+                            タスク管理
+                        </a>
+                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item active">
+                            <span class="nav-icon">🧠</span>
+                            マインドマップ
+                        </a>
+                    </div>
+                </div>
+                <div class="navbar-right">
+                    <div class="user-controls">
+                        <a href="#" class="user-control active">
+                            <span class="nav-icon">👤</span>
+                            個人
+                        </a>
+                        <a href="#" class="user-control">
+                            <span class="nav-icon">👥</span>
+                            チーム
+                        </a>
+                        <a href="{{ url_for('main.profile') }}" class="user-control">
+                            <span class="nav-icon">👤</span>
+                            {{ current_user.username }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- メインコンテンツ -->
+        <div class="main-content">
+            <div class="page-header">
+                <h1>マインドマップ</h1>
+                <div class="mindmap-actions">
+                    <button class="btn btn-primary">+ 新しいマップ</button>
+                    <button class="btn btn-secondary">📁 保存</button>
+                </div>
+            </div>
+
+            <div class="mindmap-container">
+                <div class="mindmap-canvas">
+                    <div class="mindmap-placeholder">
+                        <div class="placeholder-icon">🧠</div>
+                        <h3>マインドマップ</h3>
+                        <p>アイデアを視覚的に整理しましょう</p>
+                        <button class="btn btn-primary">新しいマップを作成</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 個人/チーム切り替え
+        document.querySelectorAll('.user-control').forEach(control => {
+            control.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                
+                const mode = this.textContent.trim();
+                console.log('切り替え:', mode);
+                // ここで個人/チームの切り替え処理を実装
+            });
+        });
+    </script>
+</body>
+</html>
