@@ -14,7 +14,7 @@
                 <div class="navbar-left">
                     <div class="navbar-brand">ATD</div>
                     <div class="navbar-menu">
-                        <a href="{{ url_for('dashboard') }}" class="navbar-item">
+                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">
                             <span class="nav-icon">●</span>
                             ダッシュボード
                         </a>
@@ -22,7 +22,7 @@
                             <span class="nav-icon">📋</span>
                             タスク管理
                         </a>
-                        <a href="{{ url_for('mindmap') }}" class="navbar-item">
+                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">
                             <span class="nav-icon">🧠</span>
                             マインドマップ
                         </a>
@@ -38,7 +38,7 @@
                             <span class="nav-icon">👥</span>
                             チーム
                         </a>
-                        <a href="{{ url_for('profile') }}" class="user-control">
+                        <a href="{{ url_for('main.profile') }}" class="user-control">
                             <span class="nav-icon">👤</span>
                             {{ current_user.username }}
                         </a>
