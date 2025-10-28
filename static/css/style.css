@@ -371,28 +371,78 @@ body {
     border-left: 4px solid var(--info-color);
 }
 
+/* タスクセクション */
+.task-section {
+    margin-bottom: var(--spacing-xl);
+}
+
+.task-section-title {
+    font-size: var(--font-size-xl);
+    font-weight: bold;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.no-tasks {
+    color: var(--text-secondary);
+    font-style: italic;
+    text-align: center;
+    padding: var(--spacing-lg);
+    background: #f8f9fa;
+    border: 2px dashed #e0e0e0;
+}
+
 /* タスクカード */
 .task-card {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
+    background: white;
+    border: 2px solid #e0e0e0;
     padding: var(--spacing-lg);
     margin-bottom: var(--spacing-md);
-    transition: all 0.2s;
+    transition: all 0.3s ease;
 }
 
 .task-card:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0, 139, 139, 0.1);
 }
 
 .task-card.completed {
     opacity: 0.6;
-    background: var(--gray-50);
+    text-decoration: line-through;
 }
 
-.task-card.completed .task-title {
-    text-decoration: line-through;
+.task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-sm);
+}
+
+.task-controls {
+    display: flex;
+    gap: var(--spacing-xs);
+    margin-left: var(--spacing-md);
+}
+
+.task-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.task-move-buttons {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.task-main-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
 }
 
 .task-title {

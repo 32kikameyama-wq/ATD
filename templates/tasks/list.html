@@ -93,58 +93,253 @@
                     {% endif %}
                 {% endwith %}
 
-                <!-- タスク一覧 -->
-                {% if tasks %}
-                    {% for task in tasks %}
-                        <div class="task-card {% if task.completed %}completed{% endif %}">
-                            <h3 class="task-title">{{ task.title }}</h3>
-                            
-                            {% if task.description %}
-                                <p class="task-description">{{ task.description }}</p>
-                            {% endif %}
-                            
-                            <div class="task-meta">
-                                <span class="task-meta-item">
-                                    {% if task.completed %}
-                                        <span style="color: var(--success-color); font-weight: bold;">✓ 完了</span>
-                                    {% else %}
-                                        <span style="color: var(--warning-color); font-weight: bold;">○ 未完了</span>
-                                    {% endif %}
-                                </span>
+                <!-- 本日のタスク -->
+                <div class="task-section">
+                    <h2 class="task-section-title">本日のタスク</h2>
+                    {% if today_tasks %}
+                        {% for task in today_tasks %}
+                            <div class="task-card {% if task.completed %}completed{% endif %}" data-task-id="{{ task.id }}">
+                                <div class="task-header">
+                                    <h3 class="task-title">{{ task.title }}</h3>
+                                    <div class="task-controls">
+                                        <button class="btn btn-sm btn-outline" onclick="moveTaskUp({{ task.id }})">↑</button>
+                                        <button class="btn btn-sm btn-outline" onclick="moveTaskDown({{ task.id }})">↓</button>
+                                    </div>
+                                </div>
                                 
-                                <span class="task-meta-item">
-                                    <span class="badge badge-{{ task.priority }}">{{ task.priority }}</span>
-                                </span>
-                                
-                                {% if task.due_date %}
-                                    <span class="task-meta-item">{{ task.due_date }}</span>
+                                {% if task.description %}
+                                    <p class="task-description">{{ task.description }}</p>
                                 {% endif %}
+                                
+                                <div class="task-meta">
+                                    <span class="task-meta-item">
+                                        {% if task.completed %}
+                                            <span style="color: var(--success-color); font-weight: bold;">✓ 完了</span>
+                                        {% else %}
+                                            <span style="color: var(--warning-color); font-weight: bold;">○ 未完了</span>
+                                        {% endif %}
+                                    </span>
+                                    
+                                    <span class="task-meta-item">
+                                        <span class="badge badge-{{ task.priority }}">{{ task.priority }}</span>
+                                    </span>
+                                    
+                                    {% if task.due_date %}
+                                        <span class="task-meta-item">{{ task.due_date }}</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="task-actions">
+                                    <div class="task-move-buttons">
+                                        <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                            <input type="hidden" name="category" value="tomorrow">
+                                            <button type="submit" class="btn btn-sm btn-outline">明日へ</button>
+                                        </form>
+                                        <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                            <input type="hidden" name="category" value="other">
+                                            <button type="submit" class="btn btn-sm btn-outline">その他へ</button>
+                                        </form>
+                                    </div>
+                                    <div class="task-main-actions">
+                                        <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-secondary">編集</a>
+                                        <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                            <button type="submit" class="btn btn-success">
+                                                {% if task.completed %}未完了に{% else %}完了に{% endif %}
+                                            </button>
+                                        </form>
+                                        <form action="{{ url_for('tasks.delete_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                            <button type="submit" class="btn btn-danger" onclick="return confirm('削除しますか？')">削除</button>
+                                        </form>
+                                    </div>
+                                </div>
                             </div>
-                            
-                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-secondary">編集</a>
-                                <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
-                                    <button type="submit" class="btn btn-success">
-                                        {% if task.completed %}未完了に{% else %}完了に{% endif %}
-                                    </button>
-                                </form>
-                                <form action="{{ url_for('tasks.delete_task', task_id=task.id) }}" method="POST" style="display:inline;">
-                                    <button type="submit" class="btn btn-danger" onclick="return confirm('削除しますか？')">削除</button>
-                                </form>
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-tasks">本日のタスクはありません</p>
+                    {% endif %}
+                </div>
+
+                <!-- 明日のタスク -->
+                <div class="task-section">
+                    <h2 class="task-section-title">明日のタスク</h2>
+                    {% if tomorrow_tasks %}
+                        {% for task in tomorrow_tasks %}
+                            <div class="task-card {% if task.completed %}completed{% endif %}" data-task-id="{{ task.id }}">
+                                <div class="task-header">
+                                    <h3 class="task-title">{{ task.title }}</h3>
+                                    <div class="task-controls">
+                                        <button class="btn btn-sm btn-outline" onclick="moveTaskUp({{ task.id }})">↑</button>
+                                        <button class="btn btn-sm btn-outline" onclick="moveTaskDown({{ task.id }})">↓</button>
+                                    </div>
+                                </div>
+                                
+                                {% if task.description %}
+                                    <p class="task-description">{{ task.description }}</p>
+                                {% endif %}
+                                
+                                <div class="task-meta">
+                                    <span class="task-meta-item">
+                                        {% if task.completed %}
+                                            <span style="color: var(--success-color); font-weight: bold;">✓ 完了</span>
+                                        {% else %}
+                                            <span style="color: var(--warning-color); font-weight: bold;">○ 未完了</span>
+                                        {% endif %}
+                                    </span>
+                                    
+                                    <span class="task-meta-item">
+                                        <span class="badge badge-{{ task.priority }}">{{ task.priority }}</span>
+                                    </span>
+                                    
+                                    {% if task.due_date %}
+                                        <span class="task-meta-item">{{ task.due_date }}</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="task-actions">
+                                    <div class="task-move-buttons">
+                                        <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                            <input type="hidden" name="category" value="today">
+                                            <button type="submit" class="btn btn-sm btn-outline">今日へ</button>
+                                        </form>
+                                        <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                            <input type="hidden" name="category" value="other">
+                                            <button type="submit" class="btn btn-sm btn-outline">その他へ</button>
+                                        </form>
+                                    </div>
+                                    <div class="task-main-actions">
+                                        <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-secondary">編集</a>
+                                        <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                            <button type="submit" class="btn btn-success">
+                                                {% if task.completed %}未完了に{% else %}完了に{% endif %}
+                                            </button>
+                                        </form>
+                                        <form action="{{ url_for('tasks.delete_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                            <button type="submit" class="btn btn-danger" onclick="return confirm('削除しますか？')">削除</button>
+                                        </form>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="text-center" style="padding: 3rem;">
-                        <p style="color: var(--text-secondary); font-size: 1.125rem; margin-bottom: 1rem;">
-                            タスクがありません
-                        </p>
-                        <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">最初のタスクを作成</a>
-                    </div>
-                {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-tasks">明日のタスクはありません</p>
+                    {% endif %}
+                </div>
+
+                <!-- その他のタスク -->
+                <div class="task-section">
+                    <h2 class="task-section-title">その他のタスク</h2>
+                    {% if other_tasks %}
+                        {% for task in other_tasks %}
+                            <div class="task-card {% if task.completed %}completed{% endif %}" data-task-id="{{ task.id }}">
+                                <div class="task-header">
+                                    <h3 class="task-title">{{ task.title }}</h3>
+                                    <div class="task-controls">
+                                        <button class="btn btn-sm btn-outline" onclick="moveTaskUp({{ task.id }})">↑</button>
+                                        <button class="btn btn-sm btn-outline" onclick="moveTaskDown({{ task.id }})">↓</button>
+                                    </div>
+                                </div>
+                                
+                                {% if task.description %}
+                                    <p class="task-description">{{ task.description }}</p>
+                                {% endif %}
+                                
+                                <div class="task-meta">
+                                    <span class="task-meta-item">
+                                        {% if task.completed %}
+                                            <span style="color: var(--success-color); font-weight: bold;">✓ 完了</span>
+                                        {% else %}
+                                            <span style="color: var(--warning-color); font-weight: bold;">○ 未完了</span>
+                                        {% endif %}
+                                    </span>
+                                    
+                                    <span class="task-meta-item">
+                                        <span class="badge badge-{{ task.priority }}">{{ task.priority }}</span>
+                                    </span>
+                                    
+                                    {% if task.due_date %}
+                                        <span class="task-meta-item">{{ task.due_date }}</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="task-actions">
+                                    <div class="task-move-buttons">
+                                        <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                            <input type="hidden" name="category" value="today">
+                                            <button type="submit" class="btn btn-sm btn-outline">今日へ</button>
+                                        </form>
+                                        <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                            <input type="hidden" name="category" value="tomorrow">
+                                            <button type="submit" class="btn btn-sm btn-outline">明日へ</button>
+                                        </form>
+                                    </div>
+                                    <div class="task-main-actions">
+                                        <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-secondary">編集</a>
+                                        <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                            <button type="submit" class="btn btn-success">
+                                                {% if task.completed %}未完了に{% else %}完了に{% endif %}
+                                            </button>
+                                        </form>
+                                        <form action="{{ url_for('tasks.delete_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                            <button type="submit" class="btn btn-danger" onclick="return confirm('削除しますか？')">削除</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-tasks">その他のタスクはありません</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
         </div>
     </div>
+    
+    <script>
+    // タスクの優先順位変更
+    function moveTaskUp(taskId) {
+        fetch(`/tasks/${taskId}/reorder`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ direction: 'up' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('移動できませんでした');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました');
+        });
+    }
+    
+    function moveTaskDown(taskId) {
+        fetch(`/tasks/${taskId}/reorder`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ direction: 'down' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('移動できませんでした');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました');
+        });
+    }
+    </script>
 </body>
 </html>

@@ -9,8 +9,15 @@ tasks = Blueprint('tasks', __name__)
 @login_required
 def list_tasks():
     """タスク一覧"""
-    tasks = Task.query.filter_by(user_id=current_user.id).order_by(Task.created_at.desc()).all()
-    return render_template('tasks/list.html', tasks=tasks)
+    # 分類別にタスクを取得
+    today_tasks = Task.query.filter_by(user_id=current_user.id, category='today').order_by(Task.order_index).all()
+    tomorrow_tasks = Task.query.filter_by(user_id=current_user.id, category='tomorrow').order_by(Task.order_index).all()
+    other_tasks = Task.query.filter_by(user_id=current_user.id, category='other').order_by(Task.order_index).all()
+    
+    return render_template('tasks/list.html', 
+                         today_tasks=today_tasks,
+                         tomorrow_tasks=tomorrow_tasks,
+                         other_tasks=other_tasks)
 
 @tasks.route('/tasks/create', methods=['GET', 'POST'])
 @login_required
@@ -146,3 +153,69 @@ def toggle_task(task_id):
     
     flash(f'タスクを{"完了" if task.completed else "未完了"}に変更しました', 'success')
     return redirect(url_for('tasks.list_tasks'))
+
+@tasks.route('/tasks/<int:task_id>/move', methods=['POST'])
+@login_required
+def move_task(task_id):
+    """タスクの分類移動"""
+    task = Task.query.get_or_404(task_id)
+    
+    # 自分のタスクか確認
+    if task.user_id != current_user.id:
+        flash('このタスクを変更する権限がありません', 'error')
+        return redirect(url_for('tasks.list_tasks'))
+    
+    new_category = request.form.get('category')
+    if new_category not in ['today', 'tomorrow', 'other']:
+        flash('無効な分類です', 'error')
+        return redirect(url_for('tasks.list_tasks'))
+    
+    # 新しい分類での次のorder_indexを取得
+    max_order = db.session.query(db.func.max(Task.order_index)).filter_by(
+        user_id=current_user.id,
+        category=new_category
+    ).scalar() or 0
+    
+    task.category = new_category
+    task.order_index = max_order + 1
+    db.session.commit()
+    
+    category_names = {'today': '本日のタスク', 'tomorrow': '明日のタスク', 'other': 'その他のタスク'}
+    flash(f'タスクを{category_names[new_category]}に移動しました', 'success')
+    return redirect(url_for('tasks.list_tasks'))
+
+@tasks.route('/tasks/<int:task_id>/reorder', methods=['POST'])
+@login_required
+def reorder_task(task_id):
+    """タスクの優先順位変更"""
+    task = Task.query.get_or_404(task_id)
+    
+    # 自分のタスクか確認
+    if task.user_id != current_user.id:
+        return jsonify({'error': '権限がありません'}), 403
+    
+    direction = request.json.get('direction')  # 'up' or 'down'
+    if direction not in ['up', 'down']:
+        return jsonify({'error': '無効な方向です'}), 400
+    
+    # 同じ分類のタスクを取得
+    same_category_tasks = Task.query.filter_by(
+        user_id=current_user.id,
+        category=task.category
+    ).order_by(Task.order_index).all()
+    
+    current_index = same_category_tasks.index(task)
+    
+    if direction == 'up' and current_index > 0:
+        # 上のタスクと入れ替え
+        prev_task = same_category_tasks[current_index - 1]
+        task.order_index, prev_task.order_index = prev_task.order_index, task.order_index
+    elif direction == 'down' and current_index < len(same_category_tasks) - 1:
+        # 下のタスクと入れ替え
+        next_task = same_category_tasks[current_index + 1]
+        task.order_index, next_task.order_index = next_task.order_index, task.order_index
+    else:
+        return jsonify({'error': '移動できません'}), 400
+    
+    db.session.commit()
+    return jsonify({'success': True})
