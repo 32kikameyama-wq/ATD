@@ -7,78 +7,41 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="app-layout">
-        <!-- 左サイドバー -->
-        <aside class="sidebar">
-            <nav class="sidebar-nav">
-                <a href="{{ url_for('main.dashboard') }}" class="sidebar-item">
-                    <span class="sidebar-icon">●</span>
-                </a>
-                <a href="{{ url_for('tasks.list_tasks') }}" class="sidebar-item active">
-                    <span class="sidebar-icon">📋</span>
-                </a>
-                <a href="{{ url_for('main.personal_tasks') }}" class="sidebar-item">
-                    <span class="sidebar-icon">👤</span>
-                </a>
-                <a href="{{ url_for('main.team_management') }}" class="sidebar-item">
-                    <span class="sidebar-icon">👥</span>
-                </a>
-                <a href="{{ url_for('main.mindmap') }}" class="sidebar-item">
-                    <span class="sidebar-icon">🧠</span>
-                </a>
-                <a href="{{ url_for('main.profile') }}" class="sidebar-item">
-                    <span class="sidebar-icon">⚙️</span>
-                </a>
-            </nav>
-        </aside>
-
-        <!-- メインコンテンツエリア -->
-        <div class="main-layout">
-            <!-- ナビゲーションバー -->
-            <nav class="navbar">
-            <div class="navbar-content">
-                <div class="navbar-left">
-                    <div class="navbar-brand">ATD</div>
-                    <div class="navbar-menu">
-                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">
-                            ダッシュボード
-                        </a>
-                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item active">
-                            タスク管理
-                        </a>
-                        <a href="{{ url_for('main.team_management') }}" class="navbar-item">
-                            チーム管理
-                        </a>
-                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">
-                            マインドマップ
-                        </a>
-                        <a href="{{ url_for('main.profile') }}" class="navbar-item">
-                            プロフィール
-                        </a>
-                    </div>
-                </div>
-                <div class="navbar-right">
-                    <div class="user-controls">
-                        <a href="#" class="user-control active">
-                            個人
-                        </a>
-                        <a href="#" class="user-control">
-                            チーム
-                        </a>
-                        <a href="{{ url_for('main.profile') }}" class="user-control">
-                            {{ current_user.username }}
-                        </a>
-                    </div>
-                    <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">ログアウト</a>
-                </div>
+    <!-- 上部ナビゲーションバー -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">ATD</div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item active">タスク管理</a>
+                <a href="{{ url_for('main.team_management') }}" class="navbar-item">チーム</a>
+                <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
             </div>
-        </nav>
+            <div class="user-controls">
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                <a href="#" class="user-control active personal-mode">
+                    個人
+                </a>
+                <a href="#" class="user-control">
+                    チーム
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="user-control">
+                    {{ current_user.username }}
+                </a>
+            </div>
+        </div>
+    </nav>
 
         <div class="container">
+            <div class="page-header">
+                <h1>タスク管理</h1>
+            </div>
+
             <!-- メインコンテンツ -->
             <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h1>マイタスク</h1>
+                <div class="card-header">
+                    <h3>マイタスク</h3>
                     <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">+ 新しいタスク</a>
                 </div>
 
@@ -292,8 +255,6 @@
                 </div>
             </div>
         </div>
-        </div>
-    </div>
     
     <script>
     // タスクの優先順位変更

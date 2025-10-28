@@ -1,5 +1,6 @@
 from flask import Flask
 from flask_login import LoginManager
+from flask_migrate import Migrate
 from config import Config
 from models import db, User
 from routes import main
@@ -21,6 +22,9 @@ def create_app(config_class=Config):
     # データベース初期化
     db.init_app(app)
     
+    # Flask-Migrate 初期化
+    migrate = Migrate(app, db)
+    
     # Flask-Login 初期化
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -37,7 +41,7 @@ def create_app(config_class=Config):
     app.register_blueprint(auth, url_prefix='/auth')
     app.register_blueprint(tasks, url_prefix='')
     
-    # データベース作成
+    # データベース作成（初回のみ）
     with app.app_context():
         db.create_all()
     
@@ -47,4 +51,4 @@ def create_app(config_class=Config):
 app = create_app()
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    app.run(debug=True, host='0.0.0.0', port=5002)

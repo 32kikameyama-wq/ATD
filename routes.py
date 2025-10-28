@@ -1,5 +1,6 @@
-from flask import Blueprint, render_template, redirect, url_for
+from flask import Blueprint, render_template, redirect, url_for, flash, jsonify, request
 from flask_login import current_user, login_required
+from datetime import datetime, timedelta
 
 # ブループリントを作成
 main = Blueprint('main', __name__)
@@ -129,6 +130,108 @@ def team_management():
                          user_teams=user_teams,
                          team_stats=team_stats)
 
+@main.route('/team/create', methods=['GET', 'POST'])
+@login_required
+def create_team():
+    """チーム作成"""
+    from models import Team, TeamMember, db
+    
+    if request.method == 'POST':
+        name = request.form.get('name')
+        description = request.form.get('description')
+        
+        # バリデーション
+        if not name:
+            flash('チーム名を入力してください', 'error')
+            return render_template('team_create.html')
+        
+        # 同じ名前のチームが既に存在するかチェック
+        existing_team = Team.query.filter_by(name=name).first()
+        if existing_team:
+            flash('このチーム名は既に使用されています', 'error')
+            return render_template('team_create.html')
+        
+        # チーム作成
+        new_team = Team(
+            name=name,
+            description=description,
+            created_by=current_user.id
+        )
+        
+        db.session.add(new_team)
+        db.session.flush()  # IDを取得するためにflush
+        
+        # 作成者をチームの管理者として追加
+        admin_member = TeamMember(
+            team_id=new_team.id,
+            user_id=current_user.id,
+            role='admin'
+        )
+        
+        db.session.add(admin_member)
+        db.session.commit()
+        
+        flash('チームを作成しました', 'success')
+        return redirect(url_for('main.team_management'))
+    
+    return render_template('team_create.html')
+
+@main.route('/team/<int:team_id>/add-member', methods=['GET', 'POST'])
+@login_required
+def add_team_member(team_id):
+    """チームメンバー追加"""
+    from models import Team, TeamMember, User, db
+    
+    # チームの存在確認とアクセス権限チェック
+    team = Team.query.get_or_404(team_id)
+    membership = TeamMember.query.filter_by(
+        team_id=team_id, 
+        user_id=current_user.id
+    ).first()
+    
+    if not membership or membership.role != 'admin':
+        flash('このチームにメンバーを追加する権限がありません', 'error')
+        return redirect(url_for('main.team_management'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        
+        # バリデーション
+        if not username:
+            flash('ユーザー名を入力してください', 'error')
+            return render_template('team_add_member.html', team=team)
+        
+        # ユーザーの存在確認
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            flash('ユーザーが見つかりません', 'error')
+            return render_template('team_add_member.html', team=team)
+        
+        # 既にメンバーかチェック
+        existing_member = TeamMember.query.filter_by(
+            team_id=team_id,
+            user_id=user.id
+        ).first()
+        
+        if existing_member:
+            flash('このユーザーは既にチームメンバーです', 'error')
+            return render_template('team_add_member.html', team=team)
+        
+        # メンバー追加
+        new_member = TeamMember(
+            team_id=team_id,
+            user_id=user.id,
+            role='member'
+        )
+        
+        db.session.add(new_member)
+        db.session.commit()
+        
+        flash(f'{user.username}をチームに追加しました', 'success')
+        return redirect(url_for('main.team_management'))
+    
+    return render_template('team_add_member.html', team=team)
+
 @main.route('/mindmap')
 @login_required
 def mindmap():
@@ -140,6 +243,55 @@ def mindmap():
 def profile():
     """プロフィール管理"""
     return render_template('profile.html')
+
+@main.route('/admin')
+@login_required
+def admin():
+    """管理者ページ"""
+    from models import User, Task, Team, TeamMember, UserPerformance
+    
+    # 全ユーザー情報を取得
+    all_users = User.query.all()
+    
+    # ユーザー統計情報
+    user_stats = {}
+    for user in all_users:
+        # タスク統計
+        total_tasks = Task.query.filter_by(user_id=user.id).count()
+        completed_tasks = Task.query.filter_by(user_id=user.id, completed=True).count()
+        
+        # チーム参加状況
+        team_count = TeamMember.query.filter_by(user_id=user.id).count()
+        
+        # 最新のパフォーマンス
+        latest_performance = UserPerformance.query.filter_by(
+            user_id=user.id
+        ).order_by(UserPerformance.date.desc()).first()
+        
+        user_stats[user.id] = {
+            'total_tasks': total_tasks,
+            'completed_tasks': completed_tasks,
+            'completion_rate': (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0,
+            'team_count': team_count,
+            'streak_days': latest_performance.streak_days if latest_performance else 0,
+            'last_active': latest_performance.date if latest_performance else None
+        }
+    
+    # システム全体の統計
+    total_users = User.query.count()
+    total_tasks = Task.query.count()
+    total_teams = Team.query.count()
+    active_users = UserPerformance.query.filter(
+        UserPerformance.date >= datetime.now().date() - timedelta(days=7)
+    ).distinct(UserPerformance.user_id).count()
+    
+    return render_template('admin.html',
+                         all_users=all_users,
+                         user_stats=user_stats,
+                         total_users=total_users,
+                         total_tasks=total_tasks,
+                         total_teams=total_teams,
+                         active_users=active_users)
 
 @main.route('/team-dashboard/<int:team_id>')
 @login_required

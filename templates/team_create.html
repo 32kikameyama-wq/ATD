@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>チーム作成 - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- 上部ナビゲーションバー -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">ATD</div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                <a href="{{ url_for('main.team_management') }}" class="navbar-item active">チーム</a>
+                <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
+                <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+            </div>
+            <div class="user-controls">
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                <a href="#" class="user-control active personal-mode">
+                    個人
+                </a>
+                <a href="#" class="user-control">
+                    チーム
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="user-control">
+                    {{ current_user.username }}
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>チーム作成</h1>
+            <p>新しいチームを作成して、メンバーと協力してタスクを管理しましょう</p>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>チーム情報</h3>
+            </div>
+            
+            <!-- フラッシュメッセージ -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="form">
+                <div class="form-group">
+                    <label for="name">チーム名 *</label>
+                    <input type="text" id="name" name="name" class="form-control" required 
+                           placeholder="例: 開発チーム、マーケティングチーム">
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">チーム説明</label>
+                    <textarea id="description" name="description" class="form-control" rows="4" 
+                              placeholder="チームの目的や活動内容を説明してください"></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <a href="{{ url_for('main.team_management') }}" class="btn btn-secondary">キャンセル</a>
+                    <button type="submit" class="btn btn-primary">チームを作成</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>チーム作成について</h3>
+            </div>
+            <div class="info-content">
+                <ul>
+                    <li>チーム作成者は自動的にチームの管理者になります</li>
+                    <li>管理者はメンバーの追加・削除ができます</li>
+                    <li>チーム名は一意である必要があります</li>
+                    <li>チーム作成後、メンバーを招待できます</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // フォームの重複送信を防ぐ
+    document.querySelector('.form').addEventListener('submit', function(e) {
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = '作成中...';
+    });
+    </script>
+</body>
+</html>

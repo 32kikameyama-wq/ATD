@@ -9,199 +9,163 @@
 </head>
 <body>
     <div class="app-layout">
-        <!-- 左サイドバー -->
-        <aside class="sidebar">
-            <div class="sidebar-nav">
-                <a href="{{ url_for('main.dashboard') }}" class="sidebar-item active">
-                    <span class="sidebar-icon">🏠</span>
-                </a>
-                <a href="{{ url_for('tasks.create_task') }}" class="sidebar-item">
-                    <span class="sidebar-icon">➕</span>
-                </a>
-                <a href="{{ url_for('main.profile') }}" class="sidebar-item">
-                    <span class="sidebar-icon">👤</span>
-                </a>
-                <a href="{{ url_for('main.mindmap') }}" class="sidebar-item">
-                    <span class="sidebar-icon">💡</span>
-                </a>
-                <a href="#" class="sidebar-item">
-                    <span class="sidebar-icon">⭐</span>
-                </a>
-                <a href="#" class="sidebar-item">
-                    <span class="sidebar-icon">⚙️</span>
-                </a>
-            </div>
-        </aside>
-
-        <!-- メインコンテンツエリア -->
+        <!-- メインレイアウト -->
         <div class="main-layout">
-            <!-- ナビゲーションバー -->
+            <!-- 上部ナビゲーションバー -->
             <nav class="navbar">
-            <div class="navbar-content">
-                <div class="navbar-left">
+                <div class="navbar-content">
                     <div class="navbar-brand">ATD</div>
                     <div class="navbar-menu">
-                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item active">
-                            ダッシュボード
-                        </a>
-                        <a href="{{ url_for('main.personal_tasks') }}" class="navbar-item">
-                            タスク管理
-                        </a>
-                        <a href="{{ url_for('main.team_management') }}" class="navbar-item">
-                            チーム管理
-                        </a>
-                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">
-                            マインドマップ
-                        </a>
-                        <a href="{{ url_for('main.profile') }}" class="navbar-item">
-                            プロフィール
-                        </a>
+                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item active">ダッシュボード</a>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                        <a href="{{ url_for('main.team_management') }}" class="navbar-item">チーム</a>
+                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                        <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
                     </div>
-                </div>
-                <div class="navbar-right">
                     <div class="user-controls">
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
                         <a href="#" class="user-control active personal-mode">
                             個人
                         </a>
-                        <a href="#" class="user-control team-mode">
+                        <a href="#" class="user-control">
                             チーム
                         </a>
                         <a href="{{ url_for('main.profile') }}" class="user-control">
                             {{ current_user.username }}
                         </a>
                     </div>
-                    <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">+ タスク追加</a>
                 </div>
-            </div>
             </nav>
 
-            <!-- コンテンツ -->
+            <!-- メインコンテンツ -->
             <div class="container">
-            <div class="page-header">
-                <h1>ダッシュボード</h1>
-                <div class="date-selector">
-                    <select class="form-control">
-                        <option>今日</option>
-                        <option>今週</option>
-                        <option>今月</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="dashboard-grid">
-                <!-- 上段左：個人パフォーマンス -->
-                <div class="card performance-card">
-                    <div class="card-header">
-                        <h3>・個人パフォーマンス</h3>
-                    </div>
-                    <div class="performance-stats">
-                        <div class="stat-item">
-                            <div class="stat-value">{{ total_tasks }}</div>
-                            <div class="stat-label">今日のタスク</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">{{ completed_tasks }}</div>
-                            <div class="stat-label">完了タスク</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">{{ streak_days }}日</div>
-                            <div class="stat-label">連続達成</div>
-                        </div>
-                    </div>
+                <div class="page-header">
+                    <h1>ダッシュボード</h1>
                 </div>
 
-                <!-- 上段右：今日のタスク -->
-                <div class="card today-tasks-card">
-                    <div class="card-header">
-                        <h3>・今日のタスク ({{ total_tasks }}件)</h3>
-                        <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-sm btn-outline">すべて表示</a>
+                <div class="dashboard-grid">
+                    <!-- 上段左：個人パフォーマンス -->
+                    <div class="card performance-card">
+                        <div class="card-header">
+                            <h3>・個人パフォーマンス</h3>
+                        </div>
+                        <div class="performance-stats">
+                            <div class="stat-item">
+                                <div class="stat-value">{{ total_tasks }}</div>
+                                <div class="stat-label">今日のタスク</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ completed_tasks }}</div>
+                                <div class="stat-label">完了タスク</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ "%.1f"|format(progress_percentage) }}%</div>
+                                <div class="stat-label">完了率</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ streak_days }}日</div>
+                                <div class="stat-label">連続達成</div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="today-tasks-content">
-                        {% if today_tasks %}
-                            {% for task in today_tasks[:5] %}
-                                <div class="dashboard-task-item {% if task.completed %}completed{% endif %}" data-task-id="{{ task.id }}">
-                                    <div class="task-checkbox">
-                                        <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
-                                            <button type="submit" class="task-toggle-btn {% if task.completed %}completed{% endif %}">
-                                                {% if task.completed %}✓{% else %}○{% endif %}
-                                            </button>
-                                        </form>
-                                    </div>
-                                    <div class="task-info">
-                                        <div class="task-title">{{ task.title }}</div>
-                                        <div class="task-meta">
-                                            <span class="priority-badge priority-{{ task.priority }}">{{ task.priority }}</span>
-                                            {% if task.due_date %}
-                                                <span class="due-date">{{ task.due_date }}</span>
-                                            {% endif %}
+
+                    <!-- 上段右：今日のタスク -->
+                    <div class="card today-tasks-card">
+                        <div class="card-header">
+                            <h3>・今日のタスク ({{ total_tasks }}件)</h3>
+                            <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-sm btn-outline">すべて表示</a>
+                        </div>
+                        <div class="today-tasks-content">
+                            {% if today_tasks %}
+                                {% for task in today_tasks[:5] %}
+                                    <div class="dashboard-task-item {% if task.completed %}completed{% endif %}" data-task-id="{{ task.id }}">
+                                        <div class="task-checkbox">
+                                            <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                                <button type="submit" class="task-toggle-btn {% if task.completed %}completed{% endif %}">
+                                                    {% if task.completed %}✓{% else %}○{% endif %}
+                                                </button>
+                                            </form>
+                                        </div>
+                                        <div class="task-info">
+                                            <div class="task-title">{{ task.title }}</div>
+                                            <div class="task-meta">
+                                                <span class="priority-badge priority-{{ task.priority }}">
+                                                    {% if task.priority == 'high' %}高
+                                                    {% elif task.priority == 'medium' %}中
+                                                    {% elif task.priority == 'low' %}低
+                                                    {% else %}{{ task.priority }}{% endif %}
+                                                </span>
+                                                {% if task.due_date %}
+                                                    <span class="due-date">{{ task.due_date }}</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="task-controls">
+                                            <button class="btn btn-sm btn-outline" onclick="moveTaskUp({{ task.id }})">↑</button>
+                                            <button class="btn btn-sm btn-outline" onclick="moveTaskDown({{ task.id }})">↓</button>
                                         </div>
                                     </div>
-                                    <div class="task-controls">
-                                        <button class="btn btn-sm btn-outline" onclick="moveTaskUp({{ task.id }})">↑</button>
-                                        <button class="btn btn-sm btn-outline" onclick="moveTaskDown({{ task.id }})">↓</button>
+                                {% endfor %}
+                                {% if today_tasks|length > 5 %}
+                                    <div class="more-tasks">
+                                        <a href="{{ url_for('tasks.list_tasks') }}">他{{ today_tasks|length - 5 }}件のタスクを表示</a>
                                     </div>
-                                </div>
-                            {% endfor %}
-                            {% if today_tasks|length > 5 %}
-                                <div class="more-tasks">
-                                    <a href="{{ url_for('tasks.list_tasks') }}">他{{ today_tasks|length - 5 }}件のタスクを表示</a>
+                                {% endif %}
+                            {% else %}
+                                <div class="no-tasks">
+                                    <p>本日のタスクはありません</p>
+                                    <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">タスクを作成</a>
                                 </div>
                             {% endif %}
-                        {% else %}
-                            <div class="no-tasks">
-                                <p>本日のタスクはありません</p>
-                                <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">タスクを作成</a>
-                            </div>
-                        {% endif %}
+                        </div>
                     </div>
-                </div>
 
-                <!-- 下段左：進捗分析 -->
-                <div class="card analysis-card">
-                    <div class="card-header">
-                        <h3>・進捗分析</h3>
-                    </div>
-                    <div class="analysis-content">
-                        <div class="progress-stats">
-                            <div class="progress-item">
-                                <div class="progress-label">本日の進捗</div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: {{ progress_percentage }}%"></div>
+                    <!-- 下段左：進捗分析 -->
+                    <div class="card analysis-card">
+                        <div class="card-header">
+                            <h3>・進捗分析</h3>
+                        </div>
+                        <div class="analysis-content">
+                            <div class="progress-stats">
+                                <div class="progress-item">
+                                    <div class="progress-label">本日の進捗</div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: {{ progress_percentage }}%"></div>
+                                    </div>
+                                    <div class="progress-text">{{ "%.1f"|format(progress_percentage) }}% ({{ completed_tasks }}/{{ total_tasks }})</div>
                                 </div>
-                                <div class="progress-text">{{ "%.1f"|format(progress_percentage) }}% ({{ completed_tasks }}/{{ total_tasks }})</div>
+                                <div class="progress-summary">
+                                    <div class="summary-item">
+                                        <span class="summary-label">完了済み</span>
+                                        <span class="summary-value completed">{{ completed_tasks }}件</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-label">残り</span>
+                                        <span class="summary-value remaining">{{ total_tasks - completed_tasks }}件</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="progress-summary">
-                                <div class="summary-item">
-                                    <span class="summary-label">完了済み</span>
-                                    <span class="summary-value completed">{{ completed_tasks }}件</span>
-                                </div>
-                                <div class="summary-item">
-                                    <span class="summary-label">残り</span>
-                                    <span class="summary-value remaining">{{ total_tasks - completed_tasks }}件</span>
-                                </div>
+                            <div class="chart-container">
+                                <canvas id="progressChart"></canvas>
                             </div>
                         </div>
-                        <div class="chart-container">
-                            <canvas id="progressChart"></canvas>
-                        </div>
                     </div>
-                </div>
 
-                <!-- 下段右：時間分析 -->
-                <div class="card analysis-card">
-                    <div class="card-header">
-                        <h3>・時間分析</h3>
-                    </div>
-                    <div class="analysis-content">
-                        <div class="chart-container">
-                            <canvas id="timeChart"></canvas>
+                    <!-- 下段右：時間分析 -->
+                    <div class="card analysis-card">
+                        <div class="card-header">
+                            <h3>・時間分析</h3>
                         </div>
-                        <div class="chart-container">
-                            <canvas id="priorityChart"></canvas>
+                        <div class="analysis-content">
+                            <div class="chart-container">
+                                <canvas id="timeChart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="priorityChart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
             </div>
         </div>
     </div>

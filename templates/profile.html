@@ -7,54 +7,39 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+    <!-- 上部ナビゲーションバー -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">ATD</div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                <a href="{{ url_for('main.team_management') }}" class="navbar-item">チーム</a>
+                <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                <a href="{{ url_for('main.profile') }}" class="navbar-item active">プロフィール</a>
+            </div>
+            <div class="user-controls">
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                <a href="#" class="user-control active personal-mode">
+                    個人
+                </a>
+                <a href="#" class="user-control">
+                    チーム
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="user-control">
+                    {{ current_user.username }}
+                </a>
+            </div>
+        </div>
+    </nav>
+
     <div class="container">
-        <!-- ナビゲーションバー -->
-        <nav class="navbar">
-            <div class="navbar-content">
-                <div class="navbar-left">
-                    <div class="navbar-brand">ATD</div>
-                    <div class="navbar-menu">
-                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">
-                            ダッシュボード
-                        </a>
-                        <a href="{{ url_for('main.personal_tasks') }}" class="navbar-item">
-                            タスク管理
-                        </a>
-                        <a href="{{ url_for('main.team_management') }}" class="navbar-item">
-                            チーム管理
-                        </a>
-                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">
-                            マインドマップ
-                        </a>
-                        <a href="{{ url_for('main.profile') }}" class="navbar-item active">
-                            プロフィール
-                        </a>
-                    </div>
-                </div>
-                <div class="navbar-right">
-                    <div class="user-controls">
-                        <a href="#" class="user-control active">
-                            個人
-                        </a>
-                        <a href="#" class="user-control">
-                            チーム
-                        </a>
-                        <a href="{{ url_for('main.profile') }}" class="user-control active">
-                            {{ current_user.username }}
-                        </a>
-                    </div>
-                    <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">ログアウト</a>
-                </div>
-            </div>
-        </nav>
 
-        <!-- メインコンテンツ -->
-        <div class="main-content">
-            <div class="page-header">
-                <h1>プロフィール管理</h1>
-            </div>
+        <div class="page-header">
+            <h1>プロフィール管理</h1>
+        </div>
 
-            <div class="profile-grid">
+        <div class="dashboard-grid">
                 <!-- プロフィール編集 -->
                 <div class="card profile-form-card">
                     <div class="card-header">
@@ -119,7 +104,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
         </div>
     </div>
 

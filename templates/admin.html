@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理者ページ - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- 上部ナビゲーションバー -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">ATD</div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                <a href="{{ url_for('main.team_management') }}" class="navbar-item">チーム</a>
+                <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
+                <a href="{{ url_for('main.admin') }}" class="navbar-item active">管理者</a>
+            </div>
+            <div class="user-controls">
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                <a href="#" class="user-control active personal-mode">
+                    個人
+                </a>
+                <a href="#" class="user-control">
+                    チーム
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="user-control">
+                    {{ current_user.username }}
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>管理者ページ</h1>
+            <p>システム全体の統計とユーザー管理</p>
+        </div>
+
+        <!-- システム統計 -->
+        <div class="card">
+            <div class="card-header">
+                <h3>システム統計</h3>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">{{ total_users }}</div>
+                    <div class="stat-label">総ユーザー数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ total_tasks }}</div>
+                    <div class="stat-label">総タスク数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ total_teams }}</div>
+                    <div class="stat-label">総チーム数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ active_users }}</div>
+                    <div class="stat-label">アクティブユーザー（7日間）</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ユーザー一覧 -->
+        <div class="card">
+            <div class="card-header">
+                <h3>ユーザー一覧</h3>
+            </div>
+            <div class="user-list">
+                {% for user in all_users %}
+                    <div class="user-card">
+                        <div class="user-info">
+                            <div class="user-basic">
+                                <h4>{{ user.username }}</h4>
+                                <p class="user-email">{{ user.email }}</p>
+                                <p class="user-joined">登録日: {{ user.created_at.strftime('%Y年%m月%d日') }}</p>
+                            </div>
+                            <div class="user-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label">タスク数:</span>
+                                    <span class="stat-value">{{ user_stats[user.id].total_tasks }}</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">完了率:</span>
+                                    <span class="stat-value">{{ "%.1f"|format(user_stats[user.id].completion_rate) }}%</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">チーム数:</span>
+                                    <span class="stat-value">{{ user_stats[user.id].team_count }}</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">連続日数:</span>
+                                    <span class="stat-value">{{ user_stats[user.id].streak_days }}日</span>
+                                </div>
+                                {% if user_stats[user.id].last_active %}
+                                <div class="stat-item">
+                                    <span class="stat-label">最終活動:</span>
+                                    <span class="stat-value">{{ user_stats[user.id].last_active.strftime('%m/%d') }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="user-actions">
+                            <button class="btn btn-sm btn-outline" onclick="viewUserDetails({{ user.id }})">詳細</button>
+                            <button class="btn btn-sm btn-outline" onclick="resetUserPassword({{ user.id }})">パスワードリセット</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteUser({{ user.id }})">削除</button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- チーム管理 -->
+        <div class="card">
+            <div class="card-header">
+                <h3>チーム管理</h3>
+                <button class="btn btn-primary" onclick="createTeam()">+ 新しいチーム</button>
+            </div>
+            <div class="team-management">
+                <p>チーム作成・管理機能は今後実装予定です。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ユーザー詳細表示
+    function viewUserDetails(userId) {
+        // TODO: ユーザー詳細モーダルを実装
+        alert('ユーザー詳細機能は今後実装予定です。');
+    }
+    
+    // パスワードリセット
+    function resetUserPassword(userId) {
+        if (confirm('このユーザーのパスワードをリセットしますか？')) {
+            // TODO: パスワードリセット機能を実装
+            alert('パスワードリセット機能は今後実装予定です。');
+        }
+    }
+    
+    // ユーザー削除
+    function deleteUser(userId) {
+        if (confirm('このユーザーを削除しますか？この操作は取り消せません。')) {
+            // TODO: ユーザー削除機能を実装
+            alert('ユーザー削除機能は今後実装予定です。');
+        }
+    }
+    
+    // チーム作成
+    function createTeam() {
+        // TODO: チーム作成機能を実装
+        alert('チーム作成機能は今後実装予定です。');
+    }
+    </script>
+</body>
+</html>

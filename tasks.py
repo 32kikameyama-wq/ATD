@@ -27,6 +27,8 @@ def create_task():
         title = request.form.get('title')
         description = request.form.get('description')
         due_date_str = request.form.get('due_date')
+        start_date_str = request.form.get('start_date')
+        end_date_str = request.form.get('end_date')
         priority = request.form.get('priority')
         category = request.form.get('category')
         
@@ -42,6 +44,22 @@ def create_task():
                 due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
             except ValueError:
                 flash('有効な日付を入力してください', 'error')
+                return render_template('tasks/create.html')
+        
+        start_date = None
+        if start_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                flash('有効な開始日を入力してください', 'error')
+                return render_template('tasks/create.html')
+        
+        end_date = None
+        if end_date_str:
+            try:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                flash('有効な終了日を入力してください', 'error')
                 return render_template('tasks/create.html')
         
         # 同じタイトルと期限のタスクが既に存在するかチェック
@@ -66,21 +84,23 @@ def create_task():
             title=title,
             description=description,
             due_date=due_date,
+            start_date=start_date,
+            end_date=end_date,
             priority=priority,
             category=category,
             order_index=max_order + 1,
             user_id=current_user.id
         )
         
-            db.session.add(new_task)
-            db.session.commit()
-            
-            # パフォーマンスデータを更新
-            from models import UserPerformance
-            UserPerformance.update_daily_performance(current_user.id)
-            
-            flash('タスクを作成しました', 'success')
-            return redirect(url_for('tasks.list_tasks'))
+        db.session.add(new_task)
+        db.session.commit()
+        
+        # パフォーマンスデータを更新
+        from models import UserPerformance
+        UserPerformance.update_daily_performance(current_user.id)
+        
+        flash('タスクを作成しました', 'success')
+        return redirect(url_for('tasks.list_tasks'))
     
     return render_template('tasks/create.html')
 
@@ -99,6 +119,8 @@ def edit_task(task_id):
         task.title = request.form.get('title')
         task.description = request.form.get('description')
         due_date_str = request.form.get('due_date')
+        start_date_str = request.form.get('start_date')
+        end_date_str = request.form.get('end_date')
         task.priority = request.form.get('priority')
         task.category = request.form.get('category')
         
@@ -116,6 +138,24 @@ def edit_task(task_id):
                 return render_template('tasks/edit.html', task=task)
         else:
             task.due_date = None
+        
+        if start_date_str:
+            try:
+                task.start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                flash('有効な開始日を入力してください', 'error')
+                return render_template('tasks/edit.html', task=task)
+        else:
+            task.start_date = None
+        
+        if end_date_str:
+            try:
+                task.end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                flash('有効な終了日を入力してください', 'error')
+                return render_template('tasks/edit.html', task=task)
+        else:
+            task.end_date = None
         
         db.session.commit()
         
@@ -161,7 +201,13 @@ def toggle_task(task_id):
     UserPerformance.update_daily_performance(current_user.id)
     
     flash(f'タスクを{"完了" if task.completed else "未完了"}に変更しました', 'success')
-    return redirect(url_for('tasks.list_tasks'))
+    
+    # リファラーに基づいてリダイレクト先を決定
+    referer = request.headers.get('Referer')
+    if referer and 'dashboard' in referer:
+        return redirect(url_for('main.dashboard'))
+    else:
+        return redirect(url_for('tasks.list_tasks'))
 
 @tasks.route('/tasks/<int:task_id>/move', methods=['POST'])
 @login_required

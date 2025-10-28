@@ -40,6 +40,8 @@ class Task(db.Model):
     description = db.Column(db.Text)
     completed = db.Column(db.Boolean, default=False, nullable=False)
     due_date = db.Column(db.Date)
+    start_date = db.Column(db.Date)  # 開始期間
+    end_date = db.Column(db.Date)    # 終了期間
     priority = db.Column(db.String(20), default='medium')  # low, medium, high
     category = db.Column(db.String(20), default='other')  # today, tomorrow, other
     order_index = db.Column(db.Integer, default=0)  # 優先順位用

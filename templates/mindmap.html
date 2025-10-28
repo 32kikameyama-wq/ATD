@@ -7,60 +7,39 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+    <!-- 上部ナビゲーションバー -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">ATD</div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                <a href="{{ url_for('main.team_management') }}" class="navbar-item">チーム</a>
+                <a href="{{ url_for('main.mindmap') }}" class="navbar-item active">マインドマップ</a>
+                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
+            </div>
+            <div class="user-controls">
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                <a href="#" class="user-control active personal-mode">
+                    個人
+                </a>
+                <a href="#" class="user-control">
+                    チーム
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="user-control">
+                    {{ current_user.username }}
+                </a>
+            </div>
+        </div>
+    </nav>
+
     <div class="container">
-        <!-- ナビゲーションバー -->
-        <nav class="navbar">
-            <div class="navbar-content">
-                <div class="navbar-left">
-                    <div class="navbar-brand">ATD</div>
-                    <div class="navbar-menu">
-                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">
-                            ダッシュボード
-                        </a>
-                        <a href="{{ url_for('main.personal_tasks') }}" class="navbar-item">
-                            タスク管理
-                        </a>
-                        <a href="{{ url_for('main.team_management') }}" class="navbar-item">
-                            チーム管理
-                        </a>
-                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item active">
-                            マインドマップ
-                        </a>
-                        <a href="{{ url_for('main.profile') }}" class="navbar-item">
-                            プロフィール
-                        </a>
-                    </div>
-                </div>
-                <div class="navbar-right">
-                    <div class="user-controls">
-                        <a href="#" class="user-control active">
-                            <span class="nav-icon">👤</span>
-                            個人
-                        </a>
-                        <a href="#" class="user-control">
-                            <span class="nav-icon">👥</span>
-                            チーム
-                        </a>
-                        <a href="{{ url_for('main.profile') }}" class="user-control">
-                            <span class="nav-icon">👤</span>
-                            {{ current_user.username }}
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </nav>
 
-        <!-- メインコンテンツ -->
-        <div class="main-content">
-            <div class="page-header">
-                <h1>マインドマップ</h1>
-                <div class="mindmap-actions">
-                    <button class="btn btn-primary">+ 新しいマップ</button>
-                    <button class="btn btn-secondary">📁 保存</button>
-                </div>
-            </div>
+        <div class="page-header">
+            <h1>マインドマップ</h1>
+        </div>
 
-            <div class="mindmap-container">
+        <div class="card">
                 <div class="mindmap-canvas">
                     <div class="mindmap-placeholder">
                         <div class="placeholder-icon">🧠</div>
@@ -69,7 +48,6 @@
                         <button class="btn btn-primary">新しいマップを作成</button>
                     </div>
                 </div>
-            </div>
         </div>
     </div>
 

@@ -7,57 +7,41 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+    <!-- 上部ナビゲーションバー -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">ATD</div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                <a href="{{ url_for('main.team_management') }}" class="navbar-item active">チーム</a>
+                <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
+                <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+            </div>
+            <div class="user-controls">
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                <a href="#" class="user-control">
+                    個人
+                </a>
+                <a href="#" class="user-control active team-mode">
+                    チーム
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="user-control">
+                    {{ current_user.username }}
+                </a>
+            </div>
+        </div>
+    </nav>
+
     <div class="container">
-        <!-- ナビゲーションバー -->
-        <nav class="navbar">
-            <div class="navbar-content">
-                <div class="navbar-left">
-                    <div class="navbar-brand">ATD</div>
-                    <div class="navbar-menu">
-                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">
-                            ダッシュボード
-                        </a>
-                        <a href="{{ url_for('main.personal_tasks') }}" class="navbar-item">
-                            タスク管理
-                        </a>
-                        <a href="{{ url_for('main.team_management') }}" class="navbar-item active">
-                            チーム管理
-                        </a>
-                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">
-                            マインドマップ
-                        </a>
-                        <a href="{{ url_for('main.profile') }}" class="navbar-item">
-                            プロフィール
-                        </a>
-                    </div>
-                </div>
-                <div class="navbar-right">
-                    <div class="user-controls">
-                        <a href="#" class="user-control">
-                            個人
-                        </a>
-                        <a href="#" class="user-control active">
-                            チーム
-                        </a>
-                        <a href="{{ url_for('main.profile') }}" class="user-control">
-                            {{ current_user.username }}
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </nav>
 
-        <!-- メインコンテンツ -->
-        <div class="main-content">
-            <div class="page-header">
-                <h1>チーム管理</h1>
-                <div class="team-actions">
-                    <a href="#" class="btn btn-primary">+ チーム作成</a>
-                    <a href="#" class="btn btn-primary">+ メンバー招待</a>
-                </div>
-            </div>
+        <div class="page-header">
+            <h1>チーム管理</h1>
+            <a href="{{ url_for('main.create_team') }}" class="btn btn-primary">+ 新しいチーム</a>
+        </div>
 
-            <div class="team-dashboard-grid">
+        <div class="dashboard-grid">
                 <!-- 左カラム -->
                 <div class="team-left">
                     <!-- チーム全体 -->
@@ -128,13 +112,14 @@
                                         </div>
                                         <div class="team-actions">
                                             <a href="{{ url_for('main.team_dashboard', team_id=team.id) }}" class="btn btn-primary">ダッシュボード</a>
+                                            <a href="{{ url_for('main.add_team_member', team_id=team.id) }}" class="btn btn-secondary">メンバー追加</a>
                                         </div>
                                     </div>
                                 {% endfor %}
                             {% else %}
                                 <div class="no-teams">
                                     <p>所属しているチームがありません</p>
-                                    <button class="btn btn-primary">チームを作成</button>
+                                    <a href="{{ url_for('main.create_team') }}" class="btn btn-primary">チームを作成</a>
                                 </div>
                             {% endif %}
                         </div>
@@ -153,7 +138,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
         </div>
     </div>
 

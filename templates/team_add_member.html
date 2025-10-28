@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>メンバー追加 - {{ team.name }} - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- 上部ナビゲーションバー -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">ATD</div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                <a href="{{ url_for('main.team_management') }}" class="navbar-item active">チーム</a>
+                <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
+                <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+            </div>
+            <div class="user-controls">
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                <a href="#" class="user-control active personal-mode">
+                    個人
+                </a>
+                <a href="#" class="user-control">
+                    チーム
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="user-control">
+                    {{ current_user.username }}
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>メンバー追加</h1>
+            <p>チーム「{{ team.name }}」に新しいメンバーを追加します</p>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>メンバー情報</h3>
+            </div>
+            
+            <!-- フラッシュメッセージ -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="form">
+                <div class="form-group">
+                    <label for="username">ユーザー名 *</label>
+                    <input type="text" id="username" name="username" class="form-control" required 
+                           placeholder="追加したいユーザーのユーザー名を入力">
+                    <small class="form-text">既に登録されているユーザー名を入力してください</small>
+                </div>
+                
+                <div class="form-actions">
+                    <a href="{{ url_for('main.team_management') }}" class="btn btn-secondary">キャンセル</a>
+                    <button type="submit" class="btn btn-primary">メンバーを追加</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>チーム情報</h3>
+            </div>
+            <div class="team-info">
+                <h4>{{ team.name }}</h4>
+                {% if team.description %}
+                    <p>{{ team.description }}</p>
+                {% endif %}
+                <p class="team-meta">作成日: {{ team.created_at.strftime('%Y年%m月%d日') }}</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>メンバー追加について</h3>
+            </div>
+            <div class="info-content">
+                <ul>
+                    <li>追加されたメンバーは「メンバー」権限でチームに参加します</li>
+                    <li>メンバーはチームのタスクを閲覧・編集できます</li>
+                    <li>管理者のみがメンバーの追加・削除ができます</li>
+                    <li>ユーザー名は正確に入力してください</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // フォームの重複送信を防ぐ
+    document.querySelector('.form').addEventListener('submit', function(e) {
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = '追加中...';
+    });
+    </script>
+</body>
+</html>
