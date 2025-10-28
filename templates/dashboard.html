@@ -15,31 +15,25 @@
                     <div class="navbar-brand">ATD</div>
                     <div class="navbar-menu">
                         <a href="{{ url_for('main.dashboard') }}" class="navbar-item active">
-                            <span class="nav-icon">●</span>
                             ダッシュボード
                         </a>
                         <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">
-                            <span class="nav-icon">📋</span>
                             タスク管理
                         </a>
                         <a href="{{ url_for('main.mindmap') }}" class="navbar-item">
-                            <span class="nav-icon">🧠</span>
                             マインドマップ
                         </a>
                     </div>
                 </div>
                 <div class="navbar-right">
                     <div class="user-controls">
-                        <a href="#" class="user-control active">
-                            <span class="nav-icon">👤</span>
+                        <a href="#" class="user-control active personal-mode">
                             個人
                         </a>
-                        <a href="#" class="user-control">
-                            <span class="nav-icon">👥</span>
+                        <a href="#" class="user-control team-mode">
                             チーム
                         </a>
                         <a href="{{ url_for('main.profile') }}" class="user-control">
-                            <span class="nav-icon">👤</span>
                             {{ current_user.username }}
                         </a>
                     </div>
@@ -121,11 +115,25 @@
         document.querySelectorAll('.user-control').forEach(control => {
             control.addEventListener('click', function(e) {
                 e.preventDefault();
+                
+                // 全てのコントロールからactiveクラスを削除
                 document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
+                
+                // クリックされたコントロールにactiveクラスを追加
                 this.classList.add('active');
                 
                 const mode = this.textContent.trim();
                 console.log('切り替え:', mode);
+                
+                // カラーモードを適用
+                if (mode === '個人') {
+                    this.classList.add('personal-mode');
+                    this.classList.remove('team-mode');
+                } else if (mode === 'チーム') {
+                    this.classList.add('team-mode');
+                    this.classList.remove('personal-mode');
+                }
+                
                 // ここで個人/チームの切り替え処理を実装
             });
         });

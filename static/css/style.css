@@ -96,7 +96,6 @@ body {
     background: var(--gray-100);
     padding: var(--spacing-md) var(--spacing-lg);
     margin-bottom: var(--spacing-xl);
-    border-radius: var(--border-radius-lg);
 }
 
 .navbar-content {
@@ -126,13 +125,11 @@ body {
 .navbar-item {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
     color: var(--text-secondary);
     text-decoration: none;
     font-weight: 500;
     transition: all 0.2s;
     padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: var(--border-radius);
 }
 
 .navbar-item:hover {
@@ -159,21 +156,24 @@ body {
 .user-control {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
     color: var(--text-secondary);
     text-decoration: none;
     font-weight: 500;
     transition: all 0.2s;
     padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: var(--border-radius);
 }
 
 .user-control:hover {
     color: var(--primary-color);
 }
 
-.user-control.active {
-    background: var(--primary-color);
+.user-control.active.personal-mode {
+    background: #008b8b;
+    color: white;
+}
+
+.user-control.active.team-mode {
+    background: #006400;
     color: white;
 }
 
@@ -184,7 +184,6 @@ body {
 /* カード */
 .card {
     background: var(--bg-primary);
-    border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-lg);
     padding: var(--spacing-xl);
     margin-bottom: var(--spacing-lg);
@@ -428,6 +427,7 @@ body {
     font-size: var(--font-size-3xl);
     color: var(--text-primary);
     margin: 0;
+    font-weight: bold;
 }
 
 .date-selector select {

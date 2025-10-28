@@ -15,31 +15,25 @@
                     <div class="navbar-brand">ATD</div>
                     <div class="navbar-menu">
                         <a href="{{ url_for('main.dashboard') }}" class="navbar-item">
-                            <span class="nav-icon">●</span>
                             ダッシュボード
                         </a>
                         <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item active">
-                            <span class="nav-icon">📋</span>
                             タスク管理
                         </a>
                         <a href="{{ url_for('main.mindmap') }}" class="navbar-item">
-                            <span class="nav-icon">🧠</span>
                             マインドマップ
                         </a>
                     </div>
                 </div>
                 <div class="navbar-right">
                     <div class="user-controls">
-                        <a href="#" class="user-control active">
-                            <span class="nav-icon">👤</span>
+                        <a href="#" class="user-control active personal-mode">
                             個人
                         </a>
-                        <a href="#" class="user-control">
-                            <span class="nav-icon">👥</span>
+                        <a href="#" class="user-control team-mode">
                             チーム
                         </a>
                         <a href="{{ url_for('main.profile') }}" class="user-control">
-                            <span class="nav-icon">👤</span>
                             {{ current_user.username }}
                         </a>
                     </div>
@@ -76,7 +70,7 @@
                 <!-- 今日のタスク -->
                 <div class="task-section">
                     <div class="section-header">
-                        <h3>📅 今日のタスク 0件</h3>
+                        <h3>今日のタスク 0件</h3>
                     </div>
                     <div class="task-list">
                         <!-- タスクがここに表示される -->
@@ -86,7 +80,7 @@
                 <!-- 明日のタスク -->
                 <div class="task-section">
                     <div class="section-header">
-                        <h3>📅 明日のタスク 0件</h3>
+                        <h3>明日のタスク 0件</h3>
                     </div>
                     <div class="task-list">
                         <!-- タスクがここに表示される -->
@@ -96,7 +90,7 @@
                 <!-- その他のタスク -->
                 <div class="task-section">
                     <div class="section-header">
-                        <h3>📋 その他のタスク 0件</h3>
+                        <h3>その他のタスク 0件</h3>
                     </div>
                     <div class="task-list">
                         <!-- タスクがここに表示される -->
