@@ -95,16 +95,16 @@
                     </div>
                     <div class="performance-stats">
                         <div class="stat-item">
-                            <div class="stat-value">85%</div>
-                            <div class="stat-label">完了率</div>
+                            <div class="stat-value">{{ total_tasks }}</div>
+                            <div class="stat-label">今日のタスク</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-value">12</div>
+                            <div class="stat-value">{{ completed_tasks }}</div>
                             <div class="stat-label">完了タスク</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-value">5日</div>
-                            <div class="stat-label">連続達成</div>
+                            <div class="stat-value">{{ "%.1f"|format(progress_percentage) }}%</div>
+                            <div class="stat-label">完了率</div>
                         </div>
                     </div>
                 </div>
@@ -112,10 +112,46 @@
                 <!-- 上段右：今日のタスク -->
                 <div class="card today-tasks-card">
                     <div class="card-header">
-                        <h3>・今日のタスク (0件)</h3>
+                        <h3>・今日のタスク ({{ total_tasks }}件)</h3>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-sm btn-outline">すべて表示</a>
                     </div>
                     <div class="today-tasks-content">
-                        <!-- タスクがここに表示される -->
+                        {% if today_tasks %}
+                            {% for task in today_tasks[:5] %}
+                                <div class="dashboard-task-item {% if task.completed %}completed{% endif %}" data-task-id="{{ task.id }}">
+                                    <div class="task-checkbox">
+                                        <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                            <button type="submit" class="task-toggle-btn {% if task.completed %}completed{% endif %}">
+                                                {% if task.completed %}✓{% else %}○{% endif %}
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div class="task-info">
+                                        <div class="task-title">{{ task.title }}</div>
+                                        <div class="task-meta">
+                                            <span class="priority-badge priority-{{ task.priority }}">{{ task.priority }}</span>
+                                            {% if task.due_date %}
+                                                <span class="due-date">{{ task.due_date }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="task-controls">
+                                        <button class="btn btn-sm btn-outline" onclick="moveTaskUp({{ task.id }})">↑</button>
+                                        <button class="btn btn-sm btn-outline" onclick="moveTaskDown({{ task.id }})">↓</button>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                            {% if today_tasks|length > 5 %}
+                                <div class="more-tasks">
+                                    <a href="{{ url_for('tasks.list_tasks') }}">他{{ today_tasks|length - 5 }}件のタスクを表示</a>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="no-tasks">
+                                <p>本日のタスクはありません</p>
+                                <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">タスクを作成</a>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -125,7 +161,25 @@
                         <h3>・進捗分析</h3>
                     </div>
                     <div class="analysis-content">
-                        <!-- グラフやチャートがここに表示される -->
+                        <div class="progress-stats">
+                            <div class="progress-item">
+                                <div class="progress-label">本日の進捗</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: {{ progress_percentage }}%"></div>
+                                </div>
+                                <div class="progress-text">{{ "%.1f"|format(progress_percentage) }}% ({{ completed_tasks }}/{{ total_tasks }})</div>
+                            </div>
+                            <div class="progress-summary">
+                                <div class="summary-item">
+                                    <span class="summary-label">完了済み</span>
+                                    <span class="summary-value completed">{{ completed_tasks }}件</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="summary-label">残り</span>
+                                    <span class="summary-value remaining">{{ total_tasks - completed_tasks }}件</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -170,6 +224,51 @@
                 // ここで個人/チームの切り替え処理を実装
             });
         });
+
+        // タスクの優先順位変更
+        function moveTaskUp(taskId) {
+            fetch(`/tasks/${taskId}/reorder`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ direction: 'up' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('移動できませんでした');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('エラーが発生しました');
+            });
+        }
+        
+        function moveTaskDown(taskId) {
+            fetch(`/tasks/${taskId}/reorder`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ direction: 'down' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('移動できませんでした');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('エラーが発生しました');
+            });
+        }
     </script>
 </body>
 </html>

@@ -18,7 +18,32 @@ def index():
 @login_required
 def dashboard():
     """ダッシュボード"""
-    return render_template('dashboard.html')
+    from models import Task
+    
+    # 本日のタスクを取得（優先順位順）
+    today_tasks = Task.query.filter_by(
+        user_id=current_user.id, 
+        category='today'
+    ).order_by(Task.order_index).all()
+    
+    # 完了済みタスク数
+    completed_tasks = Task.query.filter_by(
+        user_id=current_user.id,
+        category='today',
+        completed=True
+    ).count()
+    
+    # 総タスク数
+    total_tasks = len(today_tasks)
+    
+    # 進捗率（パーセンテージ）
+    progress_percentage = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+    
+    return render_template('dashboard.html', 
+                         today_tasks=today_tasks,
+                         completed_tasks=completed_tasks,
+                         total_tasks=total_tasks,
+                         progress_percentage=progress_percentage)
 
 @main.route('/personal-tasks')
 @login_required
