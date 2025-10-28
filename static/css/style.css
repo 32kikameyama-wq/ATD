@@ -82,6 +82,67 @@ body {
     min-height: 100vh;
     color: var(--text-primary);
     line-height: 1.6;
+    margin: 0;
+    padding: 0;
+}
+
+/* アプリケーションレイアウト */
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* 左サイドバー */
+.sidebar {
+    width: 60px;
+    background: #2c3e50;
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    z-index: 1001;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-md) 0;
+}
+
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 50px;
+    color: #bdc3c7;
+    text-decoration: none;
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
+}
+
+.sidebar-item:hover {
+    background: #34495e;
+    color: white;
+}
+
+.sidebar-item.active {
+    background: #34495e;
+    color: white;
+    border-left-color: var(--primary-color);
+}
+
+.sidebar-icon {
+    font-size: 18px;
+}
+
+/* メインレイアウト */
+.main-layout {
+    flex: 1;
+    margin-left: 60px;
+    display: flex;
+    flex-direction: column;
 }
 
 /* コンテナ */
@@ -102,6 +163,7 @@ body {
     top: 0;
     z-index: 1000;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    width: 100%;
 }
 
 .navbar-content {
@@ -1079,6 +1141,14 @@ body {
 }
 
 @media (max-width: 768px) {
+    .sidebar {
+        width: 50px;
+    }
+    
+    .main-layout {
+        margin-left: 50px;
+    }
+    
     .container {
         padding: var(--spacing-md);
     }

@@ -7,9 +7,35 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <!-- ナビゲーションバー -->
-        <nav class="navbar">
+    <div class="app-layout">
+        <!-- 左サイドバー -->
+        <aside class="sidebar">
+            <div class="sidebar-nav">
+                <a href="{{ url_for('main.dashboard') }}" class="sidebar-item active">
+                    <span class="sidebar-icon">🏠</span>
+                </a>
+                <a href="{{ url_for('tasks.create_task') }}" class="sidebar-item">
+                    <span class="sidebar-icon">➕</span>
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="sidebar-item">
+                    <span class="sidebar-icon">👤</span>
+                </a>
+                <a href="{{ url_for('main.mindmap') }}" class="sidebar-item">
+                    <span class="sidebar-icon">💡</span>
+                </a>
+                <a href="#" class="sidebar-item">
+                    <span class="sidebar-icon">⭐</span>
+                </a>
+                <a href="#" class="sidebar-item">
+                    <span class="sidebar-icon">⚙️</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- メインコンテンツエリア -->
+        <div class="main-layout">
+            <!-- ナビゲーションバー -->
+            <nav class="navbar">
             <div class="navbar-content">
                 <div class="navbar-left">
                     <div class="navbar-brand">ATD</div>
@@ -40,10 +66,10 @@
                     <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">+ タスク追加</a>
                 </div>
             </div>
-        </nav>
+            </nav>
 
-        <!-- メインコンテンツ -->
-        <div class="main-content">
+            <!-- コンテンツ -->
+            <div class="container">
             <div class="page-header">
                 <h1>ダッシュボード</h1>
                 <div class="date-selector">
@@ -106,6 +132,7 @@
                         <!-- 時間分析のグラフがここに表示される -->
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     </div>
