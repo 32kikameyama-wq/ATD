@@ -91,7 +91,7 @@
                     {% endif %}
                 {% endwith %}
                 
-                <form method="POST">
+                <form method="POST" id="taskForm">
                     <div class="form-group">
                         <label for="title">タイトル *</label>
                         <input type="text" id="title" name="title" class="form-control" required>
@@ -103,24 +103,44 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="due_date">期限</label>
-                        <input type="date" id="due_date" name="due_date" class="form-control">
+                        <label for="due_date">期限 *</label>
+                        <input type="date" id="due_date" name="due_date" class="form-control" required>
                     </div>
                     
                     <div class="form-group">
-                        <label for="priority">優先度</label>
-                        <select id="priority" name="priority" class="form-control">
-                            <option value="low">低</option>
-                            <option value="medium" selected>中</option>
+                        <label for="category">分類 *</label>
+                        <select id="category" name="category" class="form-control" required>
+                            <option value="">選択してください</option>
+                            <option value="today">本日のタスク</option>
+                            <option value="tomorrow">明日のタスク</option>
+                            <option value="other">その他のタスク</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="priority">優先度 *</label>
+                        <select id="priority" name="priority" class="form-control" required>
+                            <option value="">選択してください</option>
                             <option value="high">高</option>
+                            <option value="medium">中</option>
+                            <option value="low">低</option>
                         </select>
                     </div>
                     
                     <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">作成</button>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">作成</button>
                         <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-secondary">キャンセル</a>
                     </div>
                 </form>
+                
+                <script>
+                // 重複送信防止
+                document.getElementById('taskForm').addEventListener('submit', function(e) {
+                    const submitBtn = document.getElementById('submitBtn');
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = '作成中...';
+                });
+                </script>
             </div>
         </div>
         </div>

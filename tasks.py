@@ -20,7 +20,13 @@ def create_task():
         title = request.form.get('title')
         description = request.form.get('description')
         due_date_str = request.form.get('due_date')
-        priority = request.form.get('priority', 'medium')
+        priority = request.form.get('priority')
+        category = request.form.get('category')
+        
+        # バリデーション
+        if not title or not due_date_str or not priority or not category:
+            flash('必須項目を入力してください', 'error')
+            return render_template('tasks/create.html')
         
         # 日付の変換
         due_date = None
@@ -28,7 +34,25 @@ def create_task():
             try:
                 due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
             except ValueError:
-                pass
+                flash('有効な日付を入力してください', 'error')
+                return render_template('tasks/create.html')
+        
+        # 同じタイトルと期限のタスクが既に存在するかチェック
+        existing_task = Task.query.filter_by(
+            title=title,
+            due_date=due_date,
+            user_id=current_user.id
+        ).first()
+        
+        if existing_task:
+            flash('同じタイトルと期限のタスクが既に存在します', 'error')
+            return render_template('tasks/create.html')
+        
+        # 次のorder_indexを取得
+        max_order = db.session.query(db.func.max(Task.order_index)).filter_by(
+            user_id=current_user.id,
+            category=category
+        ).scalar() or 0
         
         # タスク作成
         new_task = Task(
@@ -36,6 +60,8 @@ def create_task():
             description=description,
             due_date=due_date,
             priority=priority,
+            category=category,
+            order_index=max_order + 1,
             user_id=current_user.id
         )
         
@@ -62,14 +88,21 @@ def edit_task(task_id):
         task.title = request.form.get('title')
         task.description = request.form.get('description')
         due_date_str = request.form.get('due_date')
-        task.priority = request.form.get('priority', 'medium')
+        task.priority = request.form.get('priority')
+        task.category = request.form.get('category')
+        
+        # バリデーション
+        if not task.title or not due_date_str or not task.priority or not task.category:
+            flash('必須項目を入力してください', 'error')
+            return render_template('tasks/edit.html', task=task)
         
         # 日付の変換
         if due_date_str:
             try:
                 task.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
             except ValueError:
-                pass
+                flash('有効な日付を入力してください', 'error')
+                return render_template('tasks/edit.html', task=task)
         else:
             task.due_date = None
         

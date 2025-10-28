@@ -41,6 +41,8 @@ class Task(db.Model):
     completed = db.Column(db.Boolean, default=False, nullable=False)
     due_date = db.Column(db.Date)
     priority = db.Column(db.String(20), default='medium')  # low, medium, high
+    category = db.Column(db.String(20), default='other')  # today, tomorrow, other
+    order_index = db.Column(db.Integer, default=0)  # 優先順位用
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
