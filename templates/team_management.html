@@ -66,28 +66,77 @@
                             <h3>・チーム全体</h3>
                         </div>
                         <div class="team-stats-card">
-                            <div class="stat-box">
-                                <div class="stat-number">78%</div>
-                                <div class="stat-text">完了率</div>
-                            </div>
-                            <div class="stat-box">
-                                <div class="stat-number">45</div>
-                                <div class="stat-text">完了タスク</div>
-                            </div>
-                            <div class="stat-box">
-                                <div class="stat-number">2.3日</div>
-                                <div class="stat-text">平均リードタイム</div>
-                            </div>
+                            {% if user_teams %}
+                                {% set total_teams = user_teams|length %}
+                                {% set total_tasks = team_stats.values() | sum(attribute='total') %}
+                                {% set total_completed = team_stats.values() | sum(attribute='completed') %}
+                                {% set overall_progress = (total_completed / total_tasks * 100) if total_tasks > 0 else 0 %}
+                                
+                                <div class="stat-box">
+                                    <div class="stat-number">{{ "%.1f"|format(overall_progress) }}%</div>
+                                    <div class="stat-text">完了率</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-number">{{ total_completed }}</div>
+                                    <div class="stat-text">完了タスク</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-number">{{ total_teams }}</div>
+                                    <div class="stat-text">所属チーム</div>
+                                </div>
+                            {% else %}
+                                <div class="stat-box">
+                                    <div class="stat-number">0</div>
+                                    <div class="stat-text">完了率</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-number">0</div>
+                                    <div class="stat-text">完了タスク</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-number">0</div>
+                                    <div class="stat-text">所属チーム</div>
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
 
-                    <!-- チームタスク -->
+                    <!-- チーム一覧 -->
                     <div class="team-section">
                         <div class="section-header">
-                            <h3>・チームタスク</h3>
+                            <h3>・所属チーム</h3>
                         </div>
                         <div class="team-tasks-content">
-                            <!-- チームタスクがここに表示される -->
+                            {% if user_teams %}
+                                {% for team in user_teams %}
+                                    <div class="team-card">
+                                        <div class="team-info">
+                                            <h4>{{ team.name }}</h4>
+                                            {% if team.description %}
+                                                <p>{{ team.description }}</p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="team-stats">
+                                            <div class="stat-item">
+                                                <span class="stat-label">タスク数</span>
+                                                <span class="stat-value">{{ team_stats[team.id].total }}件</span>
+                                            </div>
+                                            <div class="stat-item">
+                                                <span class="stat-label">完了率</span>
+                                                <span class="stat-value">{{ "%.1f"|format(team_stats[team.id].completion_rate) }}%</span>
+                                            </div>
+                                        </div>
+                                        <div class="team-actions">
+                                            <a href="{{ url_for('main.team_dashboard', team_id=team.id) }}" class="btn btn-primary">ダッシュボード</a>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="no-teams">
+                                    <p>所属しているチームがありません</p>
+                                    <button class="btn btn-primary">チームを作成</button>
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

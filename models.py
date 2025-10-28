@@ -31,6 +31,28 @@ class User(UserMixin, db.Model):
         return f'<User {self.username}>'
 
 
+class Task(db.Model):
+    """タスクモデル"""
+    __tablename__ = 'tasks'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    completed = db.Column(db.Boolean, default=False, nullable=False)
+    due_date = db.Column(db.Date)
+    priority = db.Column(db.String(20), default='medium')  # low, medium, high
+    category = db.Column(db.String(20), default='other')  # today, tomorrow, other
+    order_index = db.Column(db.Integer, default=0)  # 優先順位用
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 外部キー
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    
+    def __repr__(self):
+        return f'<Task {self.title}>'
+
+
 class UserPerformance(db.Model):
     """ユーザーパフォーマンスモデル"""
     __tablename__ = 'user_performance'
@@ -117,3 +139,60 @@ class UserPerformance(db.Model):
                 break
         
         return streak
+
+
+class Team(db.Model):
+    """チームモデル"""
+    __tablename__ = 'teams'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # リレーション
+    members = db.relationship('TeamMember', backref='team', lazy='dynamic')
+    tasks = db.relationship('TeamTask', backref='team', lazy='dynamic')
+    
+    def __repr__(self):
+        return f'<Team {self.name}>'
+
+
+class TeamMember(db.Model):
+    """チームメンバーモデル"""
+    __tablename__ = 'team_members'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    team_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    role = db.Column(db.String(20), default='member')  # admin, member
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 複合インデックス（チームIDとユーザーIDの組み合わせでユニーク）
+    __table_args__ = (db.UniqueConstraint('team_id', 'user_id', name='unique_team_user'),)
+    
+    def __repr__(self):
+        return f'<TeamMember {self.team_id} {self.user_id}>'
+
+
+class TeamTask(db.Model):
+    """チームタスクモデル"""
+    __tablename__ = 'team_tasks'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    team_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    completed = db.Column(db.Boolean, default=False, nullable=False)
+    due_date = db.Column(db.Date)
+    priority = db.Column(db.String(20), default='medium')  # low, medium, high
+    category = db.Column(db.String(20), default='other')  # today, tomorrow, other
+    order_index = db.Column(db.Integer, default=0)  # 優先順位用
+    assigned_to = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<TeamTask {self.title}>'

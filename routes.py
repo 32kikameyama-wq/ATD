@@ -107,7 +107,27 @@ def personal_tasks():
 @login_required
 def team_management():
     """チーム管理"""
-    return render_template('team_management.html')
+    from models import Team, TeamMember, TeamTask
+    
+    # ユーザーが所属するチームを取得
+    user_teams = Team.query.join(TeamMember).filter(
+        TeamMember.user_id == current_user.id
+    ).all()
+    
+    # チームのタスク数を取得
+    team_stats = {}
+    for team in user_teams:
+        total_tasks = TeamTask.query.filter_by(team_id=team.id).count()
+        completed_tasks = TeamTask.query.filter_by(team_id=team.id, completed=True).count()
+        team_stats[team.id] = {
+            'total': total_tasks,
+            'completed': completed_tasks,
+            'completion_rate': (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+        }
+    
+    return render_template('team_management.html', 
+                         user_teams=user_teams,
+                         team_stats=team_stats)
 
 @main.route('/mindmap')
 @login_required
@@ -120,3 +140,72 @@ def mindmap():
 def profile():
     """プロフィール管理"""
     return render_template('profile.html')
+
+@main.route('/team-dashboard/<int:team_id>')
+@login_required
+def team_dashboard(team_id):
+    """チームダッシュボード"""
+    from models import Team, TeamMember, TeamTask, User
+    
+    # チームの存在確認とアクセス権限チェック
+    team = Team.query.get_or_404(team_id)
+    membership = TeamMember.query.filter_by(
+        team_id=team_id, 
+        user_id=current_user.id
+    ).first()
+    
+    if not membership:
+        flash('このチームにアクセスする権限がありません', 'error')
+        return redirect(url_for('main.team_management'))
+    
+    # チームの本日のタスクを取得
+    today_tasks = TeamTask.query.filter_by(
+        team_id=team_id,
+        category='today'
+    ).order_by(TeamTask.order_index).all()
+    
+    # チームの完了済みタスク数
+    completed_tasks = TeamTask.query.filter_by(
+        team_id=team_id,
+        category='today',
+        completed=True
+    ).count()
+    
+    # 総タスク数
+    total_tasks = len(today_tasks)
+    
+    # 進捗率
+    progress_percentage = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+    
+    # チームメンバーを取得
+    team_members = User.query.join(TeamMember).filter(
+        TeamMember.team_id == team_id
+    ).all()
+    
+    # メンバー別タスク数
+    member_stats = {}
+    for member in team_members:
+        assigned_tasks = TeamTask.query.filter_by(
+            team_id=team_id,
+            assigned_to=member.id
+        ).count()
+        completed_assigned = TeamTask.query.filter_by(
+            team_id=team_id,
+            assigned_to=member.id,
+            completed=True
+        ).count()
+        
+        member_stats[member.id] = {
+            'assigned': assigned_tasks,
+            'completed': completed_assigned,
+            'completion_rate': (completed_assigned / assigned_tasks * 100) if assigned_tasks > 0 else 0
+        }
+    
+    return render_template('team_dashboard.html',
+                         team=team,
+                         today_tasks=today_tasks,
+                         completed_tasks=completed_tasks,
+                         total_tasks=total_tasks,
+                         progress_percentage=progress_percentage,
+                         team_members=team_members,
+                         member_stats=member_stats)

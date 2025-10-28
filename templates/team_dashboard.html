@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>チームダッシュボード - {{ team.name }} - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="team-mode">
+    <div class="app-layout">
+        <!-- 左サイドバー -->
+        <aside class="sidebar">
+            <div class="sidebar-nav">
+                <a href="{{ url_for('main.dashboard') }}" class="sidebar-item">
+                    <span class="sidebar-icon">📊</span>
+                    <span>ダッシュボード</span>
+                </a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="sidebar-item">
+                    <span class="sidebar-icon">📝</span>
+                    <span>タスク管理</span>
+                </a>
+                <a href="{{ url_for('main.team_management') }}" class="sidebar-item active">
+                    <span class="sidebar-icon">👥</span>
+                    <span>チーム管理</span>
+                </a>
+                <a href="{{ url_for('main.mindmap') }}" class="sidebar-item">
+                    <span class="sidebar-icon">🧠</span>
+                    <span>マインドマップ</span>
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="sidebar-item">
+                    <span class="sidebar-icon">👤</span>
+                    <span>プロフィール</span>
+                </a>
+            </div>
+        </aside>
+
+        <div class="main-layout">
+            <!-- 上部ナビゲーションバー -->
+            <nav class="navbar">
+                <div class="navbar-content">
+                    <div class="navbar-brand">
+                        <h1>ATD</h1>
+                    </div>
+                    <div class="navbar-menu">
+                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                        <a href="{{ url_for('main.team_management') }}" class="navbar-item active">チーム管理</a>
+                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                        <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
+                    </div>
+                    <div class="user-controls">
+                        <a href="{{ url_for('auth.logout') }}" class="user-control">ログアウト</a>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="container">
+                <!-- チームヘッダー -->
+                <div class="team-header">
+                    <div class="team-info">
+                        <h1>{{ team.name }}</h1>
+                        {% if team.description %}
+                            <p class="team-description">{{ team.description }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="team-actions">
+                        <a href="{{ url_for('main.team_management') }}" class="btn btn-secondary">チーム管理に戻る</a>
+                    </div>
+                </div>
+
+                <!-- ダッシュボードグリッド -->
+                <div class="dashboard-grid">
+                    <!-- 上段左：チームパフォーマンス -->
+                    <div class="card performance-card">
+                        <div class="card-header">
+                            <h3>・チームパフォーマンス</h3>
+                        </div>
+                        <div class="performance-stats">
+                            <div class="stat-item">
+                                <div class="stat-value">{{ total_tasks }}</div>
+                                <div class="stat-label">今日のタスク</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ completed_tasks }}</div>
+                                <div class="stat-label">完了タスク</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ "%.1f"|format(progress_percentage) }}%</div>
+                                <div class="stat-label">完了率</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 上段右：今日のタスク -->
+                    <div class="card today-tasks-card">
+                        <div class="card-header">
+                            <h3>・今日のタスク ({{ total_tasks }}件)</h3>
+                        </div>
+                        <div class="today-tasks-content">
+                            {% if today_tasks %}
+                                {% for task in today_tasks[:5] %}
+                                    <div class="dashboard-task-item {% if task.completed %}completed{% endif %}" data-task-id="{{ task.id }}">
+                                        <div class="task-checkbox">
+                                            <button class="task-toggle-btn {% if task.completed %}completed{% endif %}" disabled>
+                                                {% if task.completed %}✓{% else %}○{% endif %}
+                                            </button>
+                                        </div>
+                                        <div class="task-info">
+                                            <div class="task-title">{{ task.title }}</div>
+                                            <div class="task-meta">
+                                                <span class="priority-badge priority-{{ task.priority }}">{{ task.priority }}</span>
+                                                {% if task.assigned_to %}
+                                                    <span class="assigned-to">担当: {{ task.assigned_to }}</span>
+                                                {% endif %}
+                                                {% if task.due_date %}
+                                                    <span class="due-date">{{ task.due_date }}</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                                {% if today_tasks|length > 5 %}
+                                    <div class="more-tasks">
+                                        <span>他{{ today_tasks|length - 5 }}件のタスク</span>
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <div class="no-tasks">
+                                    <p>本日のタスクはありません</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- 下段左：メンバー別進捗 -->
+                    <div class="card analysis-card">
+                        <div class="card-header">
+                            <h3>・メンバー別進捗</h3>
+                        </div>
+                        <div class="analysis-content">
+                            {% for member in team_members %}
+                                <div class="member-progress">
+                                    <div class="member-info">
+                                        <span class="member-name">{{ member.username }}</span>
+                                        <span class="member-stats">
+                                            {{ member_stats[member.id].completed }}/{{ member_stats[member.id].assigned }}
+                                        </span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: {{ member_stats[member.id].completion_rate }}%"></div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- 下段右：チーム統計 -->
+                    <div class="card analysis-card">
+                        <div class="card-header">
+                            <h3>・チーム統計</h3>
+                        </div>
+                        <div class="analysis-content">
+                            <div class="team-stats">
+                                <div class="stat-item">
+                                    <div class="stat-label">チームメンバー数</div>
+                                    <div class="stat-value">{{ team_members|length }}人</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">総タスク数</div>
+                                    <div class="stat-value">{{ total_tasks }}件</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">完了率</div>
+                                    <div class="stat-value">{{ "%.1f"|format(progress_percentage) }}%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .team-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-xl);
+            padding: var(--spacing-lg);
+            background: white;
+            border: 2px solid #e0e0e0;
+        }
+
+        .team-info h1 {
+            margin: 0 0 var(--spacing-sm) 0;
+            color: var(--text-primary);
+        }
+
+        .team-description {
+            margin: 0;
+            color: var(--text-secondary);
+        }
+
+        .member-progress {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .member-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .member-name {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .member-stats {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .team-stats .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-sm);
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .team-stats .stat-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .assigned-to {
+            font-size: 10px;
+            color: var(--text-secondary);
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</body>
+</html>
