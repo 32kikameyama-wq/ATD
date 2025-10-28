@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ダッシュボード - ATD</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="app-layout">
@@ -180,6 +181,9 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="chart-container">
+                            <canvas id="progressChart"></canvas>
+                        </div>
                     </div>
                 </div>
 
@@ -189,7 +193,12 @@
                         <h3>・時間分析</h3>
                     </div>
                     <div class="analysis-content">
-                        <!-- 時間分析のグラフがここに表示される -->
+                        <div class="chart-container">
+                            <canvas id="timeChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="priorityChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -269,6 +278,143 @@
                 alert('エラーが発生しました');
             });
         }
+
+        // Chart.js でグラフを初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 進捗分析グラフ（過去7日間の完了タスク数）
+            const progressCtx = document.getElementById('progressChart').getContext('2d');
+            new Chart(progressCtx, {
+                type: 'line',
+                data: {
+                    labels: {{ labels | tojson }},
+                    datasets: [{
+                        label: '完了タスク数',
+                        data: {{ daily_completion_data | tojson }},
+                        borderColor: '#008b8b',
+                        backgroundColor: 'rgba(0, 139, 139, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '過去7日間の完了タスク数',
+                            font: {
+                                size: 12
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 時間分析グラフ（分類別タスク数）
+            const timeCtx = document.getElementById('timeChart').getContext('2d');
+            new Chart(timeCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['本日のタスク', '明日のタスク', 'その他のタスク'],
+                    datasets: [{
+                        data: [
+                            {{ category_data.today }},
+                            {{ category_data.tomorrow }},
+                            {{ category_data.other }}
+                        ],
+                        backgroundColor: [
+                            '#008b8b',
+                            '#006400',
+                            '#228b22'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'タスク分類別分布',
+                            font: {
+                                size: 12
+                            }
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 優先度分析グラフ
+            const priorityCtx = document.getElementById('priorityChart').getContext('2d');
+            new Chart(priorityCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['高', '中', '低'],
+                    datasets: [{
+                        label: 'タスク数',
+                        data: [
+                            {{ priority_data.high }},
+                            {{ priority_data.medium }},
+                            {{ priority_data.low }}
+                        ],
+                        backgroundColor: [
+                            '#dc2626',
+                            '#d97706',
+                            '#059669'
+                        ],
+                        borderWidth: 1,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '優先度別タスク数',
+                            font: {
+                                size: 12
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        });
     </script>
 </body>
 </html>

@@ -630,6 +630,30 @@ body {
     color: var(--warning-color);
 }
 
+/* グラフコンテナ */
+.chart-container {
+    position: relative;
+    height: 200px;
+    margin-top: var(--spacing-md);
+}
+
+.chart-container canvas {
+    max-height: 200px;
+}
+
+/* 分析カードのレイアウト調整 */
+.analysis-content {
+    padding: var(--spacing-md);
+}
+
+.analysis-content .chart-container:first-child {
+    margin-top: 0;
+}
+
+.analysis-content .chart-container:last-child {
+    margin-bottom: 0;
+}
+
 .task-title {
     font-size: var(--font-size-lg);
     font-weight: 600;
