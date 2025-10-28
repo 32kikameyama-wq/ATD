@@ -526,7 +526,10 @@ body {
     grid-column: 1;
     grid-row: 1;
     padding: var(--spacing-lg);
-    min-height: 200px;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 .today-tasks-card {
@@ -535,6 +538,9 @@ body {
     background: white;
     color: var(--text-primary);
     border: 2px solid var(--primary-color);
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
 }
 
 .today-tasks-card .card-header h3 {
@@ -545,14 +551,18 @@ body {
     grid-column: span 1;
     grid-row: 2;
     border: 2px solid #e0e0e0;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
 }
 
 .performance-stats {
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
-    gap: var(--spacing-lg);
-    height: 200px;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+    flex: 1;
 }
 
 .stat-item {
