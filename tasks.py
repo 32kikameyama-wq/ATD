@@ -72,11 +72,15 @@ def create_task():
             user_id=current_user.id
         )
         
-        db.session.add(new_task)
-        db.session.commit()
-        
-        flash('タスクを作成しました', 'success')
-        return redirect(url_for('tasks.list_tasks'))
+            db.session.add(new_task)
+            db.session.commit()
+            
+            # パフォーマンスデータを更新
+            from models import UserPerformance
+            UserPerformance.update_daily_performance(current_user.id)
+            
+            flash('タスクを作成しました', 'success')
+            return redirect(url_for('tasks.list_tasks'))
     
     return render_template('tasks/create.html')
 
@@ -141,6 +145,8 @@ def delete_task(task_id):
 @login_required
 def toggle_task(task_id):
     """タスクの完了/未完了切り替え"""
+    from models import UserPerformance
+    
     task = Task.query.get_or_404(task_id)
     
     # 自分のタスクか確認
@@ -150,6 +156,9 @@ def toggle_task(task_id):
     
     task.completed = not task.completed
     db.session.commit()
+    
+    # パフォーマンスデータを更新
+    UserPerformance.update_daily_performance(current_user.id)
     
     flash(f'タスクを{"完了" if task.completed else "未完了"}に変更しました', 'success')
     return redirect(url_for('tasks.list_tasks'))
