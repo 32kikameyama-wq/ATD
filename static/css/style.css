@@ -78,7 +78,7 @@
 
 body {
     font-family: var(--font-family);
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    background: #f5f5f5;
     min-height: 100vh;
     color: var(--text-primary);
     line-height: 1.6;
@@ -95,7 +95,7 @@ body {
 
 /* ヘッダー/ナビゲーション */
 .navbar {
-    background: var(--gray-100);
+    background: white;
     padding: var(--spacing-md) var(--spacing-lg);
     margin-bottom: var(--spacing-xl);
     position: sticky;
@@ -144,8 +144,9 @@ body {
 }
 
 .navbar-item.active {
-    background: var(--primary-color);
-    color: white;
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+    background: transparent;
 }
 
 .navbar-right {
@@ -176,13 +177,15 @@ body {
 }
 
 .user-control.active.personal-mode {
-    background: #008b8b;
-    color: white;
+    border: 2px solid #008b8b;
+    color: #008b8b;
+    background: transparent;
 }
 
 .user-control.active.team-mode {
-    background: #006400;
-    color: white;
+    border: 2px solid #006400;
+    color: #006400;
+    background: transparent;
 }
 
 .nav-icon {
