@@ -80,6 +80,32 @@ def create_app(config_class=Config):
                 db.session.add(admin)
                 db.session.commit()
                 print('✅ 初期管理者ユーザー「亀山瑞喜」を作成しました')
+            
+            # 初期ユーザー1を作成（存在しない場合のみ）
+            user1 = User.query.filter_by(username='テスト').first()
+            if not user1:
+                user1 = User(
+                    username='テスト',
+                    email='0fx326052cf183b@au.com',
+                    is_admin=False
+                )
+                user1.set_password('1234')
+                db.session.add(user1)
+                db.session.commit()
+                print('✅ 初期ユーザー「テスト」を作成しました')
+            
+            # 初期ユーザー2を作成（存在しない場合のみ）
+            user2 = User.query.filter_by(username='市村一樹').first()
+            if not user2:
+                user2 = User(
+                    username='市村一樹',
+                    email='624ichi@gmail.com',
+                    is_admin=False
+                )
+                user2.set_password('ars225225')
+                db.session.add(user2)
+                db.session.commit()
+                print('✅ 初期ユーザー「市村一樹」を作成しました')
         except Exception as e:
             print(f'⚠️ データベース初期化エラー: {e}')
     
