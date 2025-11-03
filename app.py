@@ -55,22 +55,26 @@ def create_app(config_class=Config):
     app.register_blueprint(auth, url_prefix='/auth')
     app.register_blueprint(tasks, url_prefix='')
     
-    # データベース作成（初回のみ）
+    # データベース作成と初期ユーザー作成
     with app.app_context():
-        db.create_all()
-        
-        # 初期管理者ユーザーを作成（存在しない場合のみ）
-        admin_user = User.query.filter_by(username='亀山瑞喜').first()
-        if not admin_user:
-            admin = User(
-                username='亀山瑞喜',
-                email='32ki.kameyama@gmail.com',
-                is_admin=True
-            )
-            admin.set_password('0418')
-            db.session.add(admin)
-            db.session.commit()
-            print('✅ 初期管理者ユーザー「亀山瑞喜」を作成しました')
+        try:
+            db.create_all()
+            
+            # 初期管理者ユーザーを作成（存在しない場合のみ）
+            admin_user = User.query.filter_by(username='亀山瑞喜').first()
+            if not admin_user:
+                admin = User(
+                    username='亀山瑞喜',
+                    email='32ki.kameyama@gmail.com',
+                    is_admin=True
+                )
+                admin.set_password('0418')
+                db.session.add(admin)
+                db.session.commit()
+                print('✅ 初期管理者ユーザー「亀山瑞喜」を作成しました')
+        except Exception as e:
+            print(f'⚠️ データベース初期化エラー: {e}')
+            # PostgreSQL の場合は create_all は空の操作になる可能性がある
     
     return app
 
