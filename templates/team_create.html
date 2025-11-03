@@ -20,6 +20,12 @@
                 <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
             </div>
             <div class="user-controls">
+                <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                    🔔
+                    {% if unread_notifications > 0 %}
+                        <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
                 <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
                 <a href="#" class="user-control active personal-mode">
                     個人
@@ -28,7 +34,7 @@
                     チーム
                 </a>
                 <a href="{{ url_for('main.profile') }}" class="user-control">
-                    {{ current_user.username }}
+                    {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
                 </a>
             </div>
         </div>

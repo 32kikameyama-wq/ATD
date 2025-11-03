@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>チーム編集 - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .member-list {
+            margin-top: 2rem;
+        }
+        .member-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .member-info {
+            flex: 1;
+        }
+        .member-name {
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+        .member-role {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+        .role-admin {
+            background: #ff9800;
+            color: white;
+        }
+        .role-member {
+            background: #2196F3;
+            color: white;
+        }
+        .member-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .add-member-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid #e0e0e0;
+        }
+        .add-member-form {
+            display: flex;
+            gap: 1rem;
+            align-items: end;
+        }
+        .add-member-form .form-group {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- 上部ナビゲーションバー -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">ATD</div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                <a href="{{ url_for('main.team_management') }}" class="navbar-item active">チーム</a>
+                <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
+                <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+            </div>
+            <div class="user-controls">
+                <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                    🔔
+                    {% if unread_notifications > 0 %}
+                        <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                <a href="#" class="user-control active personal-mode">
+                    個人
+                </a>
+                <a href="#" class="user-control">
+                    チーム
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="user-control">
+                    {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>チーム編集</h1>
+            <p>チームの情報とメンバーを管理します</p>
+        </div>
+
+        <!-- フラッシュメッセージ -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- チーム情報編集 -->
+        <div class="card">
+            <div class="card-header">
+                <h3>チーム情報</h3>
+            </div>
+
+            <form method="POST" class="form" action="{{ url_for('main.edit_team', team_id=team.id) }}">
+                <div class="form-group">
+                    <label for="name">チーム名 *</label>
+                    <input type="text" id="name" name="name" class="form-control" required 
+                           value="{{ team.name }}" placeholder="例: 開発チーム、マーケティングチーム">
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">チーム説明</label>
+                    <textarea id="description" name="description" class="form-control" rows="4" 
+                              placeholder="チームの目的や活動内容を説明してください">{{ team.description if team.description else '' }}</textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <a href="{{ url_for('main.team_management') }}" class="btn btn-secondary">キャンセル</a>
+                    <button type="submit" class="btn btn-primary">更新</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- メンバー一覧 -->
+        <div class="card">
+            <div class="card-header">
+                <h3>メンバー一覧 ({{ members|length }}人)</h3>
+            </div>
+            <div class="member-list">
+                {% for member_data in members %}
+                    <div class="member-item" id="member-{{ member_data.user.id }}">
+                        <div class="member-info">
+                            <div class="member-name">
+                                <span class="role-badge role-{{ member_data.role }}">{{ member_data.role }}</span>
+                                {% if member_data.user.display_name %}
+                                    {{ member_data.user.display_name }}
+                                {% else %}
+                                    {{ member_data.user.username }}
+                                {% endif %}
+                            </div>
+                            <div class="member-role">
+                                参加日: {{ member_data.joined_at.strftime('%Y年%m月%d日') }}
+                            </div>
+                        </div>
+                        <div class="member-actions">
+                            {% if not (member_data.user.id == current_user.id) %}
+                                <button class="btn btn-sm btn-warning toggle-admin-btn" 
+                                        data-team-id="{{ team.id }}" 
+                                        data-user-id="{{ member_data.user.id }}"
+                                        data-current-role="{{ member_data.role }}">
+                                    {% if member_data.role == 'admin' %}
+                                        管理者解除
+                                    {% else %}
+                                        管理者にする
+                                    {% endif %}
+                                </button>
+                                <button class="btn btn-sm btn-danger remove-member-btn"
+                                        data-team-id="{{ team.id }}" 
+                                        data-user-id="{{ member_data.user.id }}"
+                                        data-user-name="{% if member_data.user.display_name %}{{ member_data.user.display_name }}{% else %}{{ member_data.user.username }}{% endif %}">
+                                    削除
+                                </button>
+                            {% else %}
+                                <span class="btn btn-sm btn-disabled">自分</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- メンバー追加 -->
+        <div class="add-member-section">
+            <h3>メンバーを追加</h3>
+            <div class="card">
+                <form class="add-member-form" id="addMemberForm">
+                    <div class="form-group">
+                        <label for="username">ユーザー名</label>
+                        <select id="username" name="username" class="form-control" required>
+                            <option value="">-- ユーザーを選択 --</option>
+                            {% for user in all_users %}
+                                {% set is_member = False %}
+                                {% for member_data in members %}
+                                    {% if member_data.user.id == user.id %}
+                                        {% set is_member = True %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if not is_member %}
+                                    <option value="{{ user.username }}">{{ user.display_name if user.display_name else user.username }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">追加</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 管理者権限の切り替え
+        document.querySelectorAll('.toggle-admin-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const teamId = this.dataset.teamId;
+                const userId = this.dataset.userId;
+                const currentRole = this.dataset.currentRole;
+                
+                if (!confirm('管理者権限を変更しますか？')) {
+                    return;
+                }
+                
+                fetch(`/team/${teamId}/member/${userId}/toggle-admin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert(data.message || 'エラーが発生しました');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('エラーが発生しました');
+                });
+            });
+        });
+
+        // メンバー削除
+        document.querySelectorAll('.remove-member-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const teamId = this.dataset.teamId;
+                const userId = this.dataset.userId;
+                const userName = this.dataset.userName;
+                
+                if (!confirm(`${userName}さんをチームから削除しますか？`)) {
+                    return;
+                }
+                
+                fetch(`/team/${teamId}/member/${userId}/remove`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        document.getElementById(`member-${userId}`).remove();
+                        location.reload();
+                    } else {
+                        alert(data.message || 'エラーが発生しました');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('エラーが発生しました');
+                });
+            });
+        });
+
+        // メンバー追加（簡易版）
+        document.getElementById('addMemberForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            
+            if (!username) {
+                alert('ユーザーを選択してください');
+                return;
+            }
+            
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ url_for("main.add_team_member", team_id=team.id) }}';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'username';
+            input.value = username;
+            
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        });
+    </script>
+</body>
+</html>
+

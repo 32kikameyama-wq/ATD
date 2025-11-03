@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通知 - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .notification-card {
+            background: white;
+            border-left: 4px solid #ddd;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        .notification-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .notification-card.unread {
+            border-left-color: #2196F3;
+            background: #f0f9ff;
+        }
+        .notification-card.info {
+            border-left-color: #2196F3;
+        }
+        .notification-card.success {
+            border-left-color: #4CAF50;
+        }
+        .notification-card.warning {
+            border-left-color: #ff9800;
+        }
+        .notification-card.error {
+            border-left-color: #f44336;
+        }
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+        .notification-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #333;
+        }
+        .notification-type {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+        .notification-message {
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+        .notification-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #999;
+        }
+        .read-indicator {
+            font-weight: bold;
+        }
+        .read-indicator.unread {
+            color: #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <div class="main-layout">
+            <!-- 上部ナビゲーションバー -->
+            <nav class="navbar">
+                <div class="navbar-content">
+                    <div class="navbar-brand">ATD</div>
+                    <div class="navbar-menu">
+                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                        {% if current_user.is_admin %}
+                            <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+                        {% endif %}
+                        <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
+                    </div>
+                    <div class="user-controls">
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                        <a href="#" class="user-control active personal-mode">
+                            個人
+                        </a>
+                        <a href="#" class="user-control">
+                            チーム
+                        </a>
+                        <a href="{{ url_for('main.profile') }}" class="user-control">
+                            {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
+                        </a>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- メインコンテンツ -->
+            <div class="container">
+                <div class="page-header">
+                    <h1>🔔 通知</h1>
+                    {% if unread_count > 0 %}
+                        <p>未読通知: {{ unread_count }}件</p>
+                    {% else %}
+                        <p>すべての通知を読みました</p>
+                    {% endif %}
+                </div>
+
+                {% if notifications %}
+                    {% for notification in notifications %}
+                        <div class="notification-card {% if not notification.read %}unread{% endif %} {{ notification.notification_type }}" data-notification-id="{{ notification.id }}">
+                            <div class="notification-header">
+                                <div class="notification-title">{{ notification.title }}</div>
+                                {% if not notification.read %}
+                                    <span class="notification-type read-indicator unread">未読</span>
+                                {% else %}
+                                    <span class="notification-type" style="background: #f5f5f5; color: #999;">既読</span>
+                                {% endif %}
+                            </div>
+                            <div class="notification-message">{{ notification.message }}</div>
+                            <div class="notification-footer">
+                                <span>{{ notification.created_at.strftime('%Y年%m月%d日 %H:%M') }}</span>
+                                {% if not notification.read %}
+                                    <button class="btn btn-sm btn-primary" onclick="markAsRead({{ notification.id }})">既読にする</button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="card">
+                        <p style="text-align: center; padding: 2rem; color: #999;">通知はありません</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 個人/チーム切り替え
+        document.querySelectorAll('.user-control').forEach(control => {
+            control.addEventListener('click', function(e) {
+                if (this.textContent.trim() === 'プロフィール' || this.textContent.trim() === '{% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}') {
+                    return;
+                }
+                e.preventDefault();
+                document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                const mode = this.textContent.trim();
+                if (mode === 'チーム') {
+                    window.location.href = '/team-management';
+                } else if (mode === '個人') {
+                    window.location.href = '/dashboard';
+                }
+            });
+        });
+
+        function markAsRead(notificationId) {
+            fetch(`/notifications/${notificationId}/read`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('エラーが発生しました');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('エラーが発生しました');
+            });
+        }
+    </script>
+</body>
+</html>
+

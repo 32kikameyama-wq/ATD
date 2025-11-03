@@ -9,64 +9,48 @@
 </head>
 <body class="team-mode">
     <div class="app-layout">
-        <!-- 左サイドバー -->
-        <aside class="sidebar">
-            <div class="sidebar-nav">
-                <a href="{{ url_for('main.dashboard') }}" class="sidebar-item">
-                    <span class="sidebar-icon">📊</span>
-                    <span>ダッシュボード</span>
-                </a>
-                <a href="{{ url_for('tasks.list_tasks') }}" class="sidebar-item">
-                    <span class="sidebar-icon">📝</span>
-                    <span>タスク管理</span>
-                </a>
-                <a href="{{ url_for('main.team_management') }}" class="sidebar-item active">
-                    <span class="sidebar-icon">👥</span>
-                    <span>チーム管理</span>
-                </a>
-                <a href="{{ url_for('main.mindmap') }}" class="sidebar-item">
-                    <span class="sidebar-icon">🧠</span>
-                    <span>マインドマップ</span>
-                </a>
-                <a href="{{ url_for('main.profile') }}" class="sidebar-item">
-                    <span class="sidebar-icon">👤</span>
-                    <span>プロフィール</span>
-                </a>
-            </div>
-        </aside>
-
+        <!-- メインレイアウト -->
         <div class="main-layout">
             <!-- 上部ナビゲーションバー -->
             <nav class="navbar">
                 <div class="navbar-content">
-                    <div class="navbar-brand">
-                        <h1>ATD</h1>
-                    </div>
+                    <div class="navbar-brand">ATD</div>
                     <div class="navbar-menu">
-                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
-                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
-                        <a href="{{ url_for('main.team_management') }}" class="navbar-item active">チーム管理</a>
-                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
-                        <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
+                        <a href="{{ url_for('main.team_management') }}" class="navbar-item">チーム</a>
+                        <a href="{{ url_for('main.team_mindmap') }}" class="navbar-item">チーム目標</a>
+                        <a href="{{ url_for('main.team_tasks') }}" class="navbar-item">チームタスク</a>
                     </div>
                     <div class="user-controls">
-                        <a href="{{ url_for('auth.logout') }}" class="user-control">ログアウト</a>
+                        <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                            🔔
+                            {% if unread_notifications > 0 %}
+                                <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
+                            {% endif %}
+                        </a>
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                        <a href="{{ url_for('main.dashboard') }}" class="user-control">
+                            個人
+                        </a>
+                        <a href="#" class="user-control active team-mode">
+                            チーム
+                        </a>
+                        <a href="{{ url_for('main.profile') }}" class="user-control">
+                            {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
+                        </a>
                     </div>
                 </div>
             </nav>
 
+            <!-- メインコンテンツ -->
             <div class="container">
-                <!-- チームヘッダー -->
-                <div class="team-header">
-                    <div class="team-info">
+                <div class="page-header">
+                    <div>
                         <h1>{{ team.name }}</h1>
                         {% if team.description %}
                             <p class="team-description">{{ team.description }}</p>
                         {% endif %}
                     </div>
-                    <div class="team-actions">
-                        <a href="{{ url_for('main.team_management') }}" class="btn btn-secondary">チーム管理に戻る</a>
-                    </div>
+                    <a href="{{ url_for('main.team_management') }}" class="btn btn-secondary btn-sm">チーム管理に戻る</a>
                 </div>
 
                 <!-- ダッシュボードグリッド -->
@@ -183,24 +167,21 @@
     </div>
 
     <style>
-        .team-header {
+        .page-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: var(--spacing-xl);
-            padding: var(--spacing-lg);
-            background: white;
-            border: 2px solid #e0e0e0;
         }
 
-        .team-info h1 {
-            margin: 0 0 var(--spacing-sm) 0;
-            color: var(--text-primary);
+        .page-header h1 {
+            margin: 0;
         }
 
         .team-description {
-            margin: 0;
+            margin: var(--spacing-xs) 0 0 0;
             color: var(--text-secondary);
+            font-size: var(--font-size-sm);
         }
 
         .member-progress {

@@ -3,33 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>タスク作成 - ATD</title>
+    <title>テンプレート作成 - ATD</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <style>
-        /* 日付入力フィールド全体をクリック可能に */
-        input[type="date"] {
-            position: relative;
-            cursor: pointer;
-        }
-        
-        /* カレンダーアイコンを全範囲に広げる */
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            cursor: pointer;
-            opacity: 0;
-        }
-        
-        /* form-group内のdate入力フィールドのスタイル */
-        .form-group {
-            position: relative;
-        }
-    </style>
 </head>
 <body>
     <!-- 上部ナビゲーションバー -->
@@ -38,7 +13,7 @@
             <div class="navbar-brand">ATD</div>
             <div class="navbar-menu">
                 <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
-                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item active">タスク管理</a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
                 <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
                 {% if current_user.is_admin %}
                     <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
@@ -69,10 +44,11 @@
     <div class="container">
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h1>新しいタスクを作成</h1>
-                <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-secondary">タスク一覧に戻る</a>
+                <h1>新しいテンプレートを作成</h1>
+                <a href="{{ url_for('main.task_templates') }}" class="btn btn-secondary">テンプレート一覧に戻る</a>
             </div>
             
+            <!-- フラッシュメッセージ -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
@@ -83,50 +59,49 @@
                 {% endif %}
             {% endwith %}
             
-            <form method="POST" id="taskForm">
+            <form method="POST" id="templateForm">
                 <div class="form-group">
                     <label for="title">タイトル *</label>
-                    <input type="text" id="title" name="title" class="form-control" required>
+                    <input type="text" id="title" name="title" class="form-control" required placeholder="例: 朝のメールチェック、週次ミーティング準備">
                 </div>
                 
                 <div class="form-group">
                     <label for="description">説明</label>
-                    <textarea id="description" name="description" class="form-control" rows="4"></textarea>
+                    <textarea id="description" name="description" class="form-control" rows="3" placeholder="タスクの詳細を記述してください"></textarea>
                 </div>
                 
                 <div class="form-group">
-                    <label for="start_date">開始期間 *</label>
-                    <input type="date" id="start_date" name="start_date" class="form-control" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="end_date">終了期間 *</label>
-                    <input type="date" id="end_date" name="end_date" class="form-control" required>
+                    <label for="priority">優先度 *</label>
+                    <select id="priority" name="priority" class="form-control" required>
+                        <option value="high">高</option>
+                        <option value="medium" selected>中</option>
+                        <option value="low">低</option>
+                    </select>
                 </div>
                 
                 <div class="form-group">
                     <label for="category">分類 *</label>
                     <select id="category" name="category" class="form-control" required>
-                        <option value="">選択してください</option>
-                        <option value="today">本日のタスク</option>
+                        <option value="today" selected>今日のタスク</option>
                         <option value="tomorrow">明日のタスク</option>
                         <option value="other">その他のタスク</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
-                    <label for="priority">優先度 *</label>
-                    <select id="priority" name="priority" class="form-control" required>
-                        <option value="">選択してください</option>
-                        <option value="high">高</option>
-                        <option value="medium">中</option>
-                        <option value="low">低</option>
+                    <label for="repeat_type">繰り返し</label>
+                    <select id="repeat_type" name="repeat_type" class="form-control">
+                        <option value="none" selected>なし</option>
+                        <option value="daily">毎日</option>
+                        <option value="weekly">毎週</option>
+                        <option value="monthly">毎月</option>
                     </select>
+                    <small style="color: #666; font-size: 0.85rem;">繰り返しを設定すると、日次処理で自動的にタスクが作成されます</small>
                 </div>
                 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary" id="submitBtn">作成</button>
-                    <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-secondary">キャンセル</a>
+                    <a href="{{ url_for('main.task_templates') }}" class="btn btn-secondary">キャンセル</a>
                 </div>
             </form>
         </div>
@@ -134,7 +109,7 @@
 
     <script>
         // 重複送信防止
-        document.getElementById('taskForm').addEventListener('submit', function(e) {
+        document.getElementById('templateForm').addEventListener('submit', function(e) {
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
             submitBtn.textContent = '作成中...';
@@ -143,7 +118,7 @@
         // 個人/チーム切り替え
         document.querySelectorAll('.user-control').forEach(control => {
             control.addEventListener('click', function(e) {
-                if (this.textContent.trim() === 'プロフィール' || this.textContent.trim() === '{% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}') {
+                if (this.textContent.trim() === '{% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}') {
                     return;
                 }
                 e.preventDefault();
@@ -159,3 +134,4 @@
     </script>
 </body>
 </html>
+

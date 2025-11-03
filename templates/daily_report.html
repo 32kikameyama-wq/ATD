@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日報レポート - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .report-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 2rem;
+        }
+        .report-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 3px solid #4CAF50;
+        }
+        .report-header h1 {
+            margin: 0;
+            color: #333;
+        }
+        .report-date {
+            color: #666;
+            font-size: 1.2rem;
+            margin-top: 0.5rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stat-card h3 {
+            margin: 0 0 1rem 0;
+            color: #4CAF50;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #333;
+            margin: 0.5rem 0;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .tasks-section {
+            margin: 2rem 0;
+        }
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        .task-item {
+            background: #f5f5f5;
+            border-left: 4px solid #4CAF50;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+        }
+        .task-item.completed {
+            opacity: 0.6;
+            background: #e8f5e9;
+        }
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .task-title {
+            font-weight: bold;
+            color: #333;
+        }
+        .task-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+        }
+        .status-completed {
+            background: #4CAF50;
+            color: white;
+        }
+        .status-pending {
+            background: #ff9800;
+            color: white;
+        }
+        .priority-badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+        .priority-high {
+            background: #f44336;
+            color: white;
+        }
+        .priority-medium {
+            background: #ff9800;
+            color: white;
+        }
+        .priority-low {
+            background: #2196F3;
+            color: white;
+        }
+        .weekly-chart {
+            margin: 2rem 0;
+        }
+        .chart-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .chart-label {
+            width: 80px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .chart-bar-graph {
+            flex: 1;
+            background: #e0e0e0;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        .chart-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s ease;
+        }
+        .chart-value {
+            margin-left: 1rem;
+            font-weight: bold;
+            color: #333;
+            min-width: 60px;
+        }
+        .export-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 1rem 0;
+        }
+        .export-btn:hover {
+            background: #1976D2;
+        }
+        .plan-status {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+        .plan-status.on-target {
+            background: #4CAF50;
+            color: white;
+        }
+        .plan-status.below-target {
+            background: #ff9800;
+            color: white;
+        }
+        .plan-detail {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="report-container">
+            <!-- ヘッダー -->
+            <div class="report-header">
+                <h1>📊 日報レポート</h1>
+                <div class="report-date">{{ today.strftime('%Y年%m月%d日') }}</div>
+            </div>
+
+            <!-- 統計カード -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>今日の完了率</h3>
+                    <div class="stat-value">{{ today_stats.completion_rate }}%</div>
+                    <div class="stat-label">{{ today_stats.completed }} / {{ today_stats.total }} タスク完了</div>
+                    <div class="plan-detail">目標: {{ target_completion_rate }}%</div>
+                    <div class="plan-status {% if today_on_target %}on-target{% else %}below-target{% endif %}">
+                        {% if today_on_target %}✓ 計画達成{% else %}⚠ 計画未達成{% endif %}
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <h3>週間平均完了率</h3>
+                    <div class="stat-value">{{ avg_completion }}%</div>
+                    <div class="stat-label">過去7日間の平均</div>
+                    <div class="plan-detail">目標: {{ target_completion_rate }}%</div>
+                    <div class="plan-status {% if weekly_on_target %}on-target{% else %}below-target{% endif %}">
+                        {% if weekly_on_target %}✓ 計画達成{% else %}⚠ 計画未達成{% endif %}
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <h3>連続記録</h3>
+                    <div class="stat-value">{{ streak }}日</div>
+                    <div class="stat-label">タスク完了の連続記録</div>
+                </div>
+                <div class="stat-card">
+                    <h3>月間平均完了率</h3>
+                    <div class="stat-value">{{ monthly_avg_completion }}%</div>
+                    <div class="stat-label">過去30日間の平均</div>
+                    <div class="plan-detail">目標: {{ target_completion_rate }}%</div>
+                    <div class="plan-status {% if monthly_on_target %}on-target{% else %}below-target{% endif %}">
+                        {% if monthly_on_target %}✓ 計画達成{% else %}⚠ 計画未達成{% endif %}
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <h3>本日の総作業時間</h3>
+                    <div class="stat-value">{% set hours = today_total_seconds // 3600 %}{% set minutes = (today_total_seconds % 3600) // 60 %}{{ "{:02d}:{:02d}".format(hours, minutes) }}</div>
+                    <div class="stat-label">完了タスクの累計時間</div>
+                </div>
+            </div>
+
+            <!-- 週間パフォーマンスチャート -->
+            <div class="weekly-chart">
+                <h2 class="section-title">📈 週間パフォーマンス</h2>
+                {% for stat in weekly_stats %}
+                <div class="chart-bar">
+                    <div class="chart-label">{{ stat.date.strftime('%m/%d') }}</div>
+                    <div class="chart-bar-graph">
+                        <div class="chart-fill" style="width: {{ stat.completion_rate }}%"></div>
+                    </div>
+                    <div class="chart-value">{{ stat.completion_rate }}%</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- 今日のタスク -->
+            <div class="tasks-section">
+                <h2 class="section-title">✅ 今日のタスク一覧</h2>
+                {% if today_tasks %}
+                    {% for task in today_tasks %}
+                    <div class="task-item {% if task.completed %}completed{% endif %}">
+                        <div class="task-header">
+                            <div>
+                                <span class="task-title">{{ task.title }}</span>
+                                <span class="priority-badge priority-{{ task.priority }}">{{ task.priority }}</span>
+                            </div>
+                            <span class="task-status {% if task.completed %}status-completed{% else %}status-pending{% endif %}">
+                                {% if task.completed %}完了{% else %}未完了{% endif %}
+                            </span>
+                        </div>
+                        {% if task.description %}
+                        <div style="margin-top: 0.5rem; color: #666; font-size: 0.9rem;">{{ task.description }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p style="text-align: center; color: #999; padding: 2rem;">今日のタスクはありません</p>
+                {% endif %}
+            </div>
+
+            <!-- エクスポートボタン -->
+            <div style="text-align: center; margin: 2rem 0;">
+                <button class="export-btn" onclick="copyReportToClipboard()">📋 日報データをコピー</button>
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary" style="margin-left: 1rem;">ダッシュボードに戻る</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyReportToClipboard() {
+            const reportText = generateReportText();
+            navigator.clipboard.writeText(reportText).then(function() {
+                alert('日報データをクリップボードにコピーしました！');
+            }, function(err) {
+                console.error('コピーに失敗しました:', err);
+                // フォールバック: テキストエリアを使用
+                const textarea = document.createElement('textarea');
+                textarea.value = reportText;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('日報データをクリップボードにコピーしました！');
+            });
+        }
+
+        function generateReportText() {
+            const today = '{{ today.strftime("%Y年%m月%d日") }}';
+            const todayRate = {{ today_stats.completion_rate }};
+            const todayCompleted = {{ today_stats.completed }};
+            const todayTotal = {{ today_stats.total }};
+            const todayOnTarget = {% if today_on_target %}true{% else %}false{% endif %};
+            
+            const weeklyAvg = {{ avg_completion }};
+            const weeklyOnTarget = {% if weekly_on_target %}true{% else %}false{% endif %};
+            
+            const monthlyAvg = {{ monthly_avg_completion }};
+            const monthlyOnTarget = {% if monthly_on_target %}true{% else %}false{% endif %};
+            
+            const streak = {{ streak }};
+            const target = {{ target_completion_rate }};
+            const todayTotalSeconds = {{ today_total_seconds }};
+            const todayHours = Math.floor(todayTotalSeconds / 3600);
+            const todayMinutes = Math.floor((todayTotalSeconds % 3600) / 60);
+
+            let text = '📊 日報レポート\n';
+            text += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+            text += `日付: ${today}\n`;
+            text += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+            
+            text += '【統計データ】\n';
+            text += `今日の完了率: ${todayRate}% (${todayCompleted}/${todayTotal}タスク)\n`;
+            text += `  → 目標: ${target}% ${todayOnTarget ? '✓ 計画達成' : '⚠ 計画未達成'}\n\n`;
+            
+            text += `週間平均完了率: ${weeklyAvg}%\n`;
+            text += `  → 目標: ${target}% ${weeklyOnTarget ? '✓ 計画達成' : '⚠ 計画未達成'}\n\n`;
+            
+            text += `月間平均完了率: ${monthlyAvg}%\n`;
+            text += `  → 目標: ${target}% ${monthlyOnTarget ? '✓ 計画達成' : '⚠ 計画未達成'}\n\n`;
+            
+            text += `連続記録: ${streak}日\n\n`;
+            
+            text += `本日の総作業時間: ${String(todayHours).padStart(2, '0')}:${String(todayMinutes).padStart(2, '0')}\n`;
+            text += `  → 完了タスクの累計時間\n\n`;
+            
+            text += '【週間パフォーマンス】\n';
+            {% for stat in weekly_stats %}
+            text += '{{ stat.date.strftime("%m/%d") }}: {{ stat.completion_rate }}%\n';
+            {% endfor %}
+            
+            text += '\n【今日のタスク一覧】\n';
+            {% if today_tasks %}
+                {% for task in today_tasks %}
+            text += '- {{ task.title }} [{{ task.priority }}] {% if task.completed %}完了{% else %}未完了{% endif %}{% if task.completed %} ({{ task.format_time() if task.format_time else "00:00:00" }}){% endif %}\n';
+                {% endfor %}
+            {% else %}
+            text += '今日のタスクはありません\n';
+            {% endif %}
+            
+            text += '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+            text += 'ATD タスク管理システム\n';
+            
+            return text;
+        }
+    </script>
+</body>
+</html>
+

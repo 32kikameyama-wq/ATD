@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カレンダー - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .calendar-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .month-nav {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .month-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #e0e0e0;
+        }
+        .calendar-day {
+            min-height: 120px;
+            background: white;
+            padding: 0.5rem;
+            position: relative;
+        }
+        .calendar-day.other-month {
+            background: #f5f5f5;
+            opacity: 0.5;
+        }
+        .calendar-day.today {
+            background: #e3f2fd;
+            border: 2px solid #2196F3;
+        }
+        .day-number {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+        .calendar-day.other-month .day-number {
+            color: #999;
+        }
+        .calendar-day.today .day-number {
+            color: #2196F3;
+            font-size: 1.2em;
+        }
+        .day-tasks {
+            font-size: 0.85rem;
+        }
+        .day-task-item {
+            background: #4CAF50;
+            color: white;
+            padding: 0.2rem 0.4rem;
+            margin: 0.2rem 0;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .day-task-item.completed {
+            background: #9e9e9e;
+            text-decoration: line-through;
+        }
+        .day-task-item.high {
+            background: #f44336;
+        }
+        .day-task-item.medium {
+            background: #ff9800;
+        }
+        .day-task-item.low {
+            background: #2196F3;
+        }
+        .weekday-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #e0e0e0;
+            margin-bottom: 1px;
+        }
+        .weekday {
+            background: #2196F3;
+            color: white;
+            padding: 0.5rem;
+            text-align: center;
+            font-weight: bold;
+        }
+        .template-sidebar {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 2rem;
+        }
+        .template-item {
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .template-item:hover {
+            background: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <!-- 上部ナビゲーションバー -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">ATD</div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+                {% endif %}
+                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
+            </div>
+            <div class="user-controls">
+                <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                    🔔
+                    {% if unread_notifications > 0 %}
+                        <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                <a href="#" class="user-control active personal-mode">
+                    個人
+                </a>
+                <a href="#" class="user-control">
+                    チーム
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="user-control">
+                    {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="calendar-container">
+            <div class="calendar-header">
+                <div class="month-nav">
+                    <a href="{{ url_for('main.calendar', year=prev_year, month=prev_month) }}" class="btn btn-sm">← 前月</a>
+                    <div class="month-title">{{ year }}年{{ month }}月</div>
+                    <a href="{{ url_for('main.calendar', year=next_year, month=next_month) }}" class="btn btn-sm">次月 →</a>
+                </div>
+                <div>
+                    <a href="{{ url_for('main.calendar') }}" class="btn btn-sm">今月</a>
+                    <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">+ 新しいタスク</a>
+                </div>
+            </div>
+
+            <!-- 曜日ヘッダー -->
+            <div class="weekday-header">
+                <div class="weekday">日</div>
+                <div class="weekday">月</div>
+                <div class="weekday">火</div>
+                <div class="weekday">水</div>
+                <div class="weekday">木</div>
+                <div class="weekday">金</div>
+                <div class="weekday">土</div>
+            </div>
+
+            <!-- カレンダー本体 -->
+            <div class="calendar-grid">
+                {% for current_date in calendar_dates %}
+                    {% set is_other_month = current_date < first_day or current_date > last_day %}
+                    {% set is_today = current_date.strftime('%Y-%m-%d') == now.strftime('%Y-%m-%d') %}
+                    {% set date_key = current_date.strftime('%Y-%m-%d') %}
+                    {% set day_tasks = tasks_by_date.get(date_key, []) %}
+                    
+                    <div class="calendar-day {% if is_other_month %}other-month{% endif %} {% if is_today %}today{% endif %}">
+                        <div class="day-number">{{ current_date.day }}</div>
+                        <div class="day-tasks">
+                            {% for task in day_tasks[:3] %}
+                                <div class="day-task-item {{ task.priority }} {% if task.completed %}completed{% endif %}" 
+                                     title="{{ task.title }}"
+                                     onclick="window.location.href='{{ url_for('tasks.list_tasks') }}'">
+                                    {{ task.title }}
+                                </div>
+                            {% endfor %}
+                            {% if day_tasks|length > 3 %}
+                                <div style="font-size: 0.7rem; color: #999; text-align: center; margin-top: 0.3rem;">
+                                    +{{ day_tasks|length - 3 }}件
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- テンプレートサイドバー -->
+            {% if templates %}
+            <div class="template-sidebar">
+                <h3 style="margin-bottom: 1rem;">📝 テンプレートから作成</h3>
+                {% for template in templates[:5] %}
+                    <div class="template-item" onclick="generateFromTemplate({{ template.id }})">
+                        <strong>{{ template.title }}</strong>
+                        <div style="font-size: 0.85rem; color: #666;">
+                            {{ template.description[:50] }}{% if template.description|length > 50 %}...{% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+                <a href="{{ url_for('main.task_templates') }}" class="btn btn-sm" style="width: 100%; margin-top: 0.5rem;">すべて表示</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        function generateFromTemplate(templateId) {
+            if (confirm('このテンプレートから今日のタスクを作成しますか？')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/task-templates/' + templateId + '/generate';
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // 個人/チーム切り替え
+        document.querySelectorAll('.user-control').forEach(control => {
+            control.addEventListener('click', function(e) {
+                if (this.textContent.trim() === '{% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}') {
+                    return;
+                }
+                e.preventDefault();
+                document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                
+                const mode = this.textContent.trim();
+                if (mode === 'チーム') {
+                    window.location.href = '/team-management';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+

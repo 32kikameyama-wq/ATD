@@ -5,6 +5,80 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>タスク管理 - ATD</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .due-date-warning {
+            background: #fff3cd;
+            border-left: 3px solid #ff9800;
+            padding: 8px 12px;
+            margin: 10px 0;
+            font-weight: bold;
+            color: #856404;
+        }
+        .due-date-overdue {
+            background: #f8d7da;
+            border-left: 3px solid #dc3545;
+            padding: 8px 12px;
+            margin: 10px 0;
+            font-weight: bold;
+            color: #721c24;
+        }
+        .task-card.due-warning {
+            border-left: 3px solid #ff9800;
+        }
+        .task-card.due-overdue {
+            border-left: 3px solid #dc3545;
+        }
+        .task-time-display {
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #333;
+            background: #f5f5f5;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            min-width: 80px;
+            text-align: center;
+        }
+        .task-time-display.tracking {
+            background: #ffebee;
+            color: #c62828;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .tracking-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #f44336;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .time-toggle-btn {
+            font-size: 0.9rem;
+            padding: 5px 12px;
+        }
+        .time-toggle-btn.tracking {
+            background: #f44336;
+            color: white;
+        }
+        .task-card.team-task {
+            border-left: 4px solid #2196F3 !important;
+            background: #f0f9ff;
+        }
+        .task-card.team-task .task-title {
+            color: #1976D2;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
     <!-- 上部ナビゲーションバー -->
@@ -14,11 +88,19 @@
             <div class="navbar-menu">
                 <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
                 <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item active">タスク管理</a>
-                <a href="{{ url_for('main.team_management') }}" class="navbar-item">チーム</a>
                 <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+                {% endif %}
                 <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
             </div>
             <div class="user-controls">
+                <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                    🔔
+                    {% if unread_notifications > 0 %}
+                        <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
                 <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
                 <a href="#" class="user-control active personal-mode">
                     個人
@@ -27,7 +109,7 @@
                     チーム
                 </a>
                 <a href="{{ url_for('main.profile') }}" class="user-control">
-                    {{ current_user.username }}
+                    {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
                 </a>
             </div>
         </div>
@@ -36,6 +118,10 @@
         <div class="container">
             <div class="page-header">
                 <h1>タスク管理</h1>
+                <div style="display: flex; gap: var(--spacing-md);">
+                    <a href="{{ url_for('main.calendar') }}" class="btn btn-secondary">📅 カレンダー</a>
+                    <a href="{{ url_for('main.mindmap') }}" class="btn btn-secondary" style="margin-left: auto;">マインドマップを表示</a>
+                </div>
             </div>
 
             <!-- メインコンテンツ -->
@@ -56,12 +142,40 @@
                     {% endif %}
                 {% endwith %}
 
+                <!-- 検索・フィルタバー -->
+                <div style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border: 1px solid #e0e0e0;">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <!-- 検索ボックス -->
+                        <div style="flex: 1; min-width: 200px;">
+                            <input type="text" id="search-input" class="form-control" placeholder="タスクを検索..." style="width: 100%;">
+                        </div>
+                        
+                        <!-- 完了状態フィルタ -->
+                        <select id="completed-filter" class="form-control" style="min-width: 120px;">
+                            <option value="all">すべて</option>
+                            <option value="active">未完了</option>
+                            <option value="completed">完了済み</option>
+                        </select>
+                        
+                        <!-- 優先度フィルタ -->
+                        <select id="priority-filter" class="form-control" style="min-width: 120px;">
+                            <option value="all">優先度すべて</option>
+                            <option value="high">高</option>
+                            <option value="medium">中</option>
+                            <option value="low">低</option>
+                        </select>
+                        
+                        <!-- クリアボタン -->
+                        <button class="btn btn-sm btn-secondary" onclick="clearFilters()">クリア</button>
+                    </div>
+                </div>
+
                 <!-- 本日のタスク -->
                 <div class="task-section">
                     <h2 class="task-section-title">本日のタスク</h2>
                     {% if today_tasks %}
                         {% for task in today_tasks %}
-                            <div class="task-card {% if task.completed %}completed{% endif %}" data-task-id="{{ task.id }}">
+                            <div class="task-card {% if task.completed %}completed{% endif %} {% if task.title.startswith('【') %}team-task{% endif %}" data-task-id="{{ task.id }}" data-end-date="{{ task.end_date.isoformat() if task.end_date else '' }}">
                                 <div class="task-header">
                                     <h3 class="task-title">{{ task.title }}</h3>
                                     <div class="task-controls">
@@ -72,6 +186,15 @@
                                 
                                 {% if task.description %}
                                     <p class="task-description">{{ task.description }}</p>
+                                {% endif %}
+                                
+                                <!-- 期限警告メッセージ -->
+                                {% if task.end_date and not task.completed %}
+                                    {% if task.end_date < current_date %}
+                                        <div class="due-date-overdue">⚠️ 期限切れ：{{ task.end_date.strftime('%Y年%m月%d日') }}</div>
+                                    {% elif task.end_date == current_date %}
+                                        <div class="due-date-warning">⚠️ 本日期限：{{ task.end_date.strftime('%Y年%m月%d日') }}</div>
+                                    {% endif %}
                                 {% endif %}
                                 
                                 <div class="task-meta">
@@ -87,9 +210,29 @@
                                         <span class="badge badge-{{ task.priority }}">{{ task.priority }}</span>
                                     </span>
                                     
-                                    {% if task.due_date %}
-                                        <span class="task-meta-item">{{ task.due_date }}</span>
+                                    {% if task.end_date %}
+                                        <span class="task-meta-item">期限: {{ task.end_date.strftime('%Y/%m/%d') }}</span>
                                     {% endif %}
+                                </div>
+                                
+                                <!-- 時間計測 -->
+                                <div style="margin: 10px 0; padding: 10px; background: #f9f9f9; border-radius: 4px;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <span style="font-weight: bold;">⏱️ 作業時間:</span>
+                                            <span id="task-time-{{ task.id }}" class="task-time-display {% if task.is_tracking %}tracking{% endif %}">
+                                                {{ task.format_time() if task.format_time else '00:00:00' }}
+                                            </span>
+                                            {% if task.is_tracking %}
+                                                <span class="tracking-indicator"></span>
+                                            {% endif %}
+                                        </div>
+                                        {% if not task.completed %}
+                                            <button id="time-toggle-{{ task.id }}" class="btn time-toggle-btn {% if task.is_tracking %}tracking{% else %}btn-primary{% endif %}" onclick="toggleTimeTracking({{ task.id }})">
+                                                {% if task.is_tracking %}⏸️ 停止{% else %}▶️ 開始{% endif %}
+                                            </button>
+                                        {% endif %}
+                                    </div>
                                 </div>
                                 
                                 <div class="task-actions">
@@ -104,6 +247,13 @@
                                         </form>
                                     </div>
                                     <div class="task-main-actions">
+                                        {% if not task.mindmap_node %}
+                                            <form action="{{ url_for('tasks.add_to_mindmap', task_id=task.id) }}" method="POST" style="display:inline;">
+                                                <button type="submit" class="btn btn-sm btn-outline">🧠 マインドマップに追加</button>
+                                            </form>
+                                        {% else %}
+                                            <span style="color: var(--success-color); font-size: 0.9rem;">✓ マインドマップに登録済み</span>
+                                        {% endif %}
                                         <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-secondary">編集</a>
                                         <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
                                             <button type="submit" class="btn btn-success">
@@ -127,7 +277,7 @@
                     <h2 class="task-section-title">明日のタスク</h2>
                     {% if tomorrow_tasks %}
                         {% for task in tomorrow_tasks %}
-                            <div class="task-card {% if task.completed %}completed{% endif %}" data-task-id="{{ task.id }}">
+                            <div class="task-card {% if task.completed %}completed{% endif %} {% if task.title.startswith('【') %}team-task{% endif %}" data-task-id="{{ task.id }}" data-end-date="{{ task.end_date.isoformat() if task.end_date else '' }}">
                                 <div class="task-header">
                                     <h3 class="task-title">{{ task.title }}</h3>
                                     <div class="task-controls">
@@ -138,6 +288,15 @@
                                 
                                 {% if task.description %}
                                     <p class="task-description">{{ task.description }}</p>
+                                {% endif %}
+                                
+                                <!-- 期限警告メッセージ -->
+                                {% if task.end_date and not task.completed %}
+                                    {% if task.end_date < current_date %}
+                                        <div class="due-date-overdue">⚠️ 期限切れ：{{ task.end_date.strftime('%Y年%m月%d日') }}</div>
+                                    {% elif task.end_date == current_date %}
+                                        <div class="due-date-warning">⚠️ 本日期限：{{ task.end_date.strftime('%Y年%m月%d日') }}</div>
+                                    {% endif %}
                                 {% endif %}
                                 
                                 <div class="task-meta">
@@ -153,9 +312,29 @@
                                         <span class="badge badge-{{ task.priority }}">{{ task.priority }}</span>
                                     </span>
                                     
-                                    {% if task.due_date %}
-                                        <span class="task-meta-item">{{ task.due_date }}</span>
+                                    {% if task.end_date %}
+                                        <span class="task-meta-item">期限: {{ task.end_date.strftime('%Y/%m/%d') }}</span>
                                     {% endif %}
+                                </div>
+                                
+                                <!-- 時間計測 -->
+                                <div style="margin: 10px 0; padding: 10px; background: #f9f9f9; border-radius: 4px;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <span style="font-weight: bold;">⏱️ 作業時間:</span>
+                                            <span id="task-time-{{ task.id }}" class="task-time-display {% if task.is_tracking %}tracking{% endif %}">
+                                                {{ task.format_time() if task.format_time else '00:00:00' }}
+                                            </span>
+                                            {% if task.is_tracking %}
+                                                <span class="tracking-indicator"></span>
+                                            {% endif %}
+                                        </div>
+                                        {% if not task.completed %}
+                                            <button id="time-toggle-{{ task.id }}" class="btn time-toggle-btn {% if task.is_tracking %}tracking{% else %}btn-primary{% endif %}" onclick="toggleTimeTracking({{ task.id }})">
+                                                {% if task.is_tracking %}⏸️ 停止{% else %}▶️ 開始{% endif %}
+                                            </button>
+                                        {% endif %}
+                                    </div>
                                 </div>
                                 
                                 <div class="task-actions">
@@ -170,6 +349,13 @@
                                         </form>
                                     </div>
                                     <div class="task-main-actions">
+                                        {% if not task.mindmap_node %}
+                                            <form action="{{ url_for('tasks.add_to_mindmap', task_id=task.id) }}" method="POST" style="display:inline;">
+                                                <button type="submit" class="btn btn-sm btn-outline">🧠 マインドマップに追加</button>
+                                            </form>
+                                        {% else %}
+                                            <span style="color: var(--success-color); font-size: 0.9rem;">✓ マインドマップに登録済み</span>
+                                        {% endif %}
                                         <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-secondary">編集</a>
                                         <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
                                             <button type="submit" class="btn btn-success">
@@ -193,7 +379,7 @@
                     <h2 class="task-section-title">その他のタスク</h2>
                     {% if other_tasks %}
                         {% for task in other_tasks %}
-                            <div class="task-card {% if task.completed %}completed{% endif %}" data-task-id="{{ task.id }}">
+                            <div class="task-card {% if task.completed %}completed{% endif %} {% if task.title.startswith('【') %}team-task{% endif %}" data-task-id="{{ task.id }}" data-end-date="{{ task.end_date.isoformat() if task.end_date else '' }}">
                                 <div class="task-header">
                                     <h3 class="task-title">{{ task.title }}</h3>
                                     <div class="task-controls">
@@ -204,6 +390,15 @@
                                 
                                 {% if task.description %}
                                     <p class="task-description">{{ task.description }}</p>
+                                {% endif %}
+                                
+                                <!-- 期限警告メッセージ -->
+                                {% if task.end_date and not task.completed %}
+                                    {% if task.end_date < current_date %}
+                                        <div class="due-date-overdue">⚠️ 期限切れ：{{ task.end_date.strftime('%Y年%m月%d日') }}</div>
+                                    {% elif task.end_date == current_date %}
+                                        <div class="due-date-warning">⚠️ 本日期限：{{ task.end_date.strftime('%Y年%m月%d日') }}</div>
+                                    {% endif %}
                                 {% endif %}
                                 
                                 <div class="task-meta">
@@ -219,9 +414,29 @@
                                         <span class="badge badge-{{ task.priority }}">{{ task.priority }}</span>
                                     </span>
                                     
-                                    {% if task.due_date %}
-                                        <span class="task-meta-item">{{ task.due_date }}</span>
+                                    {% if task.end_date %}
+                                        <span class="task-meta-item">期限: {{ task.end_date.strftime('%Y/%m/%d') }}</span>
                                     {% endif %}
+                                </div>
+                                
+                                <!-- 時間計測 -->
+                                <div style="margin: 10px 0; padding: 10px; background: #f9f9f9; border-radius: 4px;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <span style="font-weight: bold;">⏱️ 作業時間:</span>
+                                            <span id="task-time-{{ task.id }}" class="task-time-display {% if task.is_tracking %}tracking{% endif %}">
+                                                {{ task.format_time() if task.format_time else '00:00:00' }}
+                                            </span>
+                                            {% if task.is_tracking %}
+                                                <span class="tracking-indicator"></span>
+                                            {% endif %}
+                                        </div>
+                                        {% if not task.completed %}
+                                            <button id="time-toggle-{{ task.id }}" class="btn time-toggle-btn {% if task.is_tracking %}tracking{% else %}btn-primary{% endif %}" onclick="toggleTimeTracking({{ task.id }})">
+                                                {% if task.is_tracking %}⏸️ 停止{% else %}▶️ 開始{% endif %}
+                                            </button>
+                                        {% endif %}
+                                    </div>
                                 </div>
                                 
                                 <div class="task-actions">
@@ -236,6 +451,13 @@
                                         </form>
                                     </div>
                                     <div class="task-main-actions">
+                                        {% if not task.mindmap_node %}
+                                            <form action="{{ url_for('tasks.add_to_mindmap', task_id=task.id) }}" method="POST" style="display:inline;">
+                                                <button type="submit" class="btn btn-sm btn-outline">🧠 マインドマップに追加</button>
+                                            </form>
+                                        {% else %}
+                                            <span style="color: var(--success-color); font-size: 0.9rem;">✓ マインドマップに登録済み</span>
+                                        {% endif %}
                                         <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-secondary">編集</a>
                                         <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
                                             <button type="submit" class="btn btn-success">
@@ -257,6 +479,32 @@
         </div>
     
     <script>
+    // 期限警告を適用
+    function applyDueDateWarnings() {
+        const taskCards = document.querySelectorAll('.task-card');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        taskCards.forEach(card => {
+            if (card.classList.contains('completed')) return;
+            
+            const endDateStr = card.getAttribute('data-end-date');
+            if (!endDateStr) return;
+            
+            const endDate = new Date(endDateStr);
+            endDate.setHours(0, 0, 0, 0);
+            
+            const diffDays = (endDate - today) / (1000 * 60 * 60 * 24);
+            
+            if (diffDays < 0) {
+                card.classList.add('due-overdue');
+            }
+        });
+    }
+    
+    // ページ読み込み時に期限警告を適用
+    applyDueDateWarnings();
+
     // タスクの優先順位変更
     function moveTaskUp(taskId) {
         fetch(`/tasks/${taskId}/reorder`, {
@@ -301,6 +549,213 @@
             alert('エラーが発生しました');
         });
     }
+
+    // 検索・フィルタ機能
+    function filterTasks() {
+        const searchTerm = document.getElementById('search-input').value.toLowerCase();
+        const completedFilter = document.getElementById('completed-filter').value;
+        const priorityFilter = document.getElementById('priority-filter').value;
+        
+        const taskCards = document.querySelectorAll('.task-card');
+        let visibleCount = 0;
+        
+        taskCards.forEach(card => {
+            const title = card.querySelector('.task-title')?.textContent.toLowerCase() || '';
+            const description = card.querySelector('.task-description')?.textContent.toLowerCase() || '';
+            const isCompleted = card.classList.contains('completed');
+            
+            // バッジ要素から優先度クラスを取得
+            const badgeElement = card.querySelector('.badge');
+            let priority = '';
+            if (badgeElement) {
+                if (badgeElement.classList.contains('badge-high')) {
+                    priority = 'high';
+                } else if (badgeElement.classList.contains('badge-medium')) {
+                    priority = 'medium';
+                } else if (badgeElement.classList.contains('badge-low')) {
+                    priority = 'low';
+                }
+            }
+            
+            // 検索チェック
+            const matchesSearch = searchTerm === '' || 
+                                 title.includes(searchTerm) || 
+                                 description.includes(searchTerm);
+            
+            // 完了状態チェック
+            const matchesCompleted = completedFilter === 'all' ||
+                                   (completedFilter === 'active' && !isCompleted) ||
+                                   (completedFilter === 'completed' && isCompleted);
+            
+            // 優先度チェック
+            const matchesPriority = priorityFilter === 'all' ||
+                                  priority === priorityFilter;
+            
+            // すべての条件を満たす場合のみ表示
+            if (matchesSearch && matchesCompleted && matchesPriority) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        // 結果がない場合のメッセージ表示
+        showNoResultsMessage(visibleCount === 0);
+    }
+    
+    function showNoResultsMessage(show) {
+        let noResults = document.getElementById('no-results-message');
+        if (show && !noResults) {
+            noResults = document.createElement('div');
+            noResults.id = 'no-results-message';
+            noResults.className = 'no-tasks';
+            noResults.textContent = '該当するタスクがありません';
+            noResults.style.margin = '20px';
+            document.querySelector('.task-section').appendChild(noResults);
+        } else if (!show && noResults) {
+            noResults.remove();
+        }
+    }
+    
+    function clearFilters() {
+        document.getElementById('search-input').value = '';
+        document.getElementById('completed-filter').value = 'all';
+        document.getElementById('priority-filter').value = 'all';
+        filterTasks();
+    }
+    
+    // イベントリスナー
+    document.getElementById('search-input').addEventListener('input', filterTasks);
+    document.getElementById('completed-filter').addEventListener('change', filterTasks);
+    document.getElementById('priority-filter').addEventListener('change', filterTasks);
+
+    // 個人/チーム切り替え
+    document.querySelectorAll('.user-control').forEach(control => {
+        control.addEventListener('click', function(e) {
+            if (this.textContent.trim() === 'プロフィール' || this.textContent.trim() === '{% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}') {
+                return; // プロフィールリンクはそのまま遷移
+            }
+            e.preventDefault();
+            document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            
+            const mode = this.textContent.trim();
+            if (mode === 'チーム') {
+                window.location.href = '/team-management';
+            }
+        });
+    });
+
+    // 時間計測機能
+    function toggleTimeTracking(taskId) {
+        const btn = document.getElementById('time-toggle-' + taskId);
+        const btnText = btn.textContent;
+        
+        btn.disabled = true;
+        btn.textContent = '処理中...';
+        
+        fetch(`/tasks/${taskId}/toggle-tracking`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const timeDisplay = document.getElementById('task-time-' + taskId);
+                const isTracking = data.is_tracking;
+                
+                // 表示を更新
+                timeDisplay.textContent = data.formatted_time;
+                
+                if (isTracking) {
+                    // 計測開始
+                    timeDisplay.classList.add('tracking');
+                    btn.classList.add('tracking');
+                    btn.textContent = '⏸️ 停止';
+                    
+                    // リアルタイム更新用のインジケーター追加
+                    if (!timeDisplay.nextElementSibling || !timeDisplay.nextElementSibling.classList.contains('tracking-indicator')) {
+                        const indicator = document.createElement('span');
+                        indicator.className = 'tracking-indicator';
+                        indicator.style.marginLeft = '5px';
+                        timeDisplay.parentElement.appendChild(indicator);
+                    }
+                    
+                    // リアルタイム更新を開始
+                    startTimeUpdate(taskId);
+                } else {
+                    // 計測停止
+                    timeDisplay.classList.remove('tracking');
+                    btn.classList.remove('tracking');
+                    btn.textContent = '▶️ 開始';
+                    
+                    // インジケーター削除
+                    const indicator = timeDisplay.parentElement.querySelector('.tracking-indicator');
+                    if (indicator) indicator.remove();
+                    
+                    // リアルタイム更新を停止
+                    stopTimeUpdate(taskId);
+                }
+            } else {
+                alert(data.message || 'エラーが発生しました');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました');
+        })
+        .finally(() => {
+            btn.disabled = false;
+        });
+    }
+
+    // リアルタイム更新の管理
+    const timeUpdateIntervals = {};
+    
+    function startTimeUpdate(taskId) {
+        // 既に更新中の場合は停止
+        if (timeUpdateIntervals[taskId]) {
+            clearInterval(timeUpdateIntervals[taskId]);
+        }
+        
+        // 1秒ごとに更新
+        timeUpdateIntervals[taskId] = setInterval(() => {
+            fetch(`/tasks/${taskId}/current-time`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const timeDisplay = document.getElementById('task-time-' + taskId);
+                        if (timeDisplay) {
+                            timeDisplay.textContent = data.formatted_time;
+                        }
+                    }
+                })
+                .catch(error => console.error('Time update error:', error));
+        }, 1000);
+    }
+    
+    function stopTimeUpdate(taskId) {
+        if (timeUpdateIntervals[taskId]) {
+            clearInterval(timeUpdateIntervals[taskId]);
+            delete timeUpdateIntervals[taskId];
+        }
+    }
+    
+    // ページ読み込み時に計測中のタスクの更新を開始
+    document.querySelectorAll('[id^="task-time-"]').forEach(element => {
+        if (element.classList.contains('tracking')) {
+            const taskId = element.id.replace('task-time-', '');
+            startTimeUpdate(taskId);
+        }
+    });
+    
+    // ページ離脱時にすべての更新を停止
+    window.addEventListener('beforeunload', () => {
+        Object.keys(timeUpdateIntervals).forEach(taskId => {
+            stopTimeUpdate(taskId);
+        });
+    });
     </script>
 </body>
 </html>

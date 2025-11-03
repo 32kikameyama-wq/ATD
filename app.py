@@ -36,6 +36,20 @@ def create_app(config_class=Config):
     def load_user(user_id):
         return User.query.get(int(user_id))
     
+    # テンプレートコンテキストプロセッサー（全ページ共通データ）
+    @app.context_processor
+    def inject_notification_count():
+        """全てのテンプレートに未読通知数を渡す"""
+        from flask_login import current_user
+        if current_user.is_authenticated:
+            from models import Notification
+            unread_count = Notification.query.filter_by(
+                user_id=current_user.id,
+                read=False
+            ).count()
+            return {'unread_notifications': unread_count}
+        return {'unread_notifications': 0}
+    
     # ブループリント登録
     app.register_blueprint(main)
     app.register_blueprint(auth, url_prefix='/auth')
@@ -44,6 +58,19 @@ def create_app(config_class=Config):
     # データベース作成（初回のみ）
     with app.app_context():
         db.create_all()
+        
+        # 初期管理者ユーザーを作成（存在しない場合のみ）
+        admin_user = User.query.filter_by(username='亀山瑞喜').first()
+        if not admin_user:
+            admin = User(
+                username='亀山瑞喜',
+                email='32ki.kameyama@gmail.com',
+                is_admin=True
+            )
+            admin.set_password('0418')
+            db.session.add(admin)
+            db.session.commit()
+            print('✅ 初期管理者ユーザー「亀山瑞喜」を作成しました')
     
     return app
 

@@ -14,12 +14,17 @@
             <div class="navbar-menu">
                 <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
                 <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
-                <a href="{{ url_for('main.team_management') }}" class="navbar-item">チーム</a>
                 <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
-                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
                 <a href="{{ url_for('main.admin') }}" class="navbar-item active">管理者</a>
+                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
             </div>
             <div class="user-controls">
+                <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                    🔔
+                    {% if unread_notifications > 0 %}
+                        <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
                 <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
                 <a href="#" class="user-control active personal-mode">
                     個人
@@ -28,7 +33,7 @@
                     チーム
                 </a>
                 <a href="{{ url_for('main.profile') }}" class="user-control">
-                    {{ current_user.username }}
+                    {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
                 </a>
             </div>
         </div>
@@ -65,6 +70,39 @@
             </div>
         </div>
 
+        <!-- 新規ユーザー登録 -->
+        <div class="card">
+            <div class="card-header">
+                <h3>新規ユーザー登録</h3>
+            </div>
+            <form id="createUserForm" style="padding: 1rem;">
+                <div class="form-group">
+                    <label for="new-username">ユーザー名 *</label>
+                    <input type="text" id="new-username" name="username" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="new-email">メールアドレス *</label>
+                    <input type="email" id="new-email" name="email" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="new-password">パスワード *</label>
+                    <input type="password" id="new-password" name="password" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="new-password-confirm">パスワード確認 *</label>
+                    <input type="password" id="new-password-confirm" name="password_confirm" class="form-control" required>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="createUserBtn">新規作成</button>
+                    <button type="reset" class="btn btn-secondary">リセット</button>
+                </div>
+            </form>
+        </div>
+
         <!-- ユーザー一覧 -->
         <div class="card">
             <div class="card-header">
@@ -75,7 +113,12 @@
                     <div class="user-card">
                         <div class="user-info">
                             <div class="user-basic">
-                                <h4>{{ user.username }}</h4>
+                                <h4>
+                                    {{ user.username }}
+                                    {% if user.is_admin %}
+                                        <span style="background: #dc3545; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px; margin-left: 10px;">管理者</span>
+                                    {% endif %}
+                                </h4>
                                 <p class="user-email">{{ user.email }}</p>
                                 <p class="user-joined">登録日: {{ user.created_at.strftime('%Y年%m月%d日') }}</p>
                             </div>
@@ -105,6 +148,11 @@
                             </div>
                         </div>
                         <div class="user-actions">
+                            {% if user.is_admin %}
+                                <button class="btn btn-sm btn-warning" onclick="toggleAdmin({{ user.id }}, false)">管理者解除</button>
+                            {% else %}
+                                <button class="btn btn-sm btn-success" onclick="toggleAdmin({{ user.id }}, true)">管理者に設定</button>
+                            {% endif %}
                             <button class="btn btn-sm btn-outline" onclick="viewUserDetails({{ user.id }})">詳細</button>
                             <button class="btn btn-sm btn-outline" onclick="resetUserPassword({{ user.id }})">パスワードリセット</button>
                             <button class="btn btn-sm btn-danger" onclick="deleteUser({{ user.id }})">削除</button>
@@ -127,6 +175,35 @@
     </div>
 
     <script>
+    // 管理者フラグの切り替え
+    function toggleAdmin(userId, isAdmin) {
+        const action = isAdmin ? '管理者に設定' : '管理者を解除';
+        if (confirm(`このユーザーを${action}しますか？`)) {
+            fetch('/admin/toggle-admin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    is_admin: isAdmin
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message || 'エラーが発生しました');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('エラーが発生しました');
+            });
+        }
+    }
+    
     // ユーザー詳細表示
     function viewUserDetails(userId) {
         // TODO: ユーザー詳細モーダルを実装
@@ -154,6 +231,71 @@
         // TODO: チーム作成機能を実装
         alert('チーム作成機能は今後実装予定です。');
     }
+
+    // 新規ユーザー登録
+    document.getElementById('createUserForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('createUserBtn');
+        btn.disabled = true;
+        btn.textContent = '作成中...';
+        
+        const formData = {
+            username: document.getElementById('new-username').value,
+            email: document.getElementById('new-email').value,
+            password: document.getElementById('new-password').value,
+            password_confirm: document.getElementById('new-password-confirm').value
+        };
+        
+        // パスワード確認
+        if (formData.password !== formData.password_confirm) {
+            alert('パスワードが一致しません');
+            btn.disabled = false;
+            btn.textContent = '新規作成';
+            return;
+        }
+        
+        fetch('/admin/create-user', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('ユーザーを作成しました');
+                document.getElementById('createUserForm').reset();
+                location.reload();
+            } else {
+                alert(data.message || 'エラーが発生しました');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.textContent = '新規作成';
+        });
+    });
+
+    // 個人/チーム切り替え
+    document.querySelectorAll('.user-control').forEach(control => {
+        control.addEventListener('click', function(e) {
+            if (this.textContent.trim() === 'プロフィール' || this.textContent.trim() === '{% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}') {
+                return; // プロフィールリンクはそのまま遷移
+            }
+            e.preventDefault();
+            document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            
+            const mode = this.textContent.trim();
+            if (mode === 'チーム') {
+                window.location.href = '/team-management';
+            }
+        });
+    });
     </script>
 </body>
 </html>

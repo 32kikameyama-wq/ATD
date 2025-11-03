@@ -12,23 +12,26 @@
         <div class="navbar-content">
             <div class="navbar-brand">ATD</div>
             <div class="navbar-menu">
-                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
-                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
                 <a href="{{ url_for('main.team_management') }}" class="navbar-item active">チーム</a>
-                <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
-                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
-                <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+                <a href="{{ url_for('main.team_mindmap') }}" class="navbar-item">チーム目標</a>
+                <a href="{{ url_for('main.team_tasks') }}" class="navbar-item">チームタスク</a>
             </div>
             <div class="user-controls">
+                <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                    🔔
+                    {% if unread_notifications > 0 %}
+                        <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
                 <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
-                <a href="#" class="user-control">
+                <a href="{{ url_for('main.dashboard') }}" class="user-control">
                     個人
                 </a>
                 <a href="#" class="user-control active team-mode">
                     チーム
                 </a>
                 <a href="{{ url_for('main.profile') }}" class="user-control">
-                    {{ current_user.username }}
+                    {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
                 </a>
             </div>
         </div>
@@ -109,9 +112,16 @@
                                                 <span class="stat-label">完了率</span>
                                                 <span class="stat-value">{{ "%.1f"|format(team_stats[team.id].completion_rate) }}%</span>
                                             </div>
+                                            <div class="stat-item">
+                                                <span class="stat-label">メンバー数</span>
+                                                <span class="stat-value">{{ team_stats[team.id].member_count }}人</span>
+                                            </div>
                                         </div>
                                         <div class="team-actions">
                                             <a href="{{ url_for('main.team_dashboard', team_id=team.id) }}" class="btn btn-primary">ダッシュボード</a>
+                                            {% if team_stats[team.id].is_admin %}
+                                                <a href="{{ url_for('main.edit_team', team_id=team.id) }}" class="btn btn-secondary">編集</a>
+                                            {% endif %}
                                             <a href="{{ url_for('main.add_team_member', team_id=team.id) }}" class="btn btn-secondary">メンバー追加</a>
                                         </div>
                                     </div>
@@ -134,7 +144,26 @@
                             <h3>・メンバー別パフォーマンス</h3>
                         </div>
                         <div class="member-performance-content">
-                            <!-- メンバー別パフォーマンスがここに表示される -->
+                            {% if user_teams %}
+                                <div style="margin-bottom: 1rem;">
+                                    <label for="team-select" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">チームを選択:</label>
+                                    <select id="team-select" class="form-control">
+                                        <option value="">-- チームを選択 --</option>
+                                        {% for team in user_teams %}
+                                            <option value="{{ team.id }}">{{ team.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div id="members-list">
+                                    <p style="color: #666; font-style: italic; text-align: center; padding: 2rem;">
+                                        上記からチームを選択してください
+                                    </p>
+                                </div>
+                            {% else %}
+                                <p style="color: #666; font-style: italic; text-align: center; padding: 2rem;">
+                                    所属しているチームがありません
+                                </p>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -142,6 +171,53 @@
     </div>
 
     <script>
+        // チーム選択時のメンバー一覧表示
+        document.getElementById('team-select').addEventListener('change', function() {
+            const teamId = this.value;
+            const membersList = document.getElementById('members-list');
+            
+            if (!teamId) {
+                membersList.innerHTML = '<p style="color: #666; font-style: italic; text-align: center; padding: 2rem;">上記からチームを選択してください</p>';
+                return;
+            }
+            
+            // ローディング表示
+            membersList.innerHTML = '<p style="color: #666; font-style: italic; text-align: center; padding: 2rem;">読み込み中...</p>';
+            
+            // メンバー一覧を取得
+            fetch(`/team/${teamId}/members`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.members.length > 0) {
+                        let html = '<div style="display: flex; flex-direction: column; gap: 0.5rem;">';
+                        data.members.forEach(member => {
+                            html += `
+                                <div style="background: white; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-weight: bold; margin-bottom: 0.25rem;">
+                                            <span style="display: inline-block; padding: 0.2rem 0.6rem; background: ${member.role === 'admin' ? '#ff9800' : '#2196F3'}; color: white; border-radius: 12px; font-size: 0.75rem; margin-right: 0.5rem;">${member.role === 'admin' ? '管理者' : 'メンバー'}</span>
+                                            ${member.display_name || member.username}
+                                        </div>
+                                        <div style="font-size: 0.85rem; color: #666;">
+                                            完了率: ${member.completion_rate.toFixed(1)}% | タスク: ${member.total_tasks}件
+                                        </div>
+                                    </div>
+                                    <a href="/member/${member.user_id}/detail?team_id=${teamId}" class="btn btn-sm btn-primary">詳細</a>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                        membersList.innerHTML = html;
+                    } else {
+                        membersList.innerHTML = '<p style="color: #666; font-style: italic; text-align: center; padding: 2rem;">メンバーが見つかりません</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    membersList.innerHTML = '<p style="color: #f44336; text-align: center; padding: 2rem;">エラーが発生しました</p>';
+                });
+        });
+        
         // 個人/チーム切り替え
         document.querySelectorAll('.user-control').forEach(control => {
             control.addEventListener('click', function(e) {
@@ -151,7 +227,13 @@
                 
                 const mode = this.textContent.trim();
                 console.log('切り替え:', mode);
-                // ここで個人/チームの切り替え処理を実装
+                
+                if (mode === '個人') {
+                    // 個人モードに遷移
+                    window.location.href = '/dashboard';
+                } else if (mode === 'チーム') {
+                    // チームモード - 既にチームページにいるので何もしない
+                }
             });
         });
     </script>

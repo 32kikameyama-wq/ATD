@@ -5,6 +5,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>マインドマップ - ATD</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .mindmap-container {
+            background: white;
+            padding: 20px;
+        }
+        .node-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .node-item:hover {
+            background: #f5f5f5;
+        }
+        .node-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #2196F3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .node-icon.expanded {
+            transform: rotate(90deg);
+        }
+        .node-icon::before {
+            content: '▶';
+            color: white;
+            font-size: 10px;
+        }
+        .node-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+        .node-title {
+            flex: 1;
+        }
+        .node-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .add-child-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #2196F3;
+            color: #2196F3;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .add-child-btn:hover {
+            background: #2196F3;
+            color: white;
+        }
+        .child-nodes {
+            margin-left: 30px;
+            border-left: 1px solid #e0e0e0;
+            padding-left: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        .no-children .child-nodes {
+            border: none;
+            padding: 0;
+            margin: 0;
+        }
+    </style>
 </head>
 <body>
     <!-- 上部ナビゲーションバー -->
@@ -14,11 +93,19 @@
             <div class="navbar-menu">
                 <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
                 <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
-                <a href="{{ url_for('main.team_management') }}" class="navbar-item">チーム</a>
                 <a href="{{ url_for('main.mindmap') }}" class="navbar-item active">マインドマップ</a>
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+                {% endif %}
                 <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
             </div>
             <div class="user-controls">
+                <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                    🔔
+                    {% if unread_notifications > 0 %}
+                        <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
                 <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
                 <a href="#" class="user-control active personal-mode">
                     個人
@@ -27,41 +114,378 @@
                     チーム
                 </a>
                 <a href="{{ url_for('main.profile') }}" class="user-control">
-                    {{ current_user.username }}
+                    {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
                 </a>
             </div>
         </div>
     </nav>
 
     <div class="container">
-
         <div class="page-header">
             <h1>マインドマップ</h1>
         </div>
 
-        <div class="card">
-                <div class="mindmap-canvas">
-                    <div class="mindmap-placeholder">
-                        <div class="placeholder-icon">🧠</div>
-                        <h3>マインドマップ</h3>
-                        <p>アイデアを視覚的に整理しましょう</p>
-                        <button class="btn btn-primary">新しいマップを作成</button>
-                    </div>
+
+        <!-- マインドマップ -->
+        <div class="card mindmap-container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <select id="mindmap-selector" class="form-control" style="min-width: 200px;">
+                        <option value="">マップを選択...</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm" id="create-btn">新しいマップを作成</button>
                 </div>
+                <span style="font-weight: bold; color: var(--secondary-color);">
+                    達成度: <span id="progress-value">0</span>%
+                </span>
+            </div>
+            <div id="mindmap-list"></div>
+        </div>
+    </div>
+
+    <!-- ノード編集モーダル -->
+    <div id="node-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: var(--spacing-lg); border: 2px solid var(--border-color); max-width: 500px; width: 90%;">
+            <h3 id="modal-title">ノードを編集</h3>
+            <div class="form-group">
+                <label for="node-title">タイトル</label>
+                <input type="text" id="node-title" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="node-description">説明</label>
+                <textarea id="node-description" class="form-control" rows="4"></textarea>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="node-is-task">
+                    タスクとして設定
+                </label>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" id="save-node-btn">保存</button>
+                <button class="btn btn-secondary" id="cancel-node-btn">キャンセル</button>
+                <button class="btn btn-danger" id="delete-node-btn" style="margin-left: auto;">削除</button>
+            </div>
         </div>
     </div>
 
     <script>
+        let editingNodeId = null;
+        let nodes = [];
+        let mindmapId = null;
+
+        // マインドマップ一覧を読み込み
+        async function loadMindmapList() {
+            try {
+                const response = await fetch('/personal/mindmaps');
+                const data = await response.json();
+                const mindmaps = data.mindmaps || [];
+                
+                const selector = document.getElementById('mindmap-selector');
+                selector.innerHTML = '<option value="">マップを選択...</option>';
+                
+                mindmaps.forEach(mindmap => {
+                    const option = document.createElement('option');
+                    option.value = mindmap.id;
+                    const dateStr = mindmap.date ? ` (${mindmap.date})` : '';
+                    option.textContent = mindmap.name + dateStr;
+                    if (mindmap.id === mindmapId) {
+                        option.selected = true;
+                    }
+                    selector.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading mindmap list:', error);
+            }
+        }
+
+        // 個人マインドマップの読み込み
+        async function loadPersonalMindmap(mid = null) {
+            try {
+                const url = mid ? `/personal/mindmap/nodes?mindmap_id=${mid}` : '/personal/mindmap/nodes';
+                const response = await fetch(url);
+                const data = await response.json();
+                nodes = data.nodes || [];
+                const oldMindmapId = mindmapId;
+                mindmapId = data.mindmap_id || null;
+                
+                // マインドマップIDが変化した場合は一覧を再読み込み
+                if (oldMindmapId !== mindmapId) {
+                    await loadMindmapList();
+                }
+                
+                renderMindmap();
+                updateProgress(mid);
+            } catch (error) {
+                console.error('Error loading personal mindmap:', error);
+            }
+        }
+
+
+        // マインドマップの描画
+        function renderMindmap() {
+            const container = document.getElementById('mindmap-list');
+            container.innerHTML = '';
+            
+            if (nodes.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">ノードがありません</p>';
+                return;
+            }
+
+            // ルートノードのみを描画
+            const rootNodes = nodes.filter(node => !node.parent_id);
+            rootNodes.forEach(node => renderNode(container, node, 0));
+        }
+
+        // ノードの描画
+        function renderNode(container, node, level) {
+            const hasChildren = nodes.some(n => n.parent_id === node.id);
+            
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = 'node-item' + (hasChildren ? '' : ' no-children');
+            nodeDiv.style.paddingLeft = level * 20 + 'px';
+            
+            const nodeIcon = document.createElement('div');
+            nodeIcon.className = 'node-icon' + (hasChildren ? '' : ' hidden');
+            nodeIcon.onclick = () => toggleNode(node.id);
+            
+            const nodeContent = document.createElement('div');
+            nodeContent.className = 'node-content';
+            nodeContent.onclick = () => showEditModal(node);
+            
+            const nodeTitle = document.createElement('span');
+            nodeTitle.className = 'node-title';
+            nodeTitle.textContent = node.title || '無題';
+            
+            const addBtn = document.createElement('button');
+            addBtn.className = 'add-child-btn';
+            addBtn.innerHTML = '+';
+            addBtn.onclick = (e) => {
+                e.stopPropagation();
+                showAddNodeModal(node.id);
+            };
+            addBtn.title = '子ノードを追加';
+            
+            nodeContent.appendChild(nodeTitle);
+            
+            const actions = document.createElement('div');
+            actions.className = 'node-actions';
+            actions.appendChild(addBtn);
+            
+            nodeDiv.appendChild(nodeIcon);
+            nodeDiv.appendChild(nodeContent);
+            nodeDiv.appendChild(actions);
+            container.appendChild(nodeDiv);
+            
+            // 子ノードを描画
+            const children = nodes.filter(n => n.parent_id === node.id);
+            if (children.length > 0) {
+                const childrenContainer = document.createElement('div');
+                childrenContainer.className = 'child-nodes';
+                childrenContainer.id = `children-${node.id}`;
+                container.appendChild(childrenContainer);
+                
+                children.forEach(child => renderNode(childrenContainer, child, level + 1));
+            }
+        }
+
+        // ノードの展開/折りたたみ
+        function toggleNode(nodeId) {
+            const icon = event.target.closest('.node-icon');
+            const childrenContainer = document.getElementById(`children-${nodeId}`);
+            
+            if (childrenContainer) {
+                if (childrenContainer.style.display === 'none') {
+                    childrenContainer.style.display = 'block';
+                    icon.classList.add('expanded');
+                } else {
+                    childrenContainer.style.display = 'none';
+                    icon.classList.remove('expanded');
+                }
+            }
+        }
+
+        // モーダル表示
+        function showEditModal(node) {
+            editingNodeId = node.id;
+            document.getElementById('modal-title').textContent = 'ノードを編集';
+            document.getElementById('node-title').value = node.title;
+            document.getElementById('node-description').value = node.description || '';
+            document.getElementById('node-is-task').checked = node.is_task || false;
+            document.getElementById('delete-node-btn').style.display = 'inline-block';
+            document.getElementById('node-modal').style.display = 'block';
+        }
+
+        function showAddNodeModal(parentId) {
+            editingNodeId = null;
+            document.getElementById('modal-title').textContent = '子ノードを追加';
+            document.getElementById('node-title').value = '';
+            document.getElementById('node-description').value = '';
+            document.getElementById('node-is-task').checked = false;
+            document.getElementById('delete-node-btn').style.display = 'none';
+            
+            // 親ノードIDを保持
+            document.getElementById('node-modal').setAttribute('data-parent-id', parentId || '');
+            document.getElementById('node-modal').style.display = 'block';
+        }
+
+        // モーダル閉じる
+        document.getElementById('cancel-node-btn').addEventListener('click', function() {
+            document.getElementById('node-modal').style.display = 'none';
+            editingNodeId = null;
+        });
+
+        // ノード保存
+        document.getElementById('save-node-btn').addEventListener('click', async function() {
+            const title = document.getElementById('node-title').value;
+            if (!title) {
+                alert('タイトルを入力してください');
+                return;
+            }
+
+            try {
+                let response;
+                if (editingNodeId) {
+                    // 更新
+                    response = await fetch(`/personal/mindmap/nodes/${editingNodeId}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ 
+                            title, 
+                            description: document.getElementById('node-description').value,
+                            is_task: document.getElementById('node-is-task').checked
+                        })
+                    });
+                } else {
+                    // 新規作成
+                    const parentId = document.getElementById('node-modal').getAttribute('data-parent-id');
+                    const url = mindmapId ? `/personal/mindmap/nodes?mindmap_id=${mindmapId}` : '/personal/mindmap/nodes';
+                    response = await fetch(url, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            title,
+                            description: document.getElementById('node-description').value,
+                            position_x: 0,
+                            position_y: 0,
+                            is_task: document.getElementById('node-is-task').checked,
+                            parent_id: parentId || null
+                        })
+                    });
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('node-modal').style.display = 'none';
+                    editingNodeId = null;
+                    await loadPersonalMindmap();
+                }
+            } catch (error) {
+                console.error('Error saving node:', error);
+                alert('ノードの保存に失敗しました');
+            }
+        });
+
+        // ノード削除
+        document.getElementById('delete-node-btn').addEventListener('click', async function() {
+            if (!confirm('ノードを削除しますか？')) return;
+
+            try {
+                const response = await fetch(`/personal/mindmap/nodes/${editingNodeId}`, { method: 'DELETE' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('node-modal').style.display = 'none';
+                    editingNodeId = null;
+                    await loadPersonalMindmap();
+                }
+            } catch (error) {
+                console.error('Error deleting node:', error);
+                alert('ノードの削除に失敗しました');
+            }
+        });
+
+        // 進捗更新
+        async function updateProgress(mid = null) {
+            try {
+                const url = mid ? `/personal/mindmap/progress?mindmap_id=${mid}` : '/personal/mindmap/progress';
+                const response = await fetch(url);
+                const data = await response.json();
+                document.getElementById('progress-value').textContent = data.progress || 0;
+            } catch (error) {
+                console.error('Error updating progress:', error);
+            }
+        }
+
+        // マインドマップ選択変更
+        document.getElementById('mindmap-selector').addEventListener('change', function() {
+            const selectedId = this.value;
+            if (selectedId) {
+                loadPersonalMindmap(parseInt(selectedId));
+            }
+        });
+
+        // 新規マップ作成
+        document.getElementById('create-btn').addEventListener('click', async function() {
+            const name = prompt('マインドマップの名前を入力してください:', '新しいマインドマップ');
+            if (!name) return;
+
+            try {
+                const response = await fetch('/personal/mindmap/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name, description: '' })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    await addRootNode(data.mindmap_id);
+                    await loadPersonalMindmap(data.mindmap_id);
+                }
+            } catch (error) {
+                console.error('Error creating mindmap:', error);
+                alert('マインドマップの作成に失敗しました');
+            }
+        });
+
+        // 中心ノード追加
+        async function addRootNode(mid) {
+            const mapId = mid || mindmapId;
+            if (!mapId) return;
+            await fetch(`/personal/mindmap/nodes?mindmap_id=${mapId}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    title: '中心',
+                    description: '',
+                    position_x: 0,
+                    position_y: 0,
+                    is_task: false
+                })
+            });
+        }
+
+        // 初期化
+        async function init() {
+            await loadMindmapList();
+            await loadPersonalMindmap();
+        }
+        init();
+
         // 個人/チーム切り替え
         document.querySelectorAll('.user-control').forEach(control => {
             control.addEventListener('click', function(e) {
+                if (this.textContent.trim() === 'プロフィール' || this.textContent.trim() === '{% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}') {
+                    return; // プロフィールリンクはそのまま遷移
+                }
                 e.preventDefault();
                 document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
                 this.classList.add('active');
                 
                 const mode = this.textContent.trim();
-                console.log('切り替え:', mode);
-                // ここで個人/チームの切り替え処理を実装
+                if (mode === 'チーム') {
+                    window.location.href = '/team-management';
+                }
             });
         });
     </script>

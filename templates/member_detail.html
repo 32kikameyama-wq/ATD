@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>メンバー詳細 - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .member-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+        .member-header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+        .member-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin: 0.5rem 0;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .task-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .task-section h2 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+        .task-item {
+            background: #f5f5f5;
+            border-left: 4px solid #667eea;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+        }
+        .task-item.completed {
+            opacity: 0.6;
+            border-left-color: #4CAF50;
+        }
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .task-title {
+            font-weight: bold;
+            color: #333;
+        }
+        .task-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        .status-completed {
+            background: #4CAF50;
+            color: white;
+        }
+        .status-pending {
+            background: #ff9800;
+            color: white;
+        }
+        .priority-badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+        .priority-high {
+            background: #f44336;
+            color: white;
+        }
+        .priority-medium {
+            background: #ff9800;
+            color: white;
+        }
+        .priority-low {
+            background: #4CAF50;
+            color: white;
+        }
+        .team-task {
+            border-left-color: #2196F3 !important;
+            background: #e3f2fd;
+        }
+        .back-button {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- 上部ナビゲーションバー -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">ATD</div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                <a href="{{ url_for('main.team_management') }}" class="navbar-item active">チーム管理</a>
+                <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+                {% endif %}
+                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
+            </div>
+            <div class="user-controls">
+                <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                    🔔
+                    {% if unread_notifications > 0 %}
+                        <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                <a href="#" class="user-control active personal-mode">個人</a>
+                <a href="#" class="user-control">チーム</a>
+                <a href="{{ url_for('main.profile') }}" class="user-control">
+                    {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <a href="{{ url_for('main.team_management') }}" class="btn btn-secondary back-button">← チーム管理に戻る</a>
+        
+        <div class="member-header">
+            <h1>
+                {% if target_user.display_name %}
+                    {{ target_user.display_name }}
+                {% else %}
+                    {{ target_user.username }}
+                {% endif %}
+                さんの詳細
+            </h1>
+            {% if team_name %}
+                <p style="margin: 0.5rem 0 0 0; font-size: 1.1rem; opacity: 0.9;">チーム: {{ team_name }}</p>
+            {% endif %}
+        </div>
+
+        <!-- 統計情報 -->
+        <div class="member-stats">
+            <div class="stat-card">
+                <div class="stat-label">総タスク数</div>
+                <div class="stat-value">{{ total_tasks }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">完了タスク</div>
+                <div class="stat-value">{{ completed_tasks }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">完了率</div>
+                <div class="stat-value">{{ "%.1f"|format(completion_rate) }}%</div>
+            </div>
+        </div>
+
+        <!-- チームタスク -->
+        {% if team_tasks %}
+            <div class="task-section">
+                <h2>チームタスク ({{ team_tasks|length }}件)</h2>
+                {% for task in team_tasks %}
+                    <div class="task-item {% if task.completed %}completed{% endif %} team-task">
+                        <div class="task-header">
+                            <div class="task-title">{{ task.title }}</div>
+                            <span class="task-status {% if task.completed %}status-completed{% else %}status-pending{% endif %}">
+                                {% if task.completed %}完了{% else %}未完了{% endif %}
+                            </span>
+                        </div>
+                        {% if task.description %}
+                            <div style="color: #666; font-size: 0.9rem; margin: 0.5rem 0;">{{ task.description }}</div>
+                        {% endif %}
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <span class="priority-badge priority-{{ task.priority }}">
+                                {% if task.priority == 'high' %}高{% elif task.priority == 'medium' %}中{% else %}低{% endif %}
+                            </span>
+                            {% if task.end_date %}
+                                <span style="color: #666; font-size: 0.85rem;">期日: {{ task.end_date.strftime('%Y/%m/%d') }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- 本日のタスク -->
+        {% if today_tasks %}
+            <div class="task-section">
+                <h2>本日のタスク ({{ today_tasks|length }}件)</h2>
+                {% for task in today_tasks %}
+                    <div class="task-item {% if task.completed %}completed{% endif %} {% if task.title.startswith('【') %}team-task{% endif %}">
+                        <div class="task-header">
+                            <div class="task-title">{{ task.title }}</div>
+                            <span class="task-status {% if task.completed %}status-completed{% else %}status-pending{% endif %}">
+                                {% if task.completed %}完了{% else %}未完了{% endif %}
+                            </span>
+                        </div>
+                        {% if task.description %}
+                            <div style="color: #666; font-size: 0.9rem; margin: 0.5rem 0;">{{ task.description }}</div>
+                        {% endif %}
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <span class="priority-badge priority-{{ task.priority }}">
+                                {% if task.priority == 'high' %}高{% elif task.priority == 'medium' %}中{% else %}低{% endif %}
+                            </span>
+                            {% if task.end_date %}
+                                <span style="color: #666; font-size: 0.85rem;">期日: {{ task.end_date.strftime('%Y/%m/%d') }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- 明日のタスク -->
+        {% if tomorrow_tasks %}
+            <div class="task-section">
+                <h2>明日のタスク ({{ tomorrow_tasks|length }}件)</h2>
+                {% for task in tomorrow_tasks %}
+                    <div class="task-item {% if task.completed %}completed{% endif %} {% if task.title.startswith('【') %}team-task{% endif %}">
+                        <div class="task-header">
+                            <div class="task-title">{{ task.title }}</div>
+                            <span class="task-status {% if task.completed %}status-completed{% else %}status-pending{% endif %}">
+                                {% if task.completed %}完了{% else %}未完了{% endif %}
+                            </span>
+                        </div>
+                        {% if task.description %}
+                            <div style="color: #666; font-size: 0.9rem; margin: 0.5rem 0;">{{ task.description }}</div>
+                        {% endif %}
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <span class="priority-badge priority-{{ task.priority }}">
+                                {% if task.priority == 'high' %}高{% elif task.priority == 'medium' %}中{% else %}低{% endif %}
+                            </span>
+                            {% if task.end_date %}
+                                <span style="color: #666; font-size: 0.85rem;">期日: {{ task.end_date.strftime('%Y/%m/%d') }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- その他のタスク -->
+        {% if other_tasks %}
+            <div class="task-section">
+                <h2>その他のタスク ({{ other_tasks|length }}件)</h2>
+                {% for task in other_tasks %}
+                    <div class="task-item {% if task.completed %}completed{% endif %} {% if task.title.startswith('【') %}team-task{% endif %}">
+                        <div class="task-header">
+                            <div class="task-title">{{ task.title }}</div>
+                            <span class="task-status {% if task.completed %}status-completed{% else %}status-pending{% endif %}">
+                                {% if task.completed %}完了{% else %}未完了{% endif %}
+                            </span>
+                        </div>
+                        {% if task.description %}
+                            <div style="color: #666; font-size: 0.9rem; margin: 0.5rem 0;">{{ task.description }}</div>
+                        {% endif %}
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <span class="priority-badge priority-{{ task.priority }}">
+                                {% if task.priority == 'high' %}高{% elif task.priority == 'medium' %}中{% else %}低{% endif %}
+                            </span>
+                            {% if task.end_date %}
+                                <span style="color: #666; font-size: 0.85rem;">期日: {{ task.end_date.strftime('%Y/%m/%d') }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // 個人/チーム切り替え
+        document.querySelectorAll('.user-control').forEach(control => {
+            control.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                
+                const mode = this.textContent.trim();
+                console.log('切り替え:', mode);
+                
+                if (mode === '個人') {
+                    window.location.href = '/dashboard';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+

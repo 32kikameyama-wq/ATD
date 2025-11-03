@@ -5,155 +5,157 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>タスク編集 - ATD</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* 日付入力フィールド全体をクリック可能に */
+        input[type="date"] {
+            position: relative;
+            cursor: pointer;
+        }
+        
+        /* カレンダーアイコンを全範囲に広げる */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            cursor: pointer;
+            opacity: 0;
+        }
+        
+        /* form-group内のdate入力フィールドのスタイル */
+        .form-group {
+            position: relative;
+        }
+    </style>
 </head>
 <body>
-    <div class="app-layout">
-        <!-- 左サイドバー -->
-        <aside class="sidebar">
-            <nav class="sidebar-nav">
-                <a href="{{ url_for('main.dashboard') }}" class="sidebar-item">
-                    <span class="sidebar-icon">●</span>
-                </a>
-                <a href="{{ url_for('tasks.list_tasks') }}" class="sidebar-item active">
-                    <span class="sidebar-icon">📋</span>
-                </a>
-                <a href="{{ url_for('main.personal_tasks') }}" class="sidebar-item">
-                    <span class="sidebar-icon">👤</span>
-                </a>
-                <a href="{{ url_for('main.team_management') }}" class="sidebar-item">
-                    <span class="sidebar-icon">👥</span>
-                </a>
-                <a href="{{ url_for('main.mindmap') }}" class="sidebar-item">
-                    <span class="sidebar-icon">🧠</span>
-                </a>
-                <a href="{{ url_for('main.profile') }}" class="sidebar-item">
-                    <span class="sidebar-icon">⚙️</span>
-                </a>
-            </nav>
-        </aside>
-
-        <!-- メインコンテンツエリア -->
-        <div class="main-layout">
-            <!-- ナビゲーションバー -->
-            <nav class="navbar">
-            <div class="navbar-content">
-                <div class="navbar-left">
-                    <div class="navbar-brand">ATD</div>
-                    <div class="navbar-menu">
-                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">
-                            ダッシュボード
-                        </a>
-                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item active">
-                            タスク管理
-                        </a>
-                        <a href="{{ url_for('main.team_management') }}" class="navbar-item">
-                            チーム管理
-                        </a>
-                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">
-                            マインドマップ
-                        </a>
-                        <a href="{{ url_for('main.profile') }}" class="navbar-item">
-                            プロフィール
-                        </a>
-                    </div>
-                </div>
-                <div class="navbar-right">
-                    <div class="user-controls">
-                        <a href="#" class="user-control active">
-                            個人
-                        </a>
-                        <a href="#" class="user-control">
-                            チーム
-                        </a>
-                        <a href="{{ url_for('main.profile') }}" class="user-control">
-                            {{ current_user.username }}
-                        </a>
-                    </div>
-                    <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">ログアウト</a>
-                </div>
+    <!-- 上部ナビゲーションバー -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">ATD</div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item active">タスク管理</a>
+                <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+                {% endif %}
+                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
             </div>
-        </nav>
-
-        <div class="container">
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h1>タスク編集</h1>
-                    <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-secondary">タスク一覧に戻る</a>
-                </div>
-                
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ category }}">
-                                {{ message }}
-                            </div>
-                        {% endfor %}
+            <div class="user-controls">
+                <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                    🔔
+                    {% if unread_notifications > 0 %}
+                        <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
                     {% endif %}
-                {% endwith %}
-                
-                <form method="POST" id="taskForm">
-                    <div class="form-group">
-                        <label for="title">タイトル *</label>
-                        <input type="text" id="title" name="title" class="form-control" value="{{ task.title }}" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="description">説明</label>
-                        <textarea id="description" name="description" class="form-control" rows="4">{{ task.description }}</textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="start_date">開始期間</label>
-                        <input type="date" id="start_date" name="start_date" class="form-control" value="{{ task.start_date if task.start_date else '' }}">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="end_date">終了期間</label>
-                        <input type="date" id="end_date" name="end_date" class="form-control" value="{{ task.end_date if task.end_date else '' }}">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="due_date">期限 *</label>
-                        <input type="date" id="due_date" name="due_date" class="form-control" value="{{ task.due_date if task.due_date else '' }}" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="category">分類 *</label>
-                        <select id="category" name="category" class="form-control" required>
-                            <option value="">選択してください</option>
-                            <option value="today" {% if task.category == 'today' %}selected{% endif %}>本日のタスク</option>
-                            <option value="tomorrow" {% if task.category == 'tomorrow' %}selected{% endif %}>明日のタスク</option>
-                            <option value="other" {% if task.category == 'other' %}selected{% endif %}>その他のタスク</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="priority">優先度 *</label>
-                        <select id="priority" name="priority" class="form-control" required>
-                            <option value="">選択してください</option>
-                            <option value="high" {% if task.priority == 'high' %}selected{% endif %}>高</option>
-                            <option value="medium" {% if task.priority == 'medium' %}selected{% endif %}>中</option>
-                            <option value="low" {% if task.priority == 'low' %}selected{% endif %}>低</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary" id="submitBtn">更新</button>
-                        <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-secondary">キャンセル</a>
-                    </div>
-                </form>
-                
-                <script>
-                // 重複送信防止
-                document.getElementById('taskForm').addEventListener('submit', function(e) {
-                    const submitBtn = document.getElementById('submitBtn');
-                    submitBtn.disabled = true;
-                    submitBtn.textContent = '更新中...';
-                });
-                </script>
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                <a href="#" class="user-control active personal-mode">
+                    個人
+                </a>
+                <a href="#" class="user-control">
+                    チーム
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="user-control">
+                    {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
+                </a>
             </div>
         </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h1>タスク編集</h1>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-secondary">タスク一覧に戻る</a>
+            </div>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" id="taskForm">
+                <div class="form-group">
+                    <label for="title">タイトル *</label>
+                    <input type="text" id="title" name="title" class="form-control" value="{{ task.title }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">説明</label>
+                    <textarea id="description" name="description" class="form-control" rows="4">{{ task.description }}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="start_date">開始期間 *</label>
+                    <input type="date" id="start_date" name="start_date" class="form-control" value="{{ task.start_date if task.start_date else '' }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="end_date">終了期間 *</label>
+                    <input type="date" id="end_date" name="end_date" class="form-control" value="{{ task.end_date if task.end_date else '' }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="category">分類 *</label>
+                    <select id="category" name="category" class="form-control" required>
+                        <option value="">選択してください</option>
+                        <option value="today" {% if task.category == 'today' %}selected{% endif %}>本日のタスク</option>
+                        <option value="tomorrow" {% if task.category == 'tomorrow' %}selected{% endif %}>明日のタスク</option>
+                        <option value="other" {% if task.category == 'other' %}selected{% endif %}>その他のタスク</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="priority">優先度 *</label>
+                    <select id="priority" name="priority" class="form-control" required>
+                        <option value="">選択してください</option>
+                        <option value="high" {% if task.priority == 'high' %}selected{% endif %}>高</option>
+                        <option value="medium" {% if task.priority == 'medium' %}selected{% endif %}>中</option>
+                        <option value="low" {% if task.priority == 'low' %}selected{% endif %}>低</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">更新</button>
+                    <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-secondary">キャンセル</a>
+                </div>
+            </form>
         </div>
     </div>
+
+    <script>
+        // 重複送信防止
+        document.getElementById('taskForm').addEventListener('submit', function(e) {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '更新中...';
+        });
+
+        // 個人/チーム切り替え
+        document.querySelectorAll('.user-control').forEach(control => {
+            control.addEventListener('click', function(e) {
+                if (this.textContent.trim() === 'プロフィール' || this.textContent.trim() === '{% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}') {
+                    return;
+                }
+                e.preventDefault();
+                document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                
+                const mode = this.textContent.trim();
+                if (mode === 'チーム') {
+                    window.location.href = '/team-management';
+                }
+            });
+        });
+    </script>
 </body>
 </html>

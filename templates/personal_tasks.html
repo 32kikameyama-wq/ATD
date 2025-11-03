@@ -33,6 +33,12 @@
                 </div>
                 <div class="navbar-right">
                     <div class="user-controls">
+                        <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                            🔔
+                            {% if unread_notifications > 0 %}
+                                <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
+                            {% endif %}
+                        </a>
                         <a href="#" class="user-control active personal-mode">
                             個人
                         </a>
@@ -40,7 +46,7 @@
                             チーム
                         </a>
                         <a href="{{ url_for('main.profile') }}" class="user-control">
-                            {{ current_user.username }}
+                            {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
                         </a>
                     </div>
                     <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">+ タスク追加</a>

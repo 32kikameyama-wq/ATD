@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>プロフィール - ATD</title>
+    <title>タスクテンプレート - ATD</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -18,7 +18,7 @@
                 {% if current_user.is_admin %}
                     <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
                 {% endif %}
-                <a href="{{ url_for('main.profile') }}" class="navbar-item active">プロフィール</a>
+                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
             </div>
             <div class="user-controls">
                 <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
@@ -43,7 +43,8 @@
 
     <div class="container">
         <div class="page-header">
-            <h1>プロフィール管理</h1>
+            <h1>タスクテンプレート</h1>
+            <a href="{{ url_for('main.create_task_template') }}" class="btn btn-primary">+ 新しいテンプレート</a>
         </div>
 
         <!-- フラッシュメッセージ -->
@@ -57,62 +58,55 @@
             {% endif %}
         {% endwith %}
 
-        <div class="dashboard-grid">
-                <!-- プロフィール編集 -->
-                <div class="card profile-form-card">
-                    <div class="card-header">
-                        <h3>・プロフィール編集</h3>
-                    </div>
-                    <form class="profile-form" method="POST">
-                        <div class="form-group">
-                            <label for="display_name">表示名</label>
-                            <input type="text" id="display_name" name="display_name" class="form-control" value="{% if current_user.display_name %}{{ current_user.display_name }}{% endif %}" placeholder="表示したい名前を入力">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="bio">自己紹介</label>
-                            <textarea id="bio" name="bio" class="form-control" rows="4" placeholder="自己紹介を入力してください">{% if current_user.bio %}{{ current_user.bio }}{% endif %}</textarea>
-                        </div>
-                        
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">保存</button>
-                            <button type="reset" class="btn btn-secondary">リセット</button>
-                        </div>
-                    </form>
-                </div>
+        <div class="card">
+            <div class="card-header">
+                <h3>固定タスク・繰り返しタスク</h3>
+                <p style="color: #666; font-size: 0.9rem; margin: 0.5rem 0 0 0;">
+                    よく使うタスクをテンプレートとして登録して、簡単に作成できます
+                </p>
+            </div>
 
-                <!-- プロフィール情報 -->
-                <div class="card profile-info-card">
-                    <div class="card-header">
-                        <h3>・プロフィール情報</h3>
-                    </div>
-                    <div class="profile-info">
-                        <div class="profile-details">
-                            <h4>{% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}</h4>
-                            <p>{{ current_user.username }}</p>
-                            <p>{{ current_user.email }}</p>
-                            {% if current_user.bio %}
-                                <p style="margin-top: 1rem; color: #666;">{{ current_user.bio }}</p>
+            {% if templates %}
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; padding: 1rem;">
+                    {% for template in templates %}
+                        <div class="card" style="border: 2px solid #e0e0e0;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                <h4 style="margin: 0;">{{ template.title }}</h4>
+                                <span class="badge badge-{{ template.priority }}">{{ template.priority }}</span>
+                            </div>
+                            
+                            {% if template.description %}
+                            <p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem;">{{ template.description }}</p>
                             {% endif %}
-                            <p class="join-date">登録日: {{ current_user.created_at.strftime('%Y年%m月%d日') }}</p>
+                            
+                            <div style="margin-bottom: 1rem; font-size: 0.85rem; color: #999;">
+                                <div>分類: 
+                                    {% if template.category == 'today' %}今日
+                                    {% elif template.category == 'tomorrow' %}明日
+                                    {% else %}その他{% endif %}
+                                </div>
+                                <div>繰り返し: 
+                                    {% if template.repeat_type == 'daily' %}毎日
+                                    {% elif template.repeat_type == 'weekly' %}毎週
+                                    {% elif template.repeat_type == 'monthly' %}毎月
+                                    {% else %}なし{% endif %}
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; gap: 0.5rem;">
+                                <form action="{{ url_for('main.generate_task_from_template', template_id=template.id) }}" method="POST" style="flex: 1;">
+                                    <button type="submit" class="btn btn-primary" style="width: 100%;">今日のタスクを作成</button>
+                                </form>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="profile-stats">
-                        <div class="stat-item">
-                            <div class="stat-value">{{ completed_count }}</div>
-                            <div class="stat-label">完了タスク</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">{{ in_progress_count }}</div>
-                            <div class="stat-label">進行中</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">{{ completion_rate }}%</div>
-                            <div class="stat-label">完了率</div>
-                        </div>
-                    </div>
+                    {% endfor %}
                 </div>
+            {% else %}
+                <div style="text-align: center; padding: 3rem; color: #999;">
+                    <p>まだテンプレートがありません</p>
+                    <a href="{{ url_for('main.create_task_template') }}" class="btn btn-primary">最初のテンプレートを作成</a>
+                </div>
+            {% endif %}
         </div>
     </div>
 
@@ -121,7 +115,7 @@
         document.querySelectorAll('.user-control').forEach(control => {
             control.addEventListener('click', function(e) {
                 if (this.textContent.trim() === 'プロフィール' || this.textContent.trim() === '{% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}') {
-                    return; // プロフィールリンクはそのまま遷移
+                    return;
                 }
                 e.preventDefault();
                 document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
@@ -136,3 +130,4 @@
     </script>
 </body>
 </html>
+

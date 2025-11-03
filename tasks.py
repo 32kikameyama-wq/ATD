@@ -9,15 +9,18 @@ tasks = Blueprint('tasks', __name__)
 @login_required
 def list_tasks():
     """タスク一覧"""
-    # 分類別にタスクを取得
-    today_tasks = Task.query.filter_by(user_id=current_user.id, category='today').order_by(Task.order_index).all()
-    tomorrow_tasks = Task.query.filter_by(user_id=current_user.id, category='tomorrow').order_by(Task.order_index).all()
-    other_tasks = Task.query.filter_by(user_id=current_user.id, category='other').order_by(Task.order_index).all()
+    from datetime import date
+    
+    # 分類別にタスクを取得（アーカイブ済みは除外）
+    today_tasks = Task.query.filter_by(user_id=current_user.id, category='today', archived=False).order_by(Task.order_index).all()
+    tomorrow_tasks = Task.query.filter_by(user_id=current_user.id, category='tomorrow', archived=False).order_by(Task.order_index).all()
+    other_tasks = Task.query.filter_by(user_id=current_user.id, category='other', archived=False).order_by(Task.order_index).all()
     
     return render_template('tasks/list.html', 
                          today_tasks=today_tasks,
                          tomorrow_tasks=tomorrow_tasks,
-                         other_tasks=other_tasks)
+                         other_tasks=other_tasks,
+                         current_date=date.today())
 
 @tasks.route('/tasks/create', methods=['GET', 'POST'])
 @login_required
@@ -26,26 +29,17 @@ def create_task():
     if request.method == 'POST':
         title = request.form.get('title')
         description = request.form.get('description')
-        due_date_str = request.form.get('due_date')
         start_date_str = request.form.get('start_date')
         end_date_str = request.form.get('end_date')
         priority = request.form.get('priority')
         category = request.form.get('category')
         
         # バリデーション
-        if not title or not due_date_str or not priority or not category:
+        if not title or not start_date_str or not end_date_str or not priority or not category:
             flash('必須項目を入力してください', 'error')
             return render_template('tasks/create.html')
         
         # 日付の変換
-        due_date = None
-        if due_date_str:
-            try:
-                due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
-            except ValueError:
-                flash('有効な日付を入力してください', 'error')
-                return render_template('tasks/create.html')
-        
         start_date = None
         if start_date_str:
             try:
@@ -62,15 +56,21 @@ def create_task():
                 flash('有効な終了日を入力してください', 'error')
                 return render_template('tasks/create.html')
         
-        # 同じタイトルと期限のタスクが既に存在するかチェック
+        # 開始日が終了日より後の場合はエラー
+        if start_date and end_date and start_date > end_date:
+            flash('開始日は終了日より前でなければなりません', 'error')
+            return render_template('tasks/create.html')
+        
+        # 同じタイトルのタスクが既に存在するかチェック
         existing_task = Task.query.filter_by(
             title=title,
-            due_date=due_date,
+            start_date=start_date,
+            end_date=end_date,
             user_id=current_user.id
         ).first()
         
         if existing_task:
-            flash('同じタイトルと期限のタスクが既に存在します', 'error')
+            flash('同じタイトルと期間のタスクが既に存在します', 'error')
             return render_template('tasks/create.html')
         
         # 次のorder_indexを取得
@@ -83,7 +83,6 @@ def create_task():
         new_task = Task(
             title=title,
             description=description,
-            due_date=due_date,
             start_date=start_date,
             end_date=end_date,
             priority=priority,
@@ -118,27 +117,17 @@ def edit_task(task_id):
     if request.method == 'POST':
         task.title = request.form.get('title')
         task.description = request.form.get('description')
-        due_date_str = request.form.get('due_date')
         start_date_str = request.form.get('start_date')
         end_date_str = request.form.get('end_date')
         task.priority = request.form.get('priority')
         task.category = request.form.get('category')
         
         # バリデーション
-        if not task.title or not due_date_str or not task.priority or not task.category:
+        if not task.title or not start_date_str or not end_date_str or not task.priority or not task.category:
             flash('必須項目を入力してください', 'error')
             return render_template('tasks/edit.html', task=task)
         
         # 日付の変換
-        if due_date_str:
-            try:
-                task.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
-            except ValueError:
-                flash('有効な日付を入力してください', 'error')
-                return render_template('tasks/edit.html', task=task)
-        else:
-            task.due_date = None
-        
         if start_date_str:
             try:
                 task.start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
@@ -156,6 +145,11 @@ def edit_task(task_id):
                 return render_template('tasks/edit.html', task=task)
         else:
             task.end_date = None
+        
+        # 開始日が終了日より後の場合はエラー
+        if task.start_date and task.end_date and task.start_date > task.end_date:
+            flash('開始日は終了日より前でなければなりません', 'error')
+            return render_template('tasks/edit.html', task=task)
         
         db.session.commit()
         
@@ -186,6 +180,7 @@ def delete_task(task_id):
 def toggle_task(task_id):
     """タスクの完了/未完了切り替え"""
     from models import UserPerformance
+    from datetime import datetime
     
     task = Task.query.get_or_404(task_id)
     
@@ -194,7 +189,42 @@ def toggle_task(task_id):
         flash('このタスクを変更する権限がありません', 'error')
         return redirect(url_for('tasks.list_tasks'))
     
+    # 完了状態を切り替え
     task.completed = not task.completed
+    
+    # 完了にした場合、時間計測を停止
+    if task.completed and task.is_tracking:
+        if task.tracking_start_time:
+            elapsed = (datetime.utcnow() - task.tracking_start_time).total_seconds()
+            task.total_seconds += int(elapsed)
+        task.is_tracking = False
+        task.tracking_start_time = None
+    
+    # チームタスクと紐付いている場合、TaskAssigneeを更新
+    if task.team_task_id:
+        from models import TaskAssignee, TeamTask, MindmapNode
+        task_assignee = TaskAssignee.query.filter_by(
+            team_task_id=task.team_task_id,
+            user_id=current_user.id
+        ).first()
+        if task_assignee:
+            task_assignee.completed = task.completed
+            task_assignee.completed_at = datetime.utcnow() if task.completed else None
+        
+        # チームタスクの完了率を計算して更新
+        team_task = TeamTask.query.get(task.team_task_id)
+        if team_task:
+            completion_rate = team_task.calculate_completion_rate()
+            team_task.completed = (completion_rate == 100)
+            team_task.updated_at = datetime.utcnow()
+            
+            # 親ノードの進捗率を更新
+            if team_task.parent_node_id:
+                parent_node = MindmapNode.query.get(team_task.parent_node_id)
+                if parent_node:
+                    parent_node.progress = parent_node.calculate_progress()
+                    db.session.add(parent_node)
+    
     db.session.commit()
     
     # パフォーマンスデータを更新
@@ -239,6 +269,74 @@ def move_task(task_id):
     flash(f'タスクを{category_names[new_category]}に移動しました', 'success')
     return redirect(url_for('tasks.list_tasks'))
 
+@tasks.route('/tasks/<int:task_id>/toggle-tracking', methods=['POST'])
+@login_required
+def toggle_tracking(task_id):
+    """時間計測の開始/停止"""
+    from datetime import datetime
+    from models import UserPerformance
+    
+    task = Task.query.get_or_404(task_id)
+    
+    # 自分のタスクか確認
+    if task.user_id != current_user.id:
+        return jsonify({'success': False, 'message': '権限がありません'}), 403
+    
+    # 完了タスクは計測不可
+    if task.completed:
+        return jsonify({'success': False, 'message': '完了済みタスクは計測できません'}), 400
+    
+    if task.is_tracking:
+        # 計測停止
+        if task.tracking_start_time:
+            elapsed = (datetime.utcnow() - task.tracking_start_time).total_seconds()
+            task.total_seconds += int(elapsed)
+        task.is_tracking = False
+        task.tracking_start_time = None
+        message = '計測を停止しました'
+    else:
+        # 計測開始
+        task.is_tracking = True
+        task.tracking_start_time = datetime.utcnow()
+        message = '計測を開始しました'
+    
+    db.session.commit()
+    
+    # パフォーマンスデータを更新（計測停止時のみ）
+    if not task.is_tracking:
+        UserPerformance.update_daily_performance(current_user.id)
+    
+    return jsonify({
+        'success': True,
+        'message': message,
+        'is_tracking': task.is_tracking,
+        'total_seconds': task.total_seconds,
+        'formatted_time': task.format_time()
+    })
+
+@tasks.route('/tasks/<int:task_id>/current-time', methods=['GET'])
+@login_required
+def get_current_time(task_id):
+    """現在の経過時間を取得（リアルタイム更新用）"""
+    task = Task.query.get_or_404(task_id)
+    
+    # 自分のタスクか確認
+    if task.user_id != current_user.id:
+        return jsonify({'success': False, 'message': '権限がありません'}), 403
+    
+    current_elapsed = task.get_current_elapsed_time()
+    
+    hours = current_elapsed // 3600
+    minutes = (current_elapsed % 3600) // 60
+    seconds = current_elapsed % 60
+    
+    return jsonify({
+        'success': True,
+        'total_seconds': current_elapsed,
+        'formatted_time': f"{hours:02d}:{minutes:02d}:{seconds:02d}",
+        'is_tracking': task.is_tracking
+    })
+
 @tasks.route('/tasks/<int:task_id>/reorder', methods=['POST'])
 @login_required
 def reorder_task(task_id):
@@ -274,3 +372,51 @@ def reorder_task(task_id):
     
     db.session.commit()
     return jsonify({'success': True})
+
+@tasks.route('/tasks/<int:task_id>/add-to-mindmap', methods=['POST'])
+@login_required
+def add_to_mindmap(task_id):
+    """タスクをマインドマップに追加"""
+    from models import Mindmap, MindmapNode
+    
+    task = Task.query.get_or_404(task_id)
+    
+    # 自分のタスクか確認
+    if task.user_id != current_user.id:
+        flash('このタスクを変更する権限がありません', 'error')
+        return redirect(url_for('tasks.list_tasks'))
+    
+    # 既にマインドマップに追加されている場合はスキップ
+    if task.mindmap_node:
+        flash('このタスクは既にマインドマップに追加されています', 'info')
+        return redirect(url_for('tasks.list_tasks'))
+    
+    # 個人マインドマップを取得または作成
+    mindmap_obj = Mindmap.query.filter_by(user_id=current_user.id).first()
+    if not mindmap_obj:
+        mindmap_obj = Mindmap(
+            user_id=current_user.id,
+            name='個人マインドマップ',
+            description='個人用マインドマップ',
+            created_by=current_user.id
+        )
+        db.session.add(mindmap_obj)
+        db.session.flush()
+    
+    # マインドマップノードを作成（ルートノード）
+    new_node = MindmapNode(
+        mindmap_id=mindmap_obj.id,
+        parent_id=None,
+        title=task.title,
+        description=task.description or '',
+        position_x=0,
+        position_y=0,
+        is_task=True,
+        task_id=task.id
+    )
+    
+    db.session.add(new_node)
+    db.session.commit()
+    
+    flash('タスクをマインドマップに追加しました', 'success')
+    return redirect(url_for('tasks.list_tasks'))

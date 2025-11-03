@@ -18,11 +18,19 @@
                     <div class="navbar-menu">
                         <a href="{{ url_for('main.dashboard') }}" class="navbar-item active">ダッシュボード</a>
                         <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
-                        <a href="{{ url_for('main.team_management') }}" class="navbar-item">チーム</a>
                         <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                        {% if current_user.is_admin %}
+                            <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+                        {% endif %}
                         <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
                     </div>
                     <div class="user-controls">
+                        <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                            🔔
+                            {% if unread_notifications > 0 %}
+                                <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
+                            {% endif %}
+                        </a>
                         <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
                         <a href="#" class="user-control active personal-mode">
                             個人
@@ -31,7 +39,7 @@
                             チーム
                         </a>
                         <a href="{{ url_for('main.profile') }}" class="user-control">
-                            {{ current_user.username }}
+                            {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
                         </a>
                     </div>
                 </div>
@@ -41,6 +49,11 @@
             <div class="container">
                 <div class="page-header">
                     <h1>ダッシュボード</h1>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a href="{{ url_for('main.calendar') }}" class="btn btn-secondary">📅 カレンダー</a>
+                        <a href="{{ url_for('main.task_templates') }}" class="btn btn-secondary">📝 テンプレート</a>
+                        <a href="{{ url_for('main.daily_report') }}" class="btn btn-primary">📊 日報レポート</a>
+                    </div>
                 </div>
 
                 <div class="dashboard-grid">
@@ -97,6 +110,10 @@
                                                 </span>
                                                 {% if task.due_date %}
                                                     <span class="due-date">{{ task.due_date }}</span>
+                                                {% endif %}
+                                                <span style="color: #666; font-size: 0.85rem;">⏱️ {{ task.format_time() if task.format_time else '00:00:00' }}</span>
+                                                {% if task.is_tracking %}
+                                                    <span style="color: #f44336; font-size: 0.85rem; animation: blink 1s infinite;">● 計測中</span>
                                                 {% endif %}
                                             </div>
                                         </div>
@@ -157,6 +174,14 @@
                             <h3>・時間分析</h3>
                         </div>
                         <div class="analysis-content">
+                            <div style="margin-bottom: 1rem; padding: 1rem; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: #1e40af;">
+                                    ⏱️ {% set hours = today_total_seconds // 3600 %}{% set minutes = (today_total_seconds % 3600) // 60 %}{{ "{:02d}:{:02d}".format(hours, minutes) }}
+                                </div>
+                                <div style="color: #64748b; font-size: 0.9rem; margin-top: 0.5rem;">
+                                    本日の総作業時間
+                                </div>
+                            </div>
                             <div class="chart-container">
                                 <canvas id="timeChart"></canvas>
                             </div>
@@ -186,15 +211,10 @@
                 console.log('切り替え:', mode);
                 
                 // カラーモードを適用
-                if (mode === '個人') {
-                    this.classList.add('personal-mode');
-                    this.classList.remove('team-mode');
-                } else if (mode === 'チーム') {
-                    this.classList.add('team-mode');
-                    this.classList.remove('personal-mode');
+                if (mode === 'チーム') {
+                    // チームモードに遷移
+                    window.location.href = '/team-management';
                 }
-                
-                // ここで個人/チームの切り替え処理を実装
             });
         });
 
@@ -287,25 +307,22 @@
                 }
             });
 
-            // 時間分析グラフ（分類別タスク数）
+            // 時間分析グラフ（タスク別作業時間）
             const timeCtx = document.getElementById('timeChart').getContext('2d');
+            {% if task_time_data %}
+            const taskTimeLabels = {{ task_time_data | map(attribute='title') | list | tojson }};
+            const taskTimeData = {{ task_time_data | map(attribute='total_seconds') | list | tojson }};
+            
             new Chart(timeCtx, {
-                type: 'doughnut',
+                type: 'bar',
                 data: {
-                    labels: ['本日のタスク', '明日のタスク', 'その他のタスク'],
+                    labels: taskTimeLabels,
                     datasets: [{
-                        data: [
-                            {{ category_data.today }},
-                            {{ category_data.tomorrow }},
-                            {{ category_data.other }}
-                        ],
-                        backgroundColor: [
-                            '#008b8b',
-                            '#006400',
-                            '#228b22'
-                        ],
-                        borderWidth: 2,
-                        borderColor: '#fff'
+                        label: '作業時間（秒）',
+                        data: taskTimeData,
+                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 1
                     }]
                 },
                 options: {
@@ -314,22 +331,30 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'タスク分類別分布',
+                            text: 'タスク別作業時間',
                             font: {
                                 size: 12
                             }
                         },
                         legend: {
-                            position: 'bottom',
-                            labels: {
-                                font: {
-                                    size: 10
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    const hours = Math.floor(value / 3600);
+                                    const minutes = Math.floor((value % 3600) / 60);
+                                    return `${hours}:${String(minutes).padStart(2, '0')}`;
                                 }
                             }
                         }
                     }
                 }
             });
+            {% endif %}
 
             // 優先度分析グラフ
             const priorityCtx = document.getElementById('priorityChart').getContext('2d');

@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>チームタスク管理 - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .selection-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .selection-row {
+            display: flex;
+            gap: 1rem;
+            align-items: end;
+        }
+        .selection-row .form-group {
+            flex: 1;
+        }
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .task-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid #2196F3;
+        }
+        .task-card.completed {
+            opacity: 0.7;
+            border-left-color: #4CAF50;
+        }
+        .task-card.completed button {
+            display: none;
+        }
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .task-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #333;
+        }
+        .task-node {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            margin-left: 0.5rem;
+        }
+        .task-description {
+            color: #666;
+            margin: 0.5rem 0;
+        }
+        .task-meta {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        .task-meta-item {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .priority-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        .priority-high {
+            background: #f44336;
+            color: white;
+        }
+        .priority-medium {
+            background: #ff9800;
+            color: white;
+        }
+        .priority-low {
+            background: #4CAF50;
+            color: white;
+        }
+        .no-tasks {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+            font-style: italic;
+        }
+        .btn-complete {
+            background: #4CAF50;
+            color: white;
+            border: none;
+        }
+        .btn-complete:hover {
+            background: #45a049;
+        }
+        .btn-uncomplete {
+            background: #ff9800;
+            color: white;
+            border: none;
+        }
+        .btn-uncomplete:hover {
+            background: #fb8c00;
+        }
+        .node-link {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+        .node-link:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <!-- 上部ナビゲーションバー -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">ATD</div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('main.team_management') }}" class="navbar-item">チーム</a>
+                <a href="{{ url_for('main.team_mindmap') }}" class="navbar-item">チーム目標</a>
+                <a href="{{ url_for('main.team_tasks') }}" class="navbar-item active">チームタスク</a>
+            </div>
+            <div class="user-controls">
+                <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                    🔔
+                    {% if unread_notifications > 0 %}
+                        <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                <a href="#" class="user-control personal-mode">個人</a>
+                <a href="#" class="user-control active team-mode">チーム</a>
+                <a href="{{ url_for('main.profile') }}" class="user-control">
+                    {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>チームタスク管理</h1>
+            <p>各メンバーに割り当てられたタスクを確認・管理します</p>
+        </div>
+
+        <!-- フラッシュメッセージ -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- チーム・ユーザー選択 -->
+        <div class="selection-section">
+            <h2>フィルター</h2>
+            <div class="selection-row">
+                <div class="form-group">
+                    <label for="team-select">チーム</label>
+                    <select id="team-select" class="form-control">
+                        <option value="">-- チームを選択 --</option>
+                        {% for team in teams %}
+                            <option value="{{ team.id }}" {% if selected_team and selected_team.id == team.id %}selected{% endif %}>{{ team.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="user-select">ユーザー</label>
+                    <select id="user-select" class="form-control" {% if not selected_team %}disabled{% endif %}>
+                        <option value="">-- ユーザーを選択 --</option>
+                        {% if selected_team %}
+                            {% for member in team_members %}
+                                <option value="{{ member.user.id }}" {% if selected_user and selected_user.id == member.user.id %}selected{% endif %}>
+                                    {{ member.user.display_name if member.user.display_name else member.user.username }}
+                                </option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 割り当てられたタスク一覧 -->
+        {% if selected_user %}
+            <div class="task-list">
+                <h2>
+                    {% if selected_user.display_name %}
+                        {{ selected_user.display_name }}
+                    {% else %}
+                        {{ selected_user.username }}
+                    {% endif %}
+                    さんに割り当てられたタスク
+                </h2>
+
+                {% if assigned_tasks %}
+                    {% for task_data in assigned_tasks %}
+                        <div class="task-card {% if task_data.team_task.completed %}completed{% endif %}" id="task-{{ task_data.team_task.id }}">
+                            <div class="task-header">
+                                <div class="task-title">
+                                    {{ task_data.team_task.title }}
+                                    {% if task_data.node %}
+                                        <span class="task-node">{{ task_data.node.title }}</span>
+                                    {% endif %}
+                                </div>
+                                <button class="btn btn-sm {% if task_data.team_task.completed %}btn-complete{% else %}btn-primary{% endif %}" onclick="toggleTask({{ task_data.team_task.id }})">
+                                    完了報告
+                                </button>
+                            </div>
+                            
+                            {% if task_data.team_task.description %}
+                                <div class="task-description">{{ task_data.team_task.description }}</div>
+                            {% endif %}
+                            
+                            {% if task_data.node %}
+                                <a href="{{ url_for('main.team_task_detail', team_id=selected_team.id, node_id=task_data.node.id) }}" class="node-link">
+                                    マップカード詳細を見る →
+                                </a>
+                            {% endif %}
+                            
+                            <div class="task-meta">
+                                <span class="task-meta-item">
+                                    <span class="priority-badge priority-{{ task_data.team_task.priority }}">
+                                        {% if task_data.team_task.priority == 'high' %}高{% elif task_data.team_task.priority == 'medium' %}中{% else %}低{% endif %}
+                                    </span>
+                                </span>
+                                {% if task_data.team_task.due_date %}
+                                    <span class="task-meta-item">期日: {{ task_data.team_task.due_date.strftime('%Y年%m月%d日') }}</span>
+                                {% endif %}
+                                <span class="task-meta-item">
+                                    割り当て日: {{ task_data.team_task.created_at.strftime('%Y年%m月%d日') }}
+                                </span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-tasks">
+                        <p>このユーザーに割り当てられたタスクはありません</p>
+                    </div>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="no-tasks">
+                <p>チームとユーザーを選択してください</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // チーム選択時の処理
+        document.getElementById('team-select').addEventListener('change', function() {
+            const teamId = this.value;
+            const userSelect = document.getElementById('user-select');
+            
+            if (!teamId) {
+                userSelect.disabled = true;
+                window.location.href = '{{ url_for("main.team_tasks") }}';
+                return;
+            }
+            
+            // ユーザー選択を有効化
+            userSelect.disabled = false;
+            
+            // チームを変更したらユーザー選択をリセット
+            userSelect.value = '';
+            window.location.href = `{{ url_for('main.team_tasks') }}?team_id=${teamId}`;
+        });
+        
+        // ユーザー選択時の処理
+        document.getElementById('user-select').addEventListener('change', function() {
+            const teamId = document.getElementById('team-select').value;
+            const userId = this.value;
+            
+            if (!teamId || !userId) {
+                return;
+            }
+            
+            window.location.href = `{{ url_for('main.team_tasks') }}?team_id=${teamId}&user_id=${userId}`;
+        });
+        
+        // タスク完了/未完了の切り替え
+        function toggleTask(taskId) {
+            const button = event.target;
+            const card = button.closest('.task-card');
+            
+            fetch('/team-task-toggle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `task_id=${taskId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // ボタンの色とテキストを変更
+                    button.textContent = '完了済み';
+                    button.classList.remove('btn-primary');
+                    button.classList.add('btn-complete');
+                    button.disabled = true;
+                    
+                    // カードにcompletedクラスを追加
+                    card.classList.add('completed');
+                    
+                    // アラートは出さず、静かに完了状態にする
+                } else {
+                    alert(data.message || 'エラーが発生しました');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('エラーが発生しました');
+            });
+        }
+        
+        // 個人/チーム切り替え
+        document.querySelectorAll('.user-control').forEach(control => {
+            control.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                
+                const mode = this.textContent.trim();
+                if (mode === '個人') {
+                    window.location.href = '/dashboard';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
