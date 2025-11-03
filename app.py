@@ -58,7 +58,11 @@ def create_app(config_class=Config):
     # データベース作成と初期ユーザー作成
     with app.app_context():
         try:
-            db.create_all()
+            # SQLite の場合のみ create_all を実行（PostgreSQL では不要）
+            db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+            if db_uri.startswith('sqlite'):
+                db.create_all()
+                print('✅ SQLite データベースを初期化しました')
             
             # 初期管理者ユーザーを作成（存在しない場合のみ）
             admin_user = User.query.filter_by(username='亀山瑞喜').first()
@@ -74,7 +78,6 @@ def create_app(config_class=Config):
                 print('✅ 初期管理者ユーザー「亀山瑞喜」を作成しました')
         except Exception as e:
             print(f'⚠️ データベース初期化エラー: {e}')
-            # PostgreSQL の場合は create_all は空の操作になる可能性がある
     
     return app
 
