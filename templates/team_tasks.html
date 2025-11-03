@@ -128,6 +128,40 @@
         .node-link:hover {
             background: #5568d3;
         }
+        
+        /* スマートフォン対応 */
+        @media (max-width: 480px) {
+            .selection-section {
+                padding: 1rem;
+            }
+            
+            .selection-row {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .task-card {
+                padding: 1rem;
+            }
+            
+            .task-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            
+            .task-title {
+                font-size: 1rem;
+            }
+            
+            .task-meta {
+                font-size: 0.85rem;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>

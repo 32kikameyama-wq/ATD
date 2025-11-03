@@ -26,6 +26,37 @@
             gap: 20px;
         }
         
+        /* スマートフォン対応 */
+        @media (max-width: 480px) {
+            .mindmap-container {
+                padding: 10px;
+            }
+            
+            .mindmap-column {
+                flex: 0 0 100%;
+                min-width: 100%;
+            }
+            
+            .mindmap-card {
+                padding: 15px;
+            }
+            
+            .card-header {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            
+            .card-title {
+                font-size: 14px;
+            }
+            
+            .expand-collapse-btn {
+                width: 24px;
+                height: 24px;
+                font-size: 14px;
+            }
+        }
+        
         .mindmap-card {
             background: white;
             border: 2px solid #e0e0e0;

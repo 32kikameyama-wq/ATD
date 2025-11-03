@@ -1701,6 +1701,152 @@ input[type="date"]::-webkit-datetime-edit-text {
     }
 }
 
+/* スマートフォン対応 (max-width: 480px) */
+@media (max-width: 480px) {
+    /* ナビゲーションバー */
+    .navbar {
+        padding: var(--spacing-sm);
+    }
+    
+    .navbar-brand {
+        font-size: 1rem;
+    }
+    
+    .user-controls {
+        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+    }
+    
+    .user-control {
+        font-size: 0.85rem;
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+    
+    /* コンテナ */
+    .container {
+        padding: var(--spacing-sm);
+    }
+    
+    /* ページヘッダー */
+    .page-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .page-header p {
+        font-size: 0.9rem;
+    }
+    
+    /* カード */
+    .card {
+        padding: var(--spacing-md);
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .card h3 {
+        font-size: 1.1rem;
+    }
+    
+    /* ボタン */
+    .btn {
+        font-size: 0.9rem;
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+    
+    .btn-sm {
+        font-size: 0.8rem;
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+    
+    /* フォーム */
+    .form-group {
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .form-control {
+        font-size: 1rem; /* スマホでズームを防ぐ */
+        padding: var(--spacing-sm);
+    }
+    
+    /* テーブル */
+    table {
+        font-size: 0.85rem;
+    }
+    
+    /* マインドマップ */
+    .mindmap-container {
+        overflow-x: auto;
+    }
+    
+    /* 通知バッジ */
+    .badge {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+    }
+    
+    /* スタッツグリッド */
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* ユーザーカード */
+    .user-info {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+    
+    .user-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .user-actions {
+        width: 100%;
+    }
+    
+    /* ダッシュボード */
+    .dashboard-grid {
+        gap: var(--spacing-md);
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+    }
+    
+    /* チーム管理 */
+    .team-card {
+        padding: var(--spacing-md);
+    }
+    
+    /* タスクリスト */
+    .task-item {
+        padding: var(--spacing-md);
+    }
+    
+    .task-meta {
+        font-size: 0.85rem;
+    }
+    
+    /* フィルター */
+    .filter-controls {
+        gap: var(--spacing-sm);
+    }
+    
+    /* チームマップ */
+    .mindmap-column {
+        width: 100%;
+    }
+    
+    .mindmap-card {
+        width: 100%;
+        margin-bottom: var(--spacing-md);
+    }
+    
+    /* チャート */
+    .chart-container {
+        width: 100%;
+        overflow-x: auto;
+    }
+}
+
 /* 管理者ページスタイル */
 .stats-grid {
     display: grid;

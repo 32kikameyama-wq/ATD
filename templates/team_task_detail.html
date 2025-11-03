@@ -90,6 +90,59 @@
             padding: 60px;
             color: #999;
         }
+        
+        /* スマートフォン対応 */
+        @media (max-width: 480px) {
+            .task-detail-container {
+                padding: 15px;
+            }
+            
+            .goal-header {
+                padding: 15px;
+            }
+            
+            .goal-meta {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .task-item {
+                padding: 15px;
+            }
+            
+            .task-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .task-title {
+                font-size: 16px;
+            }
+            
+            .task-meta-items {
+                flex-wrap: wrap;
+                font-size: 12px;
+            }
+            
+            .task-actions {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .task-actions .btn {
+                width: 100%;
+            }
+            
+            .form-actions {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .form-actions .btn {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body class="team-mode">
