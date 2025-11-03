@@ -70,39 +70,6 @@
             </div>
         </div>
 
-        <!-- 新規ユーザー登録 -->
-        <div class="card">
-            <div class="card-header">
-                <h3>新規ユーザー登録</h3>
-            </div>
-            <form id="createUserForm" style="padding: 1rem;">
-                <div class="form-group">
-                    <label for="new-username">ユーザー名 *</label>
-                    <input type="text" id="new-username" name="username" class="form-control" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="new-email">メールアドレス *</label>
-                    <input type="email" id="new-email" name="email" class="form-control" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="new-password">パスワード *</label>
-                    <input type="password" id="new-password" name="password" class="form-control" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="new-password-confirm">パスワード確認 *</label>
-                    <input type="password" id="new-password-confirm" name="password_confirm" class="form-control" required>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary" id="createUserBtn">新規作成</button>
-                    <button type="reset" class="btn btn-secondary">リセット</button>
-                </div>
-            </form>
-        </div>
-
         <!-- ユーザー一覧 -->
         <div class="card">
             <div class="card-header">
@@ -215,54 +182,6 @@
         }
     }
     
-    // 新規ユーザー登録
-    document.getElementById('createUserForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const btn = document.getElementById('createUserBtn');
-        btn.disabled = true;
-        btn.textContent = '作成中...';
-        
-        const formData = {
-            username: document.getElementById('new-username').value,
-            email: document.getElementById('new-email').value,
-            password: document.getElementById('new-password').value,
-            password_confirm: document.getElementById('new-password-confirm').value
-        };
-        
-        // パスワード確認
-        if (formData.password !== formData.password_confirm) {
-            alert('パスワードが一致しません');
-            btn.disabled = false;
-            btn.textContent = '新規作成';
-            return;
-        }
-        
-        fetch('/admin/create-user', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(formData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('ユーザーを作成しました');
-                document.getElementById('createUserForm').reset();
-                location.reload();
-            } else {
-                alert(data.message || 'エラーが発生しました');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('エラーが発生しました');
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.textContent = '新規作成';
-        });
-    });
-
     // 個人/チーム切り替え
     document.querySelectorAll('.user-control').forEach(control => {
         control.addEventListener('click', function(e) {
