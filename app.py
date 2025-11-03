@@ -58,11 +58,15 @@ def create_app(config_class=Config):
     # データベース作成と初期ユーザー作成
     with app.app_context():
         try:
-            # SQLite の場合のみ create_all を実行（PostgreSQL では不要）
-            db_uri = app.config['SQLALCHEMY_DATABASE_URI']
-            if db_uri.startswith('sqlite'):
+            # データベースを作成（初回のみ、テーブルが存在しない場合）
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            existing_tables = inspector.get_table_names()
+            
+            # テーブルが存在しない場合のみ作成
+            if not existing_tables:
                 db.create_all()
-                print('✅ SQLite データベースを初期化しました')
+                print('✅ データベーステーブルを作成しました')
             
             # 初期管理者ユーザーを作成（存在しない場合のみ）
             admin_user = User.query.filter_by(username='亀山瑞喜').first()
