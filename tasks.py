@@ -103,6 +103,147 @@ def create_task():
     
     return render_template('tasks/create.html')
 
+
+@tasks.route('/tasks/import-csv', methods=['POST'])
+@login_required
+def import_csv():
+    """CSVファイルからタスクを一括インポート"""
+    from datetime import datetime, date, timedelta
+    from dateutil.relativedelta import relativedelta
+    import re
+    
+    try:
+        data = request.get_json()
+        tasks_data = data.get('tasks', [])
+        
+        if not tasks_data:
+            return jsonify({'success': False, 'message': 'タスクデータがありません'}), 400
+        
+        created_count = 0
+        errors = []
+        
+        for i, task_data in enumerate(tasks_data):
+            try:
+                date_str = task_data.get('date', '').strip()
+                title = task_data.get('title', '').strip()
+                description = task_data.get('description', '').strip()
+                
+                if not title:
+                    errors.append(f'行 {i + 1}: タスク名が空です')
+                    continue
+                
+                # 日付を解析
+                task_date = None
+                
+                # パターン1: "2025-11-04" 形式
+                try:
+                    task_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    pass
+                
+                # パターン2: "11/4" または "11/04" 形式
+                if not task_date:
+                    match = re.search(r'(\d{1,2})/(\d{1,2})', date_str)
+                    if match:
+                        month = int(match.group(1))
+                        day = int(match.group(2))
+                        today = date.today()
+                        try:
+                            task_date = date(today.year, month, day)
+                            # 過去の日付の場合は来年
+                            if task_date < today - timedelta(days=180):
+                                task_date = date(today.year + 1, month, day)
+                        except ValueError:
+                            pass
+                
+                # パターン3: "11月4日" 形式
+                if not task_date:
+                    match = re.search(r'(\d{1,2})月(\d{1,2})日', date_str)
+                    if match:
+                        month = int(match.group(1))
+                        day = int(match.group(2))
+                        today = date.today()
+                        try:
+                            task_date = date(today.year, month, day)
+                            if task_date < today - timedelta(days=180):
+                                task_date = date(today.year + 1, month, day)
+                        except ValueError:
+                            pass
+                
+                # パターン4: 日数指定（例: "10日間分"）
+                days_count = 0
+                if not task_date:
+                    days_match = re.search(r'(\d+)日間?分?', date_str)
+                    if days_match:
+                        days_count = int(days_match.group(1))
+                        task_date = date.today()  # 今日から開始
+                
+                # 日付が取得できなかった場合は今日の日付を使用
+                if not task_date:
+                    task_date = date.today()
+                
+                # タスクを作成
+                if days_count > 0:
+                    # 日割りで複数タスクを作成
+                    for day_offset in range(days_count):
+                        current_date = task_date + timedelta(days=day_offset)
+                        new_task = Task(
+                            user_id=current_user.id,
+                            title=f"{title} (Day {day_offset + 1})" if days_count > 1 else title,
+                            description=description,
+                            priority='medium',
+                            category='today' if current_date == date.today() else 'other',
+                            start_date=current_date,
+                            end_date=current_date
+                        )
+                        db.session.add(new_task)
+                        created_count += 1
+                else:
+                    # 単一タスクを作成
+                    new_task = Task(
+                        user_id=current_user.id,
+                        title=title,
+                        description=description,
+                        priority='medium',
+                        category='today' if task_date == date.today() else 'other',
+                        start_date=task_date,
+                        end_date=task_date
+                    )
+                    db.session.add(new_task)
+                    created_count += 1
+                    
+            except Exception as e:
+                errors.append(f'行 {i + 1}: {str(e)}')
+                continue
+        
+        # コミット
+        db.session.commit()
+        
+        # パフォーマンスデータを更新
+        from models import UserPerformance
+        UserPerformance.update_daily_performance(current_user.id)
+        
+        if errors:
+            return jsonify({
+                'success': True,
+                'created_count': created_count,
+                'message': f'{created_count}件のタスクを作成しました（一部エラー: {len(errors)}件）',
+                'errors': errors[:10]  # 最初の10件のエラーのみ
+            })
+        
+        return jsonify({
+            'success': True,
+            'created_count': created_count,
+            'message': f'{created_count}件のタスクを作成しました'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'エラーが発生しました: {str(e)}'
+        }), 500
+
 @tasks.route('/tasks/<int:task_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_task(task_id):

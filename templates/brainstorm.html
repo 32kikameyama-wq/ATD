@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>壁打ち - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .brainstorm-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .goal-section {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .goal-section h2 {
+            margin-top: 0;
+        }
+        
+        .conversation-area {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 400px;
+            max-height: 600px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+        
+        .message.user {
+            background: #e3f2fd;
+            margin-left: 20%;
+        }
+        
+        .message.assistant {
+            background: #f5f5f5;
+            margin-right: 20%;
+        }
+        
+        .message-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .message-content {
+            line-height: 1.6;
+        }
+        
+        .input-area {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .input-area input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .input-area button {
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        
+        .input-area button:hover {
+            background: #1976D2;
+        }
+        
+        .suggested-tasks {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .suggested-tasks h3 {
+            margin-top: 0;
+        }
+        
+        .suggested-task-item {
+            background: #fff;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .suggested-task-item .task-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .suggested-task-item .task-description {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        
+        .suggested-task-item .task-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #999;
+        }
+        
+        .task-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .task-actions input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            width: 150px;
+        }
+        
+        .task-actions button {
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .task-actions button:hover {
+            background: #45a049;
+        }
+        
+        .task-actions button.secondary {
+            background: #ff9800;
+        }
+        
+        .task-actions button.secondary:hover {
+            background: #f57c00;
+        }
+        
+        .checkbox-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            width: auto;
+        }
+        
+        .no-session {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <div class="main-layout">
+            <!-- 上部ナビゲーションバー -->
+            <nav class="navbar">
+                <div class="navbar-content">
+                    <div class="navbar-brand">ATD</div>
+                    <div class="navbar-menu">
+                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                        <a href="{{ url_for('main.brainstorm') }}" class="navbar-item active">壁打ち</a>
+                        {% if current_user.is_admin %}
+                            <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+                        {% endif %}
+                        <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
+                    </div>
+                    <div class="user-controls">
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                        <a href="{{ url_for('main.profile') }}" class="user-control">
+                            {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
+                        </a>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="brainstorm-container">
+                <h1>🤖 AIタスク一括作成</h1>
+                
+                <div class="goal-section" style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <h2 style="margin-top: 0; color: #1976D2;">📋 使い方</h2>
+                    <p style="font-size: 1.1rem; color: #333; margin: 10px 0;">
+                        <strong>実行日とタスクを送ってください</strong><br>
+                        例: 「11/4から10日間分、営業活動のタスクを入れてください」<br>
+                        例: 「このタスクを30日間分カレンダーに入れて」<br>
+                        例: 「1ヶ月分日割りでタスクを作成して」
+                    </p>
+                </div>
+                
+                {% if session %}
+                    <div class="goal-section">
+                        <h2>目標・目的</h2>
+                        <p id="goal-text">{{ session.goal or '目標を設定してください' }}</p>
+                    </div>
+                    
+                    <div class="conversation-area" id="conversation-area">
+                        {% for message in session.messages %}
+                            <div class="message {{ message.role }}">
+                                <div class="message-header">{{ 'あなた' if message.role == 'user' else 'アシスタント' }}</div>
+                                <div class="message-content">{{ message.content }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="input-area">
+                        <input type="text" id="message-input" placeholder="実行日とタスクを入力してください (例: 11/4から10日間分、営業活動を入れてください)" />
+                        <button onclick="sendMessage()">送信</button>
+                    </div>
+                    
+                    <input type="hidden" id="session-id" value="{{ session.id }}" />
+                {% else %}
+                    <div class="no-session">
+                        <div class="goal-section">
+                            <h2>目標・目的を入力してください</h2>
+                            <p style="color: #666; margin-bottom: 15px;">
+                                目標を設定すると、より適切なタスクを提案できます。<br>
+                                目標がなくても、直接「実行日とタスク」を送ることもできます。
+                            </p>
+                            <div class="input-area">
+                                <input type="text" id="goal-input" placeholder="例: ロケットナウの営業で50件制約（任意）" />
+                                <button onclick="createSession()">開始</button>
+                            </div>
+                            <p style="color: #999; font-size: 0.9rem; margin-top: 10px;">
+                                ※ 目標なしでも開始できます。その場合は「開始」を押さずに、下記から直接メッセージを送信してください。
+                            </p>
+                        </div>
+                        <div style="margin-top: 20px; padding: 20px; background: #fff3cd; border-radius: 8px;">
+                            <h3 style="margin-top: 0;">または、目標なしで直接タスクを作成</h3>
+                            <div class="input-area">
+                                <input type="text" id="direct-message-input" placeholder="例: 11/4から10日間分、営業活動のタスクを入れてください" />
+                                <button onclick="sendDirectMessage()">送信</button>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="session-id" value="" />
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const sessionId = document.getElementById('session-id')?.value;
+        const messageInput = document.getElementById('message-input');
+        const directMessageInput = document.getElementById('direct-message-input');
+        
+        if (messageInput) {
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        }
+        
+        if (directMessageInput) {
+            directMessageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendDirectMessage();
+                }
+            });
+        }
+        
+        async function createSession() {
+            const goalInput = document.getElementById('goal-input');
+            const goal = goalInput.value.trim();
+            
+            if (!goal) {
+                alert('目標・目的を入力してください');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/brainstorm/session/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ goal: goal })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('セッションの作成に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('エラーが発生しました');
+            }
+        }
+        
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            const sessionId = document.getElementById('session-id')?.value;
+            
+            if (!message) {
+                alert('メッセージを入力してください');
+                return;
+            }
+            
+            if (!sessionId) {
+                alert('セッションが作成されていません。目標を入力して「開始」ボタンを押してください。');
+                return;
+            }
+            
+            // ユーザーメッセージを表示
+            addMessage('user', message);
+            input.value = '';
+            
+            await sendMessageWithSession(sessionId, message);
+        }
+        
+        function addMessage(role, content) {
+            const conversationArea = document.getElementById('conversation-area');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.innerHTML = `
+                <div class="message-header">${role === 'user' ? 'あなた' : 'アシスタント'}</div>
+                <div class="message-content">${escapeHtml(content)}</div>
+            `;
+            conversationArea.appendChild(messageDiv);
+            conversationArea.scrollTop = conversationArea.scrollHeight;
+        }
+        
+        function displaySuggestedTasks(tasks) {
+            const suggestedTasksDiv = document.getElementById('suggested-tasks');
+            const tasksListDiv = document.getElementById('suggested-tasks-list');
+            
+            tasksListDiv.innerHTML = '';
+            
+            tasks.forEach(task => {
+                const taskDiv = document.createElement('div');
+                taskDiv.className = 'suggested-task-item';
+                taskDiv.innerHTML = `
+                    <div class="checkbox-item">
+                        <input type="checkbox" class="task-checkbox" value="${task.id}" checked />
+                        <div>
+                            <div class="task-title">${escapeHtml(task.title)}</div>
+                            ${task.description ? `<div class="task-description">${escapeHtml(task.description)}</div>` : ''}
+                            <div class="task-meta">
+                                <span>優先度: ${task.priority}</span>
+                                ${task.suggested_date ? `<span>日付: ${task.suggested_date}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                tasksListDiv.appendChild(taskDiv);
+            });
+            
+            suggestedTasksDiv.style.display = 'block';
+        }
+        
+        async function createAllTasks() {
+            if (!sessionId) return;
+            
+            const dateInput = document.getElementById('task-date-input').value.trim();
+            const durationInput = document.getElementById('task-duration-input').value.trim();
+            
+            try {
+                const response = await fetch(`/brainstorm/session/${sessionId}/tasks/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        task_ids: [],
+                        date: dateInput,
+                        duration: durationInput
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    // 親ウィンドウをリロードして閉じる
+                    if (window.opener) {
+                        window.opener.location.reload();
+                        window.close();
+                    } else {
+                        location.href = '/tasks';
+                    }
+                } else {
+                    alert('タスクの作成に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('エラーが発生しました');
+            }
+        }
+        
+        async function createSelectedTasks() {
+            const sessionId = document.getElementById('session-id')?.value;
+            if (!sessionId) return;
+            
+            const checkboxes = document.querySelectorAll('.task-checkbox:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+            
+            if (selectedIds.length === 0) {
+                alert('タスクを選択してください');
+                return;
+            }
+            
+            const dateInput = document.getElementById('task-date-input')?.value.trim() || '';
+            const durationInput = document.getElementById('task-duration-input')?.value.trim() || '';
+            
+            try {
+                const response = await fetch(`/brainstorm/session/${sessionId}/tasks/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        task_ids: selectedIds,
+                        date: dateInput,
+                        duration: durationInput
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    // 親ウィンドウをリロードして閉じる
+                    if (window.opener) {
+                        window.opener.location.reload();
+                        window.close();
+                    } else {
+                        location.href = '/tasks';
+                    }
+                } else {
+                    alert('タスクの作成に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('エラーが発生しました');
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        async function sendDirectMessage() {
+            const input = document.getElementById('direct-message-input');
+            const message = input.value.trim();
+            
+            if (!message) {
+                alert('メッセージを入力してください');
+                return;
+            }
+            
+            // まずセッションを作成（目標なしでもOK）
+            try {
+                const response = await fetch('/brainstorm/session/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ goal: '' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // セッションIDを設定
+                    document.getElementById('session-id').value = data.session_id;
+                    
+                    // メッセージを送信
+                    const input = document.getElementById('direct-message-input');
+                    const message = input.value.trim();
+                    input.value = '';
+                    
+                    // ユーザーメッセージを表示
+                    const conversationArea = document.getElementById('conversation-area');
+                    if (!conversationArea) {
+                        // conversation-areaがない場合は作成
+                        const container = document.querySelector('.brainstorm-container');
+                        const newArea = document.createElement('div');
+                        newArea.className = 'conversation-area';
+                        newArea.id = 'conversation-area';
+                        container.insertBefore(newArea, document.querySelector('.input-area') || container.lastChild);
+                    }
+                    addMessage('user', message);
+                    
+                    // メッセージを送信
+                    await sendMessageWithSession(data.session_id, message);
+                } else {
+                    alert('セッションの作成に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('エラーが発生しました');
+            }
+        }
+        
+        async function sendMessageWithSession(sessionId, message) {
+            try {
+                const response = await fetch(`/brainstorm/session/${sessionId}/message`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // タスクが作成された場合は親ウィンドウをリロードして閉じる
+                    if (data.redirect) {
+                        alert(data.assistant_message);
+                        if (window.opener) {
+                            window.opener.location.reload();
+                            window.close();
+                        } else {
+                            location.href = data.redirect;
+                        }
+                        return;
+                    }
+                    
+                    // アシスタントの返答を表示
+                    addMessage('assistant', data.assistant_message);
+                    
+                    // 提案タスクを表示
+                    if (data.suggested_tasks && data.suggested_tasks.length > 0) {
+                        displaySuggestedTasks(data.suggested_tasks);
+                    }
+                    
+                    // セッションIDを更新（次のメッセージ用）
+                    document.getElementById('session-id').value = sessionId;
+                } else {
+                    alert('メッセージの送信に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('エラーが発生しました');
+            }
+        }
+    </script>
+</body>
+</html>
+

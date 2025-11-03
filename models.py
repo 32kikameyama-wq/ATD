@@ -435,3 +435,53 @@ class Notification(db.Model):
     
     def __repr__(self):
         return f'<Notification {self.title}>'
+
+
+class ConversationSession(db.Model):
+    """壁打ち会話セッションモデル"""
+    __tablename__ = 'conversation_sessions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=True)  # 会話のタイトル（自動生成）
+    goal = db.Column(db.Text, nullable=True)  # 目標・目的
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # リレーション
+    messages = db.relationship('ConversationMessage', backref='session', lazy=True, cascade='all, delete-orphan', order_by='ConversationMessage.created_at')
+    suggested_tasks = db.relationship('SuggestedTask', backref='session', lazy=True, cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<ConversationSession {self.id}>'
+
+
+class ConversationMessage(db.Model):
+    """会話メッセージモデル"""
+    __tablename__ = 'conversation_messages'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('conversation_sessions.id'), nullable=False, index=True)
+    role = db.Column(db.String(20), nullable=False)  # 'user' or 'assistant'
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<ConversationMessage {self.id}>'
+
+
+class SuggestedTask(db.Model):
+    """提案されたタスクモデル"""
+    __tablename__ = 'suggested_tasks'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('conversation_sessions.id'), nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    priority = db.Column(db.String(20), default='medium')  # low, medium, high
+    suggested_date = db.Column(db.Date, nullable=True)  # 提案された日付
+    is_created = db.Column(db.Boolean, default=False, nullable=False)  # タスク化されたかどうか
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<SuggestedTask {self.title}>'

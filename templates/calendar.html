@@ -168,7 +168,9 @@
                 </div>
                 <div>
                     <a href="{{ url_for('main.calendar') }}" class="btn btn-sm">今月</a>
-                    <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">+ 新しいタスク</a>
+                    <label for="csv-import" class="btn btn-primary" style="cursor: pointer; margin: 0;">📥 CSVインポート</label>
+                    <input type="file" id="csv-import" accept=".csv" style="display: none;" onchange="handleCSVImport(event)">
+                    <a href="{{ url_for('tasks.create_task') }}" class="btn btn-secondary">+ 新しいタスク</a>
                 </div>
             </div>
 
@@ -191,13 +193,15 @@
                     {% set date_key = current_date.strftime('%Y-%m-%d') %}
                     {% set day_tasks = tasks_by_date.get(date_key, []) %}
                     
-                    <div class="calendar-day {% if is_other_month %}other-month{% endif %} {% if is_today %}today{% endif %}">
+                    <div class="calendar-day {% if is_other_month %}other-month{% endif %} {% if is_today %}today{% endif %}" 
+                         onclick="showDayTasks('{{ date_key }}')" 
+                         style="cursor: pointer;">
                         <div class="day-number">{{ current_date.day }}</div>
                         <div class="day-tasks">
                             {% for task in day_tasks[:3] %}
                                 <div class="day-task-item {{ task.priority }} {% if task.completed %}completed{% endif %}" 
                                      title="{{ task.title }}"
-                                     onclick="window.location.href='{{ url_for('tasks.list_tasks') }}'">
+                                     onclick="event.stopPropagation(); window.location.href='{{ url_for('tasks.list_tasks') }}'">
                                     {{ task.title }}
                                 </div>
                             {% endfor %}
@@ -229,6 +233,77 @@
         </div>
     </div>
 
+    <!-- 日付のタスク一覧モーダル -->
+    <div id="day-tasks-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 id="modal-date-title">タスク一覧</h2>
+                <button onclick="closeDayTasksModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+            </div>
+            <div id="modal-tasks-list"></div>
+            <div style="margin-top: 20px; text-align: right;">
+                <button onclick="closeDayTasksModal()" class="btn btn-secondary">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tasksByDate = {{ tasks_by_date_json | tojson }};
+        
+        function showDayTasks(dateKey) {
+            const tasks = tasksByDate[dateKey] || [];
+            const date = new Date(dateKey);
+            const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+            
+            document.getElementById('modal-date-title').textContent = `${dateStr} のタスク (${tasks.length}件)`;
+            
+            const tasksList = document.getElementById('modal-tasks-list');
+            if (tasks.length === 0) {
+                tasksList.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">この日にタスクはありません</p>';
+            } else {
+                tasksList.innerHTML = tasks.map(task => {
+                    const priorityClass = task.priority || 'medium';
+                    const completedClass = task.completed ? 'completed' : '';
+                    const priorityColor = {
+                        'high': '#f44336',
+                        'medium': '#ff9800',
+                        'low': '#2196F3'
+                    }[priorityClass] || '#4CAF50';
+                    
+                    return `
+                        <div style="border: 1px solid #e0e0e0; border-radius: 4px; padding: 15px; margin-bottom: 10px; background: ${task.completed ? '#f5f5f5' : 'white'};">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div style="flex: 1;">
+                                    <h3 style="margin: 0 0 5px 0; ${task.completed ? 'text-decoration: line-through; color: #999;' : ''}">${task.title}</h3>
+                                    ${task.description ? `<p style="margin: 5px 0; color: #666; font-size: 0.9rem;">${task.description}</p>` : ''}
+                                    <div style="display: flex; gap: 10px; margin-top: 10px; font-size: 0.85rem; color: #666;">
+                                        <span style="background: ${priorityColor}; color: white; padding: 2px 8px; border-radius: 3px;">
+                                            ${priorityClass === 'high' ? '高' : priorityClass === 'medium' ? '中' : '低'}
+                                        </span>
+                                        ${task.completed ? '<span style="color: #28a745;">✓ 完了済み</span>' : '<span style="color: #999;">未完了</span>'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            document.getElementById('day-tasks-modal').style.display = 'block';
+        }
+        
+        function closeDayTasksModal() {
+            document.getElementById('day-tasks-modal').style.display = 'none';
+        }
+        
+        // モーダル外をクリックしたら閉じる
+        document.getElementById('day-tasks-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDayTasksModal();
+            }
+        });
+    </script>
+
     <script>
         function generateFromTemplate(templateId) {
             if (confirm('このテンプレートから今日のタスクを作成しますか？')) {
@@ -256,6 +331,81 @@
                 }
             });
         });
+
+        // CSVインポート機能（tasks/list.htmlからコピー）
+        async function handleCSVImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const text = e.target.result;
+                const lines = text.split('\n').filter(line => line.trim());
+                
+                if (lines.length === 0) {
+                    alert('CSVファイルが空です');
+                    return;
+                }
+                
+                const tasks = [];
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    
+                    const parts = line.split(/[,\t]/).map(p => p.trim());
+                    
+                    if (parts.length < 2) {
+                        console.warn(`行 ${i + 1}: 形式が不正です - ${line}`);
+                        continue;
+                    }
+                    
+                    const dateStr = parts[0];
+                    const taskName = parts[1];
+                    
+                    if (!dateStr || !taskName) continue;
+                    
+                    tasks.push({
+                        date: dateStr,
+                        title: taskName,
+                        description: parts[2] || ''
+                    });
+                }
+                
+                if (tasks.length === 0) {
+                    alert('有効なタスクがありません');
+                    return;
+                }
+                
+                if (!confirm(`${tasks.length}件のタスクを作成しますか？`)) {
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/tasks/import-csv', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ tasks: tasks })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert(`${data.created_count}件のタスクを作成しました`);
+                        location.reload();
+                    } else {
+                        alert('タスクの作成に失敗しました: ' + (data.message || 'エラーが発生しました'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('エラーが発生しました');
+                }
+            };
+            
+            reader.readAsText(file, 'UTF-8');
+            event.target.value = '';
+        }
     </script>
 </body>
 </html>

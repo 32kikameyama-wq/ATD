@@ -195,6 +195,10 @@
         <div class="page-header">
             <h1>チームタスク管理</h1>
             <p>各メンバーに割り当てられたタスクを確認・管理します</p>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <label for="csv-import" class="btn btn-primary" style="cursor: pointer; margin: 0;">📥 CSVインポート</label>
+                <input type="file" id="csv-import" accept=".csv" style="display: none;" onchange="handleCSVImport(event)">
+            </div>
         </div>
 
         <!-- フラッシュメッセージ -->
@@ -382,6 +386,81 @@
                 }
             });
         });
+
+        // CSVインポート機能
+        async function handleCSVImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const text = e.target.result;
+                const lines = text.split('\n').filter(line => line.trim());
+                
+                if (lines.length === 0) {
+                    alert('CSVファイルが空です');
+                    return;
+                }
+                
+                const tasks = [];
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    
+                    const parts = line.split(/[,\t]/).map(p => p.trim());
+                    
+                    if (parts.length < 2) {
+                        console.warn(`行 ${i + 1}: 形式が不正です - ${line}`);
+                        continue;
+                    }
+                    
+                    const dateStr = parts[0];
+                    const taskName = parts[1];
+                    
+                    if (!dateStr || !taskName) continue;
+                    
+                    tasks.push({
+                        date: dateStr,
+                        title: taskName,
+                        description: parts[2] || ''
+                    });
+                }
+                
+                if (tasks.length === 0) {
+                    alert('有効なタスクがありません');
+                    return;
+                }
+                
+                if (!confirm(`${tasks.length}件のタスクを作成しますか？`)) {
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/tasks/import-csv', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ tasks: tasks })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert(`${data.created_count}件のタスクを作成しました`);
+                        location.reload();
+                    } else {
+                        alert('タスクの作成に失敗しました: ' + (data.message || 'エラーが発生しました'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('エラーが発生しました');
+                }
+            };
+            
+            reader.readAsText(file, 'UTF-8');
+            event.target.value = '';
+        }
     </script>
 </body>
 </html>

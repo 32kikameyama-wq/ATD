@@ -280,10 +280,13 @@ def calendar():
     last_day = datetime(year, month, last_day_num).date()
     
     # カレンダーの最初と最後の日（前後の月の分も含める）
-    first_weekday = first_day.weekday()
+    # weekday(): 月曜日=0, 火曜日=1, ..., 日曜日=6
+    # カレンダー表示: 日曜日=0, 月曜日=1, ..., 土曜日=6
+    # なので weekday() + 1 で変換し、7で割った余りを使う
+    first_weekday = (first_day.weekday() + 1) % 7  # 日曜日基準に変換
     calendar_start = first_day - timedelta(days=first_weekday)
     
-    last_weekday = last_day.weekday()
+    last_weekday = (last_day.weekday() + 1) % 7  # 日曜日基準に変換
     calendar_end = last_day + timedelta(days=(6 - last_weekday))
     
     # 表示範囲内のタスクを取得
@@ -294,13 +297,25 @@ def calendar():
         Task.archived == False
     ).all()
     
-    # 日付ごとにタスクを整理
+    # 日付ごとにタスクを整理（JSON化可能な形式に変換）
     tasks_by_date = {}
+    tasks_by_date_json = {}  # JSON用
     for task in all_tasks:
         date_key = task.start_date.strftime('%Y-%m-%d')
         if date_key not in tasks_by_date:
             tasks_by_date[date_key] = []
+            tasks_by_date_json[date_key] = []
         tasks_by_date[date_key].append(task)
+        # JSON用に辞書形式で保存
+        tasks_by_date_json[date_key].append({
+            'id': task.id,
+            'title': task.title,
+            'description': task.description or '',
+            'priority': task.priority,
+            'completed': task.completed,
+            'start_date': task.start_date.strftime('%Y-%m-%d'),
+            'end_date': task.end_date.strftime('%Y-%m-%d') if task.end_date else None
+        })
     
     # カレンダー表示用の日付リストを生成
     calendar_dates = []
@@ -338,6 +353,7 @@ def calendar():
                          calendar_end=calendar_end,
                          calendar_dates=calendar_dates,
                          tasks_by_date=tasks_by_date,
+                         tasks_by_date_json=tasks_by_date_json,
                          templates=templates,
                          prev_year=prev_year,
                          prev_month=prev_month,
@@ -2146,4 +2162,431 @@ def edit_user():
     return jsonify({
         'success': True,
         'message': f'ユーザー「{username}」を更新しました'
+    })
+
+# ===== 壁打ち機能 =====
+
+@main.route('/brainstorm')
+@login_required
+def brainstorm():
+    """壁打ちページ（一括作成）"""
+    from models import ConversationSession
+    
+    # new_session=1パラメータがあったら新しいセッションを作成
+    new_session_flag = request.args.get('new_session', '0') == '1'
+    
+    if new_session_flag:
+        # 新しいセッションを作成（会話履歴なし）
+        latest_session = None
+    else:
+        # 最新のセッションを取得（なければNone）
+        latest_session = ConversationSession.query.filter_by(
+            user_id=current_user.id
+        ).order_by(ConversationSession.created_at.desc()).first()
+    
+    return render_template('brainstorm.html', session=latest_session, is_new_session=new_session_flag)
+
+
+@main.route('/brainstorm/session/create', methods=['POST'])
+@login_required
+def create_brainstorm_session():
+    """新しい壁打ちセッションを作成"""
+    from models import ConversationSession, db
+    
+    data = request.get_json()
+    goal = data.get('goal', '').strip()
+    
+    # 新しいセッションを作成
+    new_session = ConversationSession(
+        user_id=current_user.id,
+        goal=goal,
+        title=goal[:50] if goal else '新しい壁打ち'
+    )
+    
+    db.session.add(new_session)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'session_id': new_session.id,
+        'message': '新しいセッションを作成しました'
+    })
+
+
+@main.route('/brainstorm/session/<int:session_id>/message', methods=['POST'])
+@login_required
+def add_brainstorm_message(session_id):
+    """会話メッセージを追加"""
+    from models import ConversationSession, ConversationMessage, SuggestedTask, db
+    from brainstorm import suggest_tasks_from_conversation, generate_response_message, extract_date_from_text
+    
+    # セッションの確認
+    session = ConversationSession.query.filter_by(
+        id=session_id,
+        user_id=current_user.id
+    ).first_or_404()
+    
+    data = request.get_json()
+    user_message = data.get('message', '').strip()
+    
+    if not user_message:
+        return jsonify({'success': False, 'message': 'メッセージを入力してください'}), 400
+    
+    # ユーザーメッセージを保存
+    user_msg = ConversationMessage(
+        session_id=session_id,
+        role='user',
+        content=user_message
+    )
+    db.session.add(user_msg)
+    db.session.flush()
+    
+    # ルールベースでタスク指示を解析（柔軟な会話は不要）
+    messages = session.messages
+    
+    # 「このタスクを○日間分入れてください」などの指示を解析
+    from brainstorm import parse_task_instruction
+    from models import Task
+    
+    # 指示を解析
+    instruction = parse_task_instruction(user_message, messages + [user_msg], session.goal)
+    
+    # タスク作成指示がある場合
+    if instruction and instruction.get('create_tasks'):
+        # 直接タスクを作成
+        task_title = instruction.get('task_title', 'タスク')
+        days = instruction.get('days', 0)
+        months = instruction.get('months', 0)
+        start_date = instruction.get('start_date')
+        
+        created_tasks = []
+        from datetime import date, timedelta
+        from dateutil.relativedelta import relativedelta
+        
+        if months > 0:
+            # 月単位で日割り
+            if not start_date:
+                start_date = date.today()
+            from calendar import monthrange
+            for i in range(months):
+                month_start = start_date + relativedelta(months=i)
+                # 月の日数を計算
+                days_in_month = monthrange(month_start.year, month_start.month)[1]
+                
+                for day in range(days_in_month):
+                    task_date = month_start + timedelta(days=day)
+                    new_task = Task(
+                        user_id=current_user.id,
+                        title=f"{task_title} (Day {day+1})" if days_in_month > 1 else task_title,
+                        description=session.goal if session.goal else '',
+                        priority='medium',
+                        category='today' if task_date == date.today() else 'other',
+                        start_date=task_date,
+                        end_date=task_date
+                    )
+                    db.session.add(new_task)
+                    created_tasks.append(new_task)
+        elif days > 0:
+            # 日単位で日割り
+            if not start_date:
+                start_date = date.today()
+            for i in range(days):
+                task_date = start_date + timedelta(days=i)
+                new_task = Task(
+                    user_id=current_user.id,
+                    title=f"{task_title} (Day {i+1})" if days > 1 else task_title,
+                    description=session.goal if session.goal else '',
+                    priority='medium',
+                    category='today' if task_date == date.today() else 'other',
+                    start_date=task_date,
+                    end_date=task_date
+                )
+                db.session.add(new_task)
+                created_tasks.append(new_task)
+        else:
+            # 単一タスク
+            task_date = start_date or date.today()
+            new_task = Task(
+                user_id=current_user.id,
+                title=task_title,
+                description=session.goal if session.goal else '',
+                priority='medium',
+                category='today' if task_date == date.today() else 'other',
+                start_date=task_date,
+                end_date=task_date
+            )
+            db.session.add(new_task)
+            created_tasks.append(new_task)
+        
+        db.session.commit()
+        
+        # 返答を生成
+        if len(created_tasks) > 1:
+            assistant_response = f"{len(created_tasks)}件のタスクをカレンダーに追加しました。"
+        else:
+            assistant_response = f"タスク「{task_title}」をカレンダーに追加しました。"
+        
+        # アシスタントメッセージを保存
+        assistant_msg = ConversationMessage(
+            session_id=session_id,
+            role='assistant',
+            content=assistant_response
+        )
+        db.session.add(assistant_msg)
+        session.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'assistant_message': assistant_response,
+            'tasks_created': len(created_tasks),
+            'redirect': '/tasks'  # タスク一覧にリダイレクト
+        })
+    
+    # 通常のタスク提案（指示がない場合）
+    from brainstorm import suggest_tasks_from_conversation, generate_response_message
+    suggested_tasks = suggest_tasks_from_conversation(messages + [user_msg], session.goal)
+    has_tasks = len(suggested_tasks) > 0
+    task_count = len(suggested_tasks)
+    assistant_response = generate_response_message(
+        user_message,
+        session.goal,
+        messages,
+        has_suggested_tasks=has_tasks,
+        suggested_task_count=task_count
+    )
+    
+    # 既存の提案タスクを削除（更新するため）
+    SuggestedTask.query.filter_by(session_id=session_id, is_created=False).delete()
+    
+    # 新しい提案タスクを保存
+    suggested_task_objects = []
+    for task_data in suggested_tasks:
+        suggested_task = SuggestedTask(
+            session_id=session_id,
+            title=task_data['title'],
+            description=task_data.get('description', ''),
+            priority=task_data.get('priority', 'medium'),
+            suggested_date=task_data.get('suggested_date')
+        )
+        db.session.add(suggested_task)
+        suggested_task_objects.append(suggested_task)
+    
+    db.session.flush()  # タスクIDを取得するため
+    
+    # アシスタントメッセージを保存
+    assistant_msg = ConversationMessage(
+        session_id=session_id,
+        role='assistant',
+        content=assistant_response
+    )
+    db.session.add(assistant_msg)
+    
+    session.updated_at = datetime.utcnow()
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'assistant_message': assistant_response,
+        'suggested_tasks': [
+            {
+                'id': t.id,
+                'title': t.title,
+                'description': t.description,
+                'priority': t.priority,
+                'suggested_date': t.suggested_date.isoformat() if t.suggested_date else None
+            }
+            for t in SuggestedTask.query.filter_by(session_id=session_id, is_created=False).all()
+        ]
+    })
+
+
+@main.route('/brainstorm/session/<int:session_id>/tasks/create', methods=['POST'])
+@login_required
+def create_tasks_from_brainstorm(session_id):
+    """壁打ちセッションからタスクを作成"""
+    from models import ConversationSession, SuggestedTask, Task, db
+    from brainstorm import parse_duration, extract_date_from_text
+    from datetime import date, timedelta
+    from dateutil.relativedelta import relativedelta
+    
+    # セッションの確認
+    session = ConversationSession.query.filter_by(
+        id=session_id,
+        user_id=current_user.id
+    ).first_or_404()
+    
+    data = request.get_json()
+    task_ids = data.get('task_ids', [])  # 作成するタスクのIDリスト
+    date_input = data.get('date', '').strip()  # 日付指定（11/4など）
+    duration_input = data.get('duration', '').strip()  # 期間指定（1ヶ月分日割りなど）
+    
+    created_tasks = []
+    
+    # 提案タスクを取得
+    suggested_tasks = SuggestedTask.query.filter_by(
+        session_id=session_id,
+        is_created=False
+    ).all()
+    
+    if not task_ids:
+        # 全ての提案タスクを作成
+        tasks_to_create = suggested_tasks
+    else:
+        # 指定されたタスクのみ作成
+        tasks_to_create = [t for t in suggested_tasks if t.id in task_ids]
+    
+    # 期間指定（1ヶ月分日割りなど）の場合
+    if duration_input:
+        duration_type = parse_duration(duration_input)
+        
+        if duration_type == 'monthly_daily':
+            # 1ヶ月分を日割りで作成
+            today = date.today()
+            next_month = today + relativedelta(months=1)
+            days_diff = (next_month - today).days
+            
+            for suggested_task in tasks_to_create:
+                for i in range(days_diff):
+                    task_date = today + timedelta(days=i)
+                    
+                    new_task = Task(
+                        user_id=current_user.id,
+                        title=f"{suggested_task.title} (Day {i+1})",
+                        description=suggested_task.description,
+                        priority=suggested_task.priority,
+                        category='today' if i == 0 else 'other',
+                        start_date=task_date,
+                        end_date=task_date
+                    )
+                    db.session.add(new_task)
+                    created_tasks.append(new_task)
+            
+            # 提案タスクをマーク
+            for suggested_task in tasks_to_create:
+                suggested_task.is_created = True
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': f'{len(created_tasks)}件のタスクを1ヶ月分日割りで作成しました',
+                'created_count': len(created_tasks)
+            })
+        
+        elif duration_type == 'weekly_daily':
+            # 1週間分を日割りで作成
+            today = date.today()
+            
+            for suggested_task in tasks_to_create:
+                for i in range(7):
+                    task_date = today + timedelta(days=i)
+                    
+                    new_task = Task(
+                        user_id=current_user.id,
+                        title=f"{suggested_task.title} (Day {i+1})",
+                        description=suggested_task.description,
+                        priority=suggested_task.priority,
+                        category='today' if i == 0 else 'other',
+                        start_date=task_date,
+                        end_date=task_date
+                    )
+                    db.session.add(new_task)
+                    created_tasks.append(new_task)
+            
+            # 提案タスクをマーク
+            for suggested_task in tasks_to_create:
+                suggested_task.is_created = True
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': f'{len(created_tasks)}件のタスクを1週間分日割りで作成しました',
+                'created_count': len(created_tasks)
+            })
+    
+    # 通常のタスク作成（日付指定あり/なし）
+    target_date = None
+    if date_input:
+        target_date = extract_date_from_text(date_input)
+        if not target_date:
+            # 日付解析に失敗した場合は今日の日付を使用
+            target_date = date.today()
+    elif duration_input:
+        # 期間指定がない場合は今日の日付を使用
+        target_date = date.today()
+    
+    # 提案タスクからタスクを作成
+    for suggested_task in tasks_to_create:
+        # 日付が提案されていない場合は指定日付を使用、なければ今日
+        task_date = suggested_task.suggested_date or target_date or date.today()
+        
+        new_task = Task(
+            user_id=current_user.id,
+            title=suggested_task.title,
+            description=suggested_task.description,
+            priority=suggested_task.priority,
+            category='today' if task_date == date.today() else 'other',
+            start_date=task_date,
+            end_date=task_date
+        )
+        db.session.add(new_task)
+        created_tasks.append(new_task)
+        
+        # 提案タスクをマーク
+        suggested_task.is_created = True
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'{len(created_tasks)}件のタスクを作成しました',
+        'created_count': len(created_tasks)
+    })
+
+
+@main.route('/brainstorm/session/<int:session_id>')
+@login_required
+def get_brainstorm_session(session_id):
+    """壁打ちセッションの詳細を取得"""
+    from models import ConversationSession, ConversationMessage, SuggestedTask
+    
+    session = ConversationSession.query.filter_by(
+        id=session_id,
+        user_id=current_user.id
+    ).first_or_404()
+    
+    messages = [
+        {
+            'id': msg.id,
+            'role': msg.role,
+            'content': msg.content,
+            'created_at': msg.created_at.isoformat()
+        }
+        for msg in session.messages
+    ]
+    
+    suggested_tasks = [
+        {
+            'id': task.id,
+            'title': task.title,
+            'description': task.description,
+            'priority': task.priority,
+            'suggested_date': task.suggested_date.isoformat() if task.suggested_date else None,
+            'is_created': task.is_created
+        }
+        for task in session.suggested_tasks
+    ]
+    
+    return jsonify({
+        'success': True,
+        'session': {
+            'id': session.id,
+            'title': session.title,
+            'goal': session.goal,
+            'created_at': session.created_at.isoformat()
+        },
+        'messages': messages,
+        'suggested_tasks': suggested_tasks
     })

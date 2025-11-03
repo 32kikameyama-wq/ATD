@@ -86,9 +86,9 @@
         <div class="navbar-content">
             <div class="navbar-brand">ATD</div>
             <div class="navbar-menu">
-                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
-                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item active">タスク管理</a>
-                <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                        <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item active">タスク管理</a>
+                        <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
                 {% if current_user.is_admin %}
                     <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
                 {% endif %}
@@ -120,6 +120,8 @@
                 <h1>タスク管理</h1>
                 <div style="display: flex; gap: var(--spacing-md);">
                     <a href="{{ url_for('main.calendar') }}" class="btn btn-secondary">📅 カレンダー</a>
+                    <label for="csv-import" class="btn btn-primary" style="cursor: pointer; margin: 0;">📥 CSVインポート</label>
+                    <input type="file" id="csv-import" accept=".csv" style="display: none;" onchange="handleCSVImport(event)">
                     <a href="{{ url_for('main.mindmap') }}" class="btn btn-secondary" style="margin-left: auto;">マインドマップを表示</a>
                 </div>
             </div>
@@ -740,6 +742,88 @@
             clearInterval(timeUpdateIntervals[taskId]);
             delete timeUpdateIntervals[taskId];
         }
+    }
+    
+    // CSVインポート機能
+    async function handleCSVImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const text = e.target.result;
+            const lines = text.split('\n').filter(line => line.trim());
+            
+            if (lines.length === 0) {
+                alert('CSVファイルが空です');
+                return;
+            }
+            
+            // CSVを解析
+            const tasks = [];
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                // カンマまたはタブで分割
+                const parts = line.split(/[,\t]/).map(p => p.trim());
+                
+                if (parts.length < 2) {
+                    console.warn(`行 ${i + 1}: 形式が不正です - ${line}`);
+                    continue;
+                }
+                
+                // 日付とタスク名を取得
+                const dateStr = parts[0];
+                const taskName = parts[1];
+                
+                if (!dateStr || !taskName) continue;
+                
+                tasks.push({
+                    date: dateStr,
+                    title: taskName,
+                    description: parts[2] || ''
+                });
+            }
+            
+            if (tasks.length === 0) {
+                alert('有効なタスクがありません');
+                return;
+            }
+            
+            // 確認ダイアログ
+            if (!confirm(`${tasks.length}件のタスクを作成しますか？`)) {
+                return;
+            }
+            
+            // サーバーに送信
+            try {
+                const response = await fetch('/tasks/import-csv', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ tasks: tasks })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`${data.created_count}件のタスクを作成しました`);
+                    location.reload();
+                } else {
+                    alert('タスクの作成に失敗しました: ' + (data.message || 'エラーが発生しました'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('エラーが発生しました');
+            }
+        };
+        
+        reader.readAsText(file, 'UTF-8');
+        
+        // ファイル入力をリセット（同じファイルを再度選択できるように）
+        event.target.value = '';
     }
     
     // ページ読み込み時に計測中のタスクの更新を開始

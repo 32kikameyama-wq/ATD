@@ -20,3 +20,7 @@ class Config:
     
     # その他
     DEBUG = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
+    
+    # Groq LLM API設定（オプション - APIキーがない場合は既存のルールベースを使用）
+    GROQ_API_KEY = os.getenv('GROQ_API_KEY', None)
+    GROQ_MODEL = os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant')  # 無料で高速なモデル
