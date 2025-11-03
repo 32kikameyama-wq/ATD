@@ -95,17 +95,17 @@ def create_app(config_class=Config):
                 print('✅ 初期ユーザー「テスト」を作成しました')
             
             # 初期ユーザー2を作成（存在しない場合のみ）
-            user2 = User.query.filter_by(username='市村一樹').first()
+            user2 = User.query.filter_by(username='市村一貴').first()
             if not user2:
                 user2 = User(
-                    username='市村一樹',
+                    username='市村一貴',
                     email='624ichi@gmail.com',
                     is_admin=False
                 )
                 user2.set_password('ars225225')
                 db.session.add(user2)
                 db.session.commit()
-                print('✅ 初期ユーザー「市村一樹」を作成しました')
+                print('✅ 初期ユーザー「市村一貴」を作成しました')
         except Exception as e:
             print(f'⚠️ データベース初期化エラー: {e}')
     

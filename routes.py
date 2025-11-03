@@ -2102,3 +2102,48 @@ def create_user():
         'message': f'ユーザー「{username}」を作成しました',
         'user_id': new_user.id
     })
+
+@main.route('/admin/edit-user', methods=['POST'])
+@login_required
+def edit_user():
+    """ユーザー情報編集（管理者のみ）"""
+    from models import User
+    
+    # 管理者権限チェック
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': '管理者権限が必要です'}), 403
+    
+    data = request.get_json()
+    user_id = data.get('user_id')
+    username = data.get('username', '').strip()
+    email = data.get('email', '').strip()
+    is_admin = data.get('is_admin', False)
+    
+    # バリデーション
+    if not user_id or not username or not email:
+        return jsonify({'success': False, 'message': 'すべての項目を入力してください'}), 400
+    
+    # ユーザー取得
+    user = User.query.get_or_404(user_id)
+    
+    # ユーザー名の重複チェック（自分以外）
+    existing_user = User.query.filter_by(username=username).first()
+    if existing_user and existing_user.id != user_id:
+        return jsonify({'success': False, 'message': 'このユーザー名は既に使用されています'}), 400
+    
+    # メールアドレスの重複チェック（自分以外）
+    existing_email = User.query.filter_by(email=email).first()
+    if existing_email and existing_email.id != user_id:
+        return jsonify({'success': False, 'message': 'このメールアドレスは既に使用されています'}), 400
+    
+    # 更新
+    user.username = username
+    user.email = email
+    user.is_admin = is_admin
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'ユーザー「{username}」を更新しました'
+    })

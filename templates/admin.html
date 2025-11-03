@@ -153,7 +153,7 @@
                             {% else %}
                                 <button class="btn btn-sm btn-success" onclick="toggleAdmin({{ user.id }}, true)">管理者に設定</button>
                             {% endif %}
-                            <button class="btn btn-sm btn-outline" onclick="viewUserDetails({{ user.id }})">詳細</button>
+                            <button class="btn btn-sm btn-outline" onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.email }}', {{ user.is_admin }})">編集</button>
                             <button class="btn btn-sm btn-outline" onclick="resetUserPassword({{ user.id }})">パスワードリセット</button>
                             <button class="btn btn-sm btn-danger" onclick="deleteUser({{ user.id }})">削除</button>
                         </div>
@@ -193,10 +193,43 @@
         }
     }
     
-    // ユーザー詳細表示
-    function viewUserDetails(userId) {
-        // TODO: ユーザー詳細モーダルを実装
-        alert('ユーザー詳細機能は今後実装予定です。');
+    // ユーザー編集
+    function editUser(userId, currentUsername, currentEmail, currentIsAdmin) {
+        const newUsername = prompt('ユーザー名を入力してください:', currentUsername);
+        if (newUsername === null || newUsername.trim() === '') {
+            return;
+        }
+        
+        const newEmail = prompt('メールアドレスを入力してください:', currentEmail);
+        if (newEmail === null || newEmail.trim() === '') {
+            return;
+        }
+        
+        const newIsAdmin = confirm('管理者権限を持たせますか？\nOK: 管理者\nキャンセル: 一般ユーザー');
+        
+        fetch('/admin/edit-user', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                user_id: userId,
+                username: newUsername.trim(),
+                email: newEmail.trim(),
+                is_admin: newIsAdmin
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('ユーザー情報を更新しました');
+                location.reload();
+            } else {
+                alert(data.message || 'エラーが発生しました');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました');
+        });
     }
     
     // パスワードリセット
