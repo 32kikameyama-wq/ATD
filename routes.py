@@ -2119,10 +2119,10 @@ def create_user():
         'user_id': new_user.id
     })
 
-@main.route('/admin/edit-user', methods=['POST'])
+@main.route('/admin/reset-password', methods=['POST'])
 @login_required
-def edit_user():
-    """ユーザー情報編集（管理者のみ）"""
+def reset_password():
+    """パスワードリセット（管理者のみ）"""
     from models import User
     
     # 管理者権限チェック
@@ -2131,37 +2131,73 @@ def edit_user():
     
     data = request.get_json()
     user_id = data.get('user_id')
-    username = data.get('username', '').strip()
-    email = data.get('email', '').strip()
-    is_admin = data.get('is_admin', False)
+    new_password = data.get('new_password', '').strip()
     
     # バリデーション
-    if not user_id or not username or not email:
-        return jsonify({'success': False, 'message': 'すべての項目を入力してください'}), 400
+    if not user_id or not new_password:
+        return jsonify({'success': False, 'message': 'ユーザーIDと新しいパスワードを入力してください'}), 400
+    
+    if len(new_password) < 4:
+        return jsonify({'success': False, 'message': 'パスワードは4文字以上で入力してください'}), 400
     
     # ユーザー取得
     user = User.query.get_or_404(user_id)
     
-    # ユーザー名の重複チェック（自分以外）
-    existing_user = User.query.filter_by(username=username).first()
-    if existing_user and existing_user.id != user_id:
-        return jsonify({'success': False, 'message': 'このユーザー名は既に使用されています'}), 400
-    
-    # メールアドレスの重複チェック（自分以外）
-    existing_email = User.query.filter_by(email=email).first()
-    if existing_email and existing_email.id != user_id:
-        return jsonify({'success': False, 'message': 'このメールアドレスは既に使用されています'}), 400
-    
-    # 更新
-    user.username = username
-    user.email = email
-    user.is_admin = is_admin
+    # パスワードを設定
+    user.set_password(new_password)
     
     db.session.commit()
     
     return jsonify({
         'success': True,
-        'message': f'ユーザー「{username}」を更新しました'
+        'message': f'ユーザー「{user.username}」のパスワードをリセットしました'
+    })
+
+@main.route('/admin/delete-user', methods=['POST'])
+@login_required
+def delete_user():
+    """ユーザー削除（管理者のみ）"""
+    from models import User, Task, TeamMember, Team, Notification, ConversationSession
+    
+    # 管理者権限チェック
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': '管理者権限が必要です'}), 403
+    
+    data = request.get_json()
+    user_id = data.get('user_id')
+    
+    # バリデーション
+    if not user_id:
+        return jsonify({'success': False, 'message': 'ユーザーIDを指定してください'}), 400
+    
+    # 自分自身は削除できない
+    if user_id == current_user.id:
+        return jsonify({'success': False, 'message': '自分自身を削除することはできません'}), 400
+    
+    # ユーザー取得
+    user = User.query.get_or_404(user_id)
+    username = user.username
+    
+    # ユーザーに関連するデータを削除（cascadeで自動削除されるものも多いが、明示的に削除）
+    # Taskはcascadeで自動削除される
+    # TeamMemberは削除
+    TeamMember.query.filter_by(user_id=user_id).delete()
+    
+    # 自分が作成したチームがある場合、チームも削除（cascadeで自動削除）
+    Team.query.filter_by(created_by=user_id).delete()
+    
+    # Notificationを削除
+    Notification.query.filter_by(user_id=user_id).delete()
+    
+    # ConversationSessionとその関連データはcascadeで自動削除される
+    
+    # ユーザーを削除
+    db.session.delete(user)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'ユーザー「{username}」を削除しました'
     })
 
 @main.route('/admin/export-data', methods=['GET'])

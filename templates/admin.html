@@ -173,7 +173,6 @@
                             {% else %}
                                 <button class="btn btn-sm btn-success" onclick="toggleAdmin({{ user.id }}, true)">管理者に設定</button>
                             {% endif %}
-                            <button class="btn btn-sm btn-outline" onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.email }}', {{ user.is_admin }})">編集</button>
                             <button class="btn btn-sm btn-outline" onclick="resetUserPassword({{ user.id }})">パスワードリセット</button>
                             <button class="btn btn-sm btn-danger" onclick="deleteUser({{ user.id }})">削除</button>
                         </div>
@@ -213,34 +212,44 @@
         }
     }
     
-    // ユーザー編集
-    function editUser(userId, currentUsername, currentEmail, currentIsAdmin) {
-        const newUsername = prompt('ユーザー名を入力してください:', currentUsername);
-        if (newUsername === null || newUsername.trim() === '') {
+    // パスワードリセット
+    function resetUserPassword(userId) {
+        const newPassword = prompt('新しいパスワードを入力してください:');
+        if (newPassword === null || newPassword.trim() === '') {
             return;
         }
         
-        const newEmail = prompt('メールアドレスを入力してください:', currentEmail);
-        if (newEmail === null || newEmail.trim() === '') {
+        const confirmPassword = prompt('パスワードを確認してください:');
+        if (confirmPassword === null || confirmPassword.trim() === '') {
             return;
         }
         
-        const newIsAdmin = confirm('管理者権限を持たせますか？\nOK: 管理者\nキャンセル: 一般ユーザー');
+        if (newPassword !== confirmPassword) {
+            alert('パスワードが一致しません');
+            return;
+        }
         
-        fetch('/admin/edit-user', {
+        if (newPassword.length < 4) {
+            alert('パスワードは4文字以上で入力してください');
+            return;
+        }
+        
+        if (!confirm('このユーザーのパスワードをリセットしますか？')) {
+            return;
+        }
+        
+        fetch('/admin/reset-password', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 user_id: userId,
-                username: newUsername.trim(),
-                email: newEmail.trim(),
-                is_admin: newIsAdmin
+                new_password: newPassword.trim()
             })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('ユーザー情報を更新しました');
+                alert('パスワードをリセットしました');
                 location.reload();
             } else {
                 alert(data.message || 'エラーが発生しました');
@@ -252,20 +261,37 @@
         });
     }
     
-    // パスワードリセット
-    function resetUserPassword(userId) {
-        if (confirm('このユーザーのパスワードをリセットしますか？')) {
-            // TODO: パスワードリセット機能を実装
-            alert('パスワードリセット機能は今後実装予定です。');
-        }
-    }
-    
     // ユーザー削除
     function deleteUser(userId) {
-        if (confirm('このユーザーを削除しますか？この操作は取り消せません。')) {
-            // TODO: ユーザー削除機能を実装
-            alert('ユーザー削除機能は今後実装予定です。');
+        if (!confirm('このユーザーを削除しますか？\n\nこの操作は取り消せません。\nユーザーのデータ（タスク、チーム情報など）もすべて削除されます。')) {
+            return;
         }
+        
+        // 二重確認
+        if (!confirm('本当に削除しますか？\n\nこの操作は取り消せません。')) {
+            return;
+        }
+        
+        fetch('/admin/delete-user', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                user_id: userId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('ユーザーを削除しました');
+                location.reload();
+            } else {
+                alert(data.message || 'エラーが発生しました');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました');
+        });
     }
     
     // 新規ユーザー登録
