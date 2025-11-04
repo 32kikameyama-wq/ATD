@@ -561,3 +561,61 @@ def add_to_mindmap(task_id):
     
     flash('タスクをマインドマップに追加しました', 'success')
     return redirect(url_for('tasks.list_tasks'))
+
+@tasks.route('/tasks/bulk-delete', methods=['POST'])
+@login_required
+def bulk_delete_tasks():
+    """タスクの一括削除"""
+    from models import UserPerformance
+    from datetime import datetime
+    
+    data = request.get_json()
+    task_ids = data.get('task_ids', [])
+    
+    if not task_ids:
+        return jsonify({'success': False, 'message': '削除するタスクが選択されていません'}), 400
+    
+    # 自分のタスクか確認して削除
+    deleted_count = 0
+    for task_id in task_ids:
+        try:
+            task = Task.query.get(task_id)
+            if task and task.user_id == current_user.id:
+                # チームタスクと紐付いている場合、TaskAssigneeを更新
+                if task.team_task_id:
+                    from models import TaskAssignee, TeamTask, MindmapNode
+                    task_assignee = TaskAssignee.query.filter_by(
+                        team_task_id=task.team_task_id,
+                        user_id=current_user.id
+                    ).first()
+                    if task_assignee:
+                        db.session.delete(task_assignee)
+                    
+                    # チームタスクの完了率を更新
+                    team_task = TeamTask.query.get(task.team_task_id)
+                    if team_task:
+                        completion_rate = team_task.calculate_completion_rate()
+                        team_task.completed = (completion_rate == 100)
+                        team_task.updated_at = datetime.utcnow()
+                        
+                        # 親ノードの進捗率を更新
+                        if team_task.parent_node_id:
+                            parent_node = MindmapNode.query.get(team_task.parent_node_id)
+                            if parent_node:
+                                parent_node.progress = parent_node.calculate_progress()
+                
+                db.session.delete(task)
+                deleted_count += 1
+        except Exception as e:
+            continue
+    
+    db.session.commit()
+    
+    # パフォーマンスデータを更新
+    UserPerformance.update_daily_performance(current_user.id)
+    
+    return jsonify({
+        'success': True,
+        'message': f'{deleted_count}件のタスクを削除しました',
+        'deleted_count': deleted_count
+    })
