@@ -2164,6 +2164,597 @@ def edit_user():
         'message': f'ユーザー「{username}」を更新しました'
     })
 
+@main.route('/admin/export-data', methods=['GET'])
+@login_required
+def export_data():
+    """全データをエクスポート（管理者のみ）"""
+    from models import (
+        User, Task, UserPerformance, Team, TeamMember, TeamTask, TaskAssignee,
+        Mindmap, MindmapNode, TaskTemplate, Notification,
+        ConversationSession, ConversationMessage, SuggestedTask
+    )
+    from flask import make_response
+    import json
+    from datetime import datetime
+    
+    # 管理者権限チェック
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': '管理者権限が必要です'}), 403
+    
+    # 全データを取得してJSON形式に変換
+    export_data = {
+        'version': '1.0',
+        'exported_at': datetime.utcnow().isoformat(),
+        'data': {}
+    }
+    
+    # User（独立）
+    users = User.query.all()
+    export_data['data']['users'] = [{
+        'id': u.id,
+        'username': u.username,
+        'email': u.email,
+        'password_hash': u.password_hash,
+        'is_admin': u.is_admin,
+        'display_name': u.display_name,
+        'bio': u.bio,
+        'created_at': u.created_at.isoformat() if u.created_at else None
+    } for u in users]
+    
+    # Team（Userに依存）
+    teams = Team.query.all()
+    export_data['data']['teams'] = [{
+        'id': t.id,
+        'name': t.name,
+        'description': t.description,
+        'created_by': t.created_by,
+        'created_at': t.created_at.isoformat() if t.created_at else None
+    } for t in teams]
+    
+    # TeamMember（User, Teamに依存）
+    team_members = TeamMember.query.all()
+    export_data['data']['team_members'] = [{
+        'id': tm.id,
+        'team_id': tm.team_id,
+        'user_id': tm.user_id,
+        'role': tm.role,
+        'joined_at': tm.joined_at.isoformat() if tm.joined_at else None
+    } for tm in team_members]
+    
+    # Mindmap（User, Teamに依存）
+    mindmaps = Mindmap.query.all()
+    export_data['data']['mindmaps'] = [{
+        'id': m.id,
+        'team_id': m.team_id,
+        'user_id': m.user_id,
+        'name': m.name,
+        'description': m.description,
+        'date': m.date.isoformat() if m.date else None,
+        'created_by': m.created_by,
+        'created_at': m.created_at.isoformat() if m.created_at else None,
+        'updated_at': m.updated_at.isoformat() if m.updated_at else None
+    } for m in mindmaps]
+    
+    # UserPerformance（Userに依存）
+    user_performances = UserPerformance.query.all()
+    export_data['data']['user_performances'] = [{
+        'id': up.id,
+        'user_id': up.user_id,
+        'date': up.date.isoformat() if up.date else None,
+        'tasks_completed': up.tasks_completed,
+        'tasks_created': up.tasks_created,
+        'completion_rate': up.completion_rate,
+        'streak_days': up.streak_days,
+        'total_work_seconds': up.total_work_seconds,
+        'created_at': up.created_at.isoformat() if up.created_at else None,
+        'updated_at': up.updated_at.isoformat() if up.updated_at else None
+    } for up in user_performances]
+    
+    # TaskTemplate（Userに依存）
+    task_templates = TaskTemplate.query.all()
+    export_data['data']['task_templates'] = [{
+        'id': tt.id,
+        'user_id': tt.user_id,
+        'title': tt.title,
+        'description': tt.description,
+        'priority': tt.priority,
+        'category': tt.category,
+        'repeat_type': tt.repeat_type,
+        'is_active': tt.is_active,
+        'created_at': tt.created_at.isoformat() if tt.created_at else None
+    } for tt in task_templates]
+    
+    # TeamTask（Team, User, MindmapNodeに依存）
+    team_tasks = TeamTask.query.all()
+    export_data['data']['team_tasks'] = [{
+        'id': tt.id,
+        'team_id': tt.team_id,
+        'title': tt.title,
+        'description': tt.description,
+        'completed': tt.completed,
+        'due_date': tt.due_date.isoformat() if tt.due_date else None,
+        'priority': tt.priority,
+        'category': tt.category,
+        'order_index': tt.order_index,
+        'assigned_to': tt.assigned_to,
+        'created_by': tt.created_by,
+        'parent_node_id': tt.parent_node_id,
+        'created_at': tt.created_at.isoformat() if tt.created_at else None,
+        'updated_at': tt.updated_at.isoformat() if tt.updated_at else None
+    } for tt in team_tasks]
+    
+    # MindmapNode（Mindmap, TeamTask, Taskに依存）
+    mindmap_nodes = MindmapNode.query.all()
+    export_data['data']['mindmap_nodes'] = [{
+        'id': mn.id,
+        'mindmap_id': mn.mindmap_id,
+        'parent_id': mn.parent_id,
+        'title': mn.title,
+        'description': mn.description,
+        'position_x': mn.position_x,
+        'position_y': mn.position_y,
+        'completed': mn.completed,
+        'progress': mn.progress,
+        'due_date': mn.due_date.isoformat() if mn.due_date else None,
+        'is_task': mn.is_task,
+        'team_task_id': mn.team_task_id,
+        'task_id': mn.task_id,
+        'created_at': mn.created_at.isoformat() if mn.created_at else None,
+        'updated_at': mn.updated_at.isoformat() if mn.updated_at else None
+    } for mn in mindmap_nodes]
+    
+    # Task（User, TeamTaskに依存）
+    tasks = Task.query.all()
+    export_data['data']['tasks'] = [{
+        'id': t.id,
+        'user_id': t.user_id,
+        'title': t.title,
+        'description': t.description,
+        'completed': t.completed,
+        'due_date': t.due_date.isoformat() if t.due_date else None,
+        'start_date': t.start_date.isoformat() if t.start_date else None,
+        'end_date': t.end_date.isoformat() if t.end_date else None,
+        'priority': t.priority,
+        'category': t.category,
+        'order_index': t.order_index,
+        'archived': t.archived,
+        'archived_at': t.archived_at.isoformat() if t.archived_at else None,
+        'is_tracking': t.is_tracking,
+        'tracking_start_time': t.tracking_start_time.isoformat() if t.tracking_start_time else None,
+        'total_seconds': t.total_seconds,
+        'team_task_id': t.team_task_id,
+        'created_at': t.created_at.isoformat() if t.created_at else None,
+        'updated_at': t.updated_at.isoformat() if t.updated_at else None
+    } for t in tasks]
+    
+    # TaskAssignee（TeamTask, Userに依存）
+    task_assignees = TaskAssignee.query.all()
+    export_data['data']['task_assignees'] = [{
+        'id': ta.id,
+        'team_task_id': ta.team_task_id,
+        'user_id': ta.user_id,
+        'completed': ta.completed,
+        'completed_at': ta.completed_at.isoformat() if ta.completed_at else None,
+        'created_at': ta.created_at.isoformat() if ta.created_at else None
+    } for ta in task_assignees]
+    
+    # Notification（User, Teamに依存）
+    notifications = Notification.query.all()
+    export_data['data']['notifications'] = [{
+        'id': n.id,
+        'user_id': n.user_id,
+        'title': n.title,
+        'message': n.message,
+        'notification_type': n.notification_type,
+        'read': n.read,
+        'related_team_id': n.related_team_id,
+        'related_task_id': n.related_task_id,
+        'created_at': n.created_at.isoformat() if n.created_at else None
+    } for n in notifications]
+    
+    # ConversationSession（Userに依存）
+    conversation_sessions = ConversationSession.query.all()
+    export_data['data']['conversation_sessions'] = [{
+        'id': cs.id,
+        'user_id': cs.user_id,
+        'title': cs.title,
+        'goal': cs.goal,
+        'created_at': cs.created_at.isoformat() if cs.created_at else None,
+        'updated_at': cs.updated_at.isoformat() if cs.updated_at else None
+    } for cs in conversation_sessions]
+    
+    # ConversationMessage（ConversationSessionに依存）
+    conversation_messages = ConversationMessage.query.all()
+    export_data['data']['conversation_messages'] = [{
+        'id': cm.id,
+        'session_id': cm.session_id,
+        'role': cm.role,
+        'content': cm.content,
+        'created_at': cm.created_at.isoformat() if cm.created_at else None
+    } for cm in conversation_messages]
+    
+    # SuggestedTask（ConversationSessionに依存）
+    suggested_tasks = SuggestedTask.query.all()
+    export_data['data']['suggested_tasks'] = [{
+        'id': st.id,
+        'session_id': st.session_id,
+        'title': st.title,
+        'description': st.description,
+        'priority': st.priority,
+        'suggested_date': st.suggested_date.isoformat() if st.suggested_date else None,
+        'is_created': st.is_created,
+        'created_at': st.created_at.isoformat() if st.created_at else None
+    } for st in suggested_tasks]
+    
+    # JSON文字列に変換
+    json_str = json.dumps(export_data, ensure_ascii=False, indent=2)
+    
+    # ファイル名を生成（日時を含める）
+    filename = f'atd_backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+    
+    # レスポンスを作成
+    response = make_response(json_str)
+    response.headers['Content-Type'] = 'application/json; charset=utf-8'
+    response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+    
+    return response
+
+@main.route('/admin/import-data', methods=['POST'])
+@login_required
+def import_data():
+    """データをインポート（管理者のみ）"""
+    from models import (
+        User, Task, UserPerformance, Team, TeamMember, TeamTask, TaskAssignee,
+        Mindmap, MindmapNode, TaskTemplate, Notification,
+        ConversationSession, ConversationMessage, SuggestedTask
+    )
+    import json
+    from datetime import datetime
+    
+    # 管理者権限チェック
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': '管理者権限が必要です'}), 403
+    
+    # ファイルがアップロードされているか確認
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'message': 'ファイルが選択されていません'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'message': 'ファイルが選択されていません'}), 400
+    
+    # ファイルを読み込む
+    try:
+        file_content = file.read().decode('utf-8')
+        import_data = json.loads(file_content)
+    except json.JSONDecodeError:
+        return jsonify({'success': False, 'message': 'JSONファイルの形式が正しくありません'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'ファイルの読み込みに失敗しました: {str(e)}'}), 400
+    
+    # バージョンチェック
+    if 'version' not in import_data or 'data' not in import_data:
+        return jsonify({'success': False, 'message': '不正なバックアップファイルです'}), 400
+    
+    try:
+        # 既存データを削除（外部キー制約を考慮して順序よく削除）
+        # 依存関係の逆順で削除
+        SuggestedTask.query.delete()
+        ConversationMessage.query.delete()
+        ConversationSession.query.delete()
+        Notification.query.delete()
+        TaskAssignee.query.delete()
+        MindmapNode.query.delete()
+        Task.query.delete()
+        TeamTask.query.delete()
+        TaskTemplate.query.delete()
+        UserPerformance.query.delete()
+        TeamMember.query.delete()
+        Mindmap.query.delete()
+        Team.query.delete()
+        User.query.delete()
+        
+        db.session.commit()
+        
+        # IDマッピング（旧ID -> 新ID）
+        id_mapping = {
+            'users': {},
+            'teams': {},
+            'mindmaps': {},
+            'team_tasks': {},
+            'mindmap_nodes': {},
+            'tasks': {},
+            'conversation_sessions': {}
+        }
+        
+        # データをインポート（依存関係を考慮して順序よく）
+        data = import_data['data']
+        
+        # 1. User（独立）
+        for user_data in data.get('users', []):
+            old_id = user_data['id']
+            new_user = User(
+                username=user_data['username'],
+                email=user_data['email'],
+                password_hash=user_data['password_hash'],
+                is_admin=user_data.get('is_admin', False),
+                display_name=user_data.get('display_name'),
+                bio=user_data.get('bio')
+            )
+            if user_data.get('created_at'):
+                new_user.created_at = datetime.fromisoformat(user_data['created_at'].replace('Z', '+00:00'))
+            db.session.add(new_user)
+            db.session.flush()  # IDを取得
+            id_mapping['users'][old_id] = new_user.id
+        
+        # 2. Team（Userに依存）
+        for team_data in data.get('teams', []):
+            old_id = team_data['id']
+            new_team = Team(
+                name=team_data['name'],
+                description=team_data.get('description'),
+                created_by=id_mapping['users'].get(team_data['created_by'], team_data['created_by'])
+            )
+            if team_data.get('created_at'):
+                new_team.created_at = datetime.fromisoformat(team_data['created_at'].replace('Z', '+00:00'))
+            db.session.add(new_team)
+            db.session.flush()
+            id_mapping['teams'][old_id] = new_team.id
+        
+        # 3. TeamMember（User, Teamに依存）
+        for tm_data in data.get('team_members', []):
+            new_tm = TeamMember(
+                team_id=id_mapping['teams'].get(tm_data['team_id'], tm_data['team_id']),
+                user_id=id_mapping['users'].get(tm_data['user_id'], tm_data['user_id']),
+                role=tm_data.get('role', 'member')
+            )
+            if tm_data.get('joined_at'):
+                new_tm.joined_at = datetime.fromisoformat(tm_data['joined_at'].replace('Z', '+00:00'))
+            db.session.add(new_tm)
+        
+        # 4. Mindmap（User, Teamに依存）
+        for mindmap_data in data.get('mindmaps', []):
+            old_id = mindmap_data['id']
+            new_mindmap = Mindmap(
+                team_id=id_mapping['teams'].get(mindmap_data['team_id']) if mindmap_data.get('team_id') else None,
+                user_id=id_mapping['users'].get(mindmap_data['user_id']) if mindmap_data.get('user_id') else None,
+                name=mindmap_data['name'],
+                description=mindmap_data.get('description'),
+                created_by=id_mapping['users'].get(mindmap_data['created_by'], mindmap_data['created_by'])
+            )
+            if mindmap_data.get('date'):
+                from datetime import date as date_class
+                new_mindmap.date = date_class.fromisoformat(mindmap_data['date'])
+            if mindmap_data.get('created_at'):
+                new_mindmap.created_at = datetime.fromisoformat(mindmap_data['created_at'].replace('Z', '+00:00'))
+            if mindmap_data.get('updated_at'):
+                new_mindmap.updated_at = datetime.fromisoformat(mindmap_data['updated_at'].replace('Z', '+00:00'))
+            db.session.add(new_mindmap)
+            db.session.flush()
+            id_mapping['mindmaps'][old_id] = new_mindmap.id
+        
+        # 5. UserPerformance（Userに依存）
+        for up_data in data.get('user_performances', []):
+            from datetime import date as date_class
+            new_up = UserPerformance(
+                user_id=id_mapping['users'].get(up_data['user_id'], up_data['user_id']),
+                date=date_class.fromisoformat(up_data['date']) if up_data.get('date') else None,
+                tasks_completed=up_data.get('tasks_completed', 0),
+                tasks_created=up_data.get('tasks_created', 0),
+                completion_rate=up_data.get('completion_rate', 0.0),
+                streak_days=up_data.get('streak_days', 0),
+                total_work_seconds=up_data.get('total_work_seconds', 0)
+            )
+            if up_data.get('created_at'):
+                new_up.created_at = datetime.fromisoformat(up_data['created_at'].replace('Z', '+00:00'))
+            if up_data.get('updated_at'):
+                new_up.updated_at = datetime.fromisoformat(up_data['updated_at'].replace('Z', '+00:00'))
+            db.session.add(new_up)
+        
+        # 6. TaskTemplate（Userに依存）
+        for tt_data in data.get('task_templates', []):
+            new_tt = TaskTemplate(
+                user_id=id_mapping['users'].get(tt_data['user_id'], tt_data['user_id']),
+                title=tt_data['title'],
+                description=tt_data.get('description'),
+                priority=tt_data.get('priority', 'medium'),
+                category=tt_data.get('category', 'today'),
+                repeat_type=tt_data.get('repeat_type'),
+                is_active=tt_data.get('is_active', True)
+            )
+            if tt_data.get('created_at'):
+                new_tt.created_at = datetime.fromisoformat(tt_data['created_at'].replace('Z', '+00:00'))
+            db.session.add(new_tt)
+        
+        # 7. TeamTask（Team, Userに依存。parent_node_idは後で更新）
+        # TeamTaskとMindmapNodeの循環参照を解決するため、まずTeamTaskを作成（parent_node_idはNone）
+        team_task_parent_mapping = {}  # 旧TeamTask ID -> 旧parent_node_id
+        for tt_data in data.get('team_tasks', []):
+            old_id = tt_data['id']
+            old_parent_node_id = tt_data.get('parent_node_id')
+            if old_parent_node_id:
+                team_task_parent_mapping[old_id] = old_parent_node_id
+            
+            from datetime import date as date_class
+            new_tt = TeamTask(
+                team_id=id_mapping['teams'].get(tt_data['team_id'], tt_data['team_id']),
+                title=tt_data['title'],
+                description=tt_data.get('description'),
+                completed=tt_data.get('completed', False),
+                due_date=date_class.fromisoformat(tt_data['due_date']) if tt_data.get('due_date') else None,
+                priority=tt_data.get('priority', 'medium'),
+                category=tt_data.get('category', 'other'),
+                order_index=tt_data.get('order_index', 0),
+                assigned_to=id_mapping['users'].get(tt_data['assigned_to']) if tt_data.get('assigned_to') else None,
+                created_by=id_mapping['users'].get(tt_data['created_by'], tt_data['created_by']),
+                parent_node_id=None  # 一時的にNone（後で更新）
+            )
+            if tt_data.get('created_at'):
+                new_tt.created_at = datetime.fromisoformat(tt_data['created_at'].replace('Z', '+00:00'))
+            if tt_data.get('updated_at'):
+                new_tt.updated_at = datetime.fromisoformat(tt_data['updated_at'].replace('Z', '+00:00'))
+            db.session.add(new_tt)
+            db.session.flush()
+            id_mapping['team_tasks'][old_id] = new_tt.id
+        
+        # 8. MindmapNode（Mindmap, TeamTaskに依存。Taskは後で更新）
+        for mn_data in data.get('mindmap_nodes', []):
+            old_id = mn_data['id']
+            from datetime import date as date_class
+            new_mn = MindmapNode(
+                mindmap_id=id_mapping['mindmaps'].get(mn_data['mindmap_id'], mn_data['mindmap_id']),
+                parent_id=None,  # 一時的にNone（後で更新）
+                title=mn_data['title'],
+                description=mn_data.get('description'),
+                position_x=mn_data.get('position_x', 0.0),
+                position_y=mn_data.get('position_y', 0.0),
+                completed=mn_data.get('completed', False),
+                progress=mn_data.get('progress', 0),
+                due_date=date_class.fromisoformat(mn_data['due_date']) if mn_data.get('due_date') else None,
+                is_task=mn_data.get('is_task', False),
+                team_task_id=id_mapping['team_tasks'].get(mn_data['team_task_id']) if mn_data.get('team_task_id') else None,
+                task_id=None  # 一時的にNone（後で更新）
+            )
+            if mn_data.get('created_at'):
+                new_mn.created_at = datetime.fromisoformat(mn_data['created_at'].replace('Z', '+00:00'))
+            if mn_data.get('updated_at'):
+                new_mn.updated_at = datetime.fromisoformat(mn_data['updated_at'].replace('Z', '+00:00'))
+            db.session.add(new_mn)
+            db.session.flush()
+            id_mapping['mindmap_nodes'][old_id] = new_mn.id
+        
+        # 8.5. MindmapNodeのparent_idとtask_idを更新
+        for mn_data in data.get('mindmap_nodes', []):
+            old_id = mn_data['id']
+            new_mn_id = id_mapping['mindmap_nodes'][old_id]
+            new_mn = MindmapNode.query.get(new_mn_id)
+            if new_mn:
+                if mn_data.get('parent_id'):
+                    new_mn.parent_id = id_mapping['mindmap_nodes'].get(mn_data['parent_id'])
+                if mn_data.get('task_id'):
+                    new_mn.task_id = id_mapping['tasks'].get(mn_data['task_id'])
+        
+        # 8.6. TeamTaskのparent_node_idを更新
+        for old_tt_id, old_parent_node_id in team_task_parent_mapping.items():
+            new_tt_id = id_mapping['team_tasks'].get(old_tt_id)
+            if new_tt_id:
+                new_tt = TeamTask.query.get(new_tt_id)
+                if new_tt:
+                    new_tt.parent_node_id = id_mapping['mindmap_nodes'].get(old_parent_node_id)
+        
+        # 9. Task（User, TeamTaskに依存）
+        for task_data in data.get('tasks', []):
+            old_id = task_data['id']
+            from datetime import date as date_class
+            new_task = Task(
+                user_id=id_mapping['users'].get(task_data['user_id'], task_data['user_id']),
+                title=task_data['title'],
+                description=task_data.get('description'),
+                completed=task_data.get('completed', False),
+                due_date=date_class.fromisoformat(task_data['due_date']) if task_data.get('due_date') else None,
+                start_date=date_class.fromisoformat(task_data['start_date']) if task_data.get('start_date') else None,
+                end_date=date_class.fromisoformat(task_data['end_date']) if task_data.get('end_date') else None,
+                priority=task_data.get('priority', 'medium'),
+                category=task_data.get('category', 'other'),
+                order_index=task_data.get('order_index', 0),
+                archived=task_data.get('archived', False),
+                archived_at=date_class.fromisoformat(task_data['archived_at']) if task_data.get('archived_at') else None,
+                is_tracking=task_data.get('is_tracking', False),
+                tracking_start_time=datetime.fromisoformat(task_data['tracking_start_time'].replace('Z', '+00:00')) if task_data.get('tracking_start_time') else None,
+                total_seconds=task_data.get('total_seconds', 0),
+                team_task_id=id_mapping['team_tasks'].get(task_data['team_task_id']) if task_data.get('team_task_id') else None
+            )
+            if task_data.get('created_at'):
+                new_task.created_at = datetime.fromisoformat(task_data['created_at'].replace('Z', '+00:00'))
+            if task_data.get('updated_at'):
+                new_task.updated_at = datetime.fromisoformat(task_data['updated_at'].replace('Z', '+00:00'))
+            db.session.add(new_task)
+            db.session.flush()
+            id_mapping['tasks'][old_id] = new_task.id
+        
+        # 10. TaskAssignee（TeamTask, Userに依存）
+        for ta_data in data.get('task_assignees', []):
+            new_ta = TaskAssignee(
+                team_task_id=id_mapping['team_tasks'].get(ta_data['team_task_id'], ta_data['team_task_id']),
+                user_id=id_mapping['users'].get(ta_data['user_id'], ta_data['user_id']),
+                completed=ta_data.get('completed', False),
+                completed_at=datetime.fromisoformat(ta_data['completed_at'].replace('Z', '+00:00')) if ta_data.get('completed_at') else None
+            )
+            if ta_data.get('created_at'):
+                new_ta.created_at = datetime.fromisoformat(ta_data['created_at'].replace('Z', '+00:00'))
+            db.session.add(new_ta)
+        
+        # 11. Notification（User, Teamに依存）
+        for n_data in data.get('notifications', []):
+            new_n = Notification(
+                user_id=id_mapping['users'].get(n_data['user_id'], n_data['user_id']),
+                title=n_data['title'],
+                message=n_data['message'],
+                notification_type=n_data.get('notification_type', 'info'),
+                read=n_data.get('read', False),
+                related_team_id=id_mapping['teams'].get(n_data['related_team_id']) if n_data.get('related_team_id') else None,
+                related_task_id=id_mapping['tasks'].get(n_data['related_task_id']) if n_data.get('related_task_id') else None
+            )
+            if n_data.get('created_at'):
+                new_n.created_at = datetime.fromisoformat(n_data['created_at'].replace('Z', '+00:00'))
+            db.session.add(new_n)
+        
+        # 12. ConversationSession（Userに依存）
+        for cs_data in data.get('conversation_sessions', []):
+            old_id = cs_data['id']
+            new_cs = ConversationSession(
+                user_id=id_mapping['users'].get(cs_data['user_id'], cs_data['user_id']),
+                title=cs_data.get('title'),
+                goal=cs_data.get('goal')
+            )
+            if cs_data.get('created_at'):
+                new_cs.created_at = datetime.fromisoformat(cs_data['created_at'].replace('Z', '+00:00'))
+            if cs_data.get('updated_at'):
+                new_cs.updated_at = datetime.fromisoformat(cs_data['updated_at'].replace('Z', '+00:00'))
+            db.session.add(new_cs)
+            db.session.flush()
+            id_mapping['conversation_sessions'][old_id] = new_cs.id
+        
+        # 13. ConversationMessage（ConversationSessionに依存）
+        for cm_data in data.get('conversation_messages', []):
+            new_cm = ConversationMessage(
+                session_id=id_mapping['conversation_sessions'].get(cm_data['session_id'], cm_data['session_id']),
+                role=cm_data['role'],
+                content=cm_data['content']
+            )
+            if cm_data.get('created_at'):
+                new_cm.created_at = datetime.fromisoformat(cm_data['created_at'].replace('Z', '+00:00'))
+            db.session.add(new_cm)
+        
+        # 14. SuggestedTask（ConversationSessionに依存）
+        for st_data in data.get('suggested_tasks', []):
+            from datetime import date as date_class
+            new_st = SuggestedTask(
+                session_id=id_mapping['conversation_sessions'].get(st_data['session_id'], st_data['session_id']),
+                title=st_data['title'],
+                description=st_data.get('description'),
+                priority=st_data.get('priority', 'medium'),
+                suggested_date=date_class.fromisoformat(st_data['suggested_date']) if st_data.get('suggested_date') else None,
+                is_created=st_data.get('is_created', False)
+            )
+            if st_data.get('created_at'):
+                new_st.created_at = datetime.fromisoformat(st_data['created_at'].replace('Z', '+00:00'))
+            db.session.add(new_st)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'データのインポートが完了しました'
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'インポート中にエラーが発生しました: {str(e)}'
+        }), 500
+
 # ===== 壁打ち機能 =====
 
 @main.route('/brainstorm')

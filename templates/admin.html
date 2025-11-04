@@ -70,6 +70,26 @@
             </div>
         </div>
 
+        <!-- データ管理 -->
+        <div class="card">
+            <div class="card-header">
+                <h3>データ管理</h3>
+            </div>
+            <div style="padding: 1rem;">
+                <p style="margin-bottom: 1rem;">全データ（ユーザー、タスク、チーム、マインドマップなど）をエクスポート/インポートできます。</p>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-primary" onclick="exportData()">
+                        📥 データをエクスポート
+                    </button>
+                    <label for="importFile" class="btn btn-success" style="cursor: pointer; margin: 0;">
+                        📤 データをインポート
+                        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
+                    </label>
+                </div>
+                <div id="importStatus" style="margin-top: 1rem; display: none;"></div>
+            </div>
+        </div>
+
         <!-- 新規ユーザー登録 -->
         <div class="card">
             <div class="card-header">
@@ -312,6 +332,59 @@
             }
         });
     });
+
+    // データエクスポート
+    function exportData() {
+        if (!confirm('全データをエクスポートしますか？\n\nエクスポートには時間がかかる場合があります。')) {
+            return;
+        }
+        
+        window.location.href = '/admin/export-data';
+    }
+
+    // データインポート
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+
+        if (!confirm('現在の全データを削除して、インポートファイルのデータで置き換えます。\n\nこの操作は取り消せません。続行しますか？')) {
+            event.target.value = ''; // ファイル選択をリセット
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const statusDiv = document.getElementById('importStatus');
+        statusDiv.style.display = 'block';
+        statusDiv.innerHTML = '<p style="color: #666;">インポート中...</p>';
+
+        fetch('/admin/import-data', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                statusDiv.innerHTML = '<p style="color: #28a745; font-weight: bold;">✓ ' + data.message + '</p>';
+                setTimeout(() => {
+                    alert('インポートが完了しました。ページをリロードします。');
+                    location.reload();
+                }, 1000);
+            } else {
+                statusDiv.innerHTML = '<p style="color: #dc3545; font-weight: bold;">✗ ' + (data.message || 'インポートに失敗しました') + '</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            statusDiv.innerHTML = '<p style="color: #dc3545; font-weight: bold;">✗ エラーが発生しました: ' + error.message + '</p>';
+        })
+        .finally(() => {
+            event.target.value = ''; // ファイル選択をリセット
+        });
+    }
     </script>
 </body>
 </html>
