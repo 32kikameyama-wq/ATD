@@ -407,12 +407,15 @@
                             }
                         }
                     } else {
-                        // 日付がなければ、現在の日付を使用（または前の日付を継続）
+                        // 日付がない行の場合
                         if (currentDate === null) {
-                            const today = new Date();
-                            currentDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                            // 日付がまだ設定されていない場合はこの行をスキップ
+                            // （最初の行には必ず日付が必要）
+                            console.warn(`行 ${i + 1}: 日付が設定されていません。この行はスキップされます: ${line}`);
+                            continue;
                         }
                         
+                        // 日付が既に設定されている場合は、前の日付を継続
                         // すべてのフィールドをタスクとして処理
                         for (let j = 0; j < parts.length; j++) {
                             const taskName = parts[j].trim();
