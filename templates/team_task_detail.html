@@ -533,7 +533,7 @@
             });
         });
 
-        // CSVインポート機能
+        // CSVインポート機能（改善版：1行に複数タスク対応）
         async function handleCSVImport(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -541,35 +541,91 @@
             const reader = new FileReader();
             reader.onload = async function(e) {
                 const text = e.target.result;
-                const lines = text.split('\n').filter(line => line.trim());
+                const lines = text.split(/\r?\n/).filter(line => line.trim());
                 
                 if (lines.length === 0) {
                     alert('CSVファイルが空です');
                     return;
                 }
                 
+                // 日付判定関数（緩い判定）
+                function isDate(str) {
+                    if (!str) return false;
+                    str = str.trim();
+                    // パターン1: YYYY-MM-DD, YYYY/MM/DD
+                    if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(str)) return true;
+                    // パターン2: MM/DD, MM-DD
+                    if (/^\d{1,2}[-/]\d{1,2}$/.test(str)) return true;
+                    // パターン3: MM月DD日
+                    if (/^\d{1,2}月\d{1,2}日/.test(str)) return true;
+                    // パターン4: 今日、明日、明後日などのキーワード
+                    if (/^(今日|明日|明後日|あさって)$/.test(str)) return true;
+                    return false;
+                }
+                
+                // CSVを解析（1行に複数タスク対応）
                 const tasks = [];
+                let currentDate = null;
+                
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i].trim();
                     if (!line) continue;
                     
-                    const parts = line.split(/[,\t]/).map(p => p.trim());
+                    // カンマまたはタブで分割（引用符を考慮）
+                    const parts = [];
+                    let currentPart = '';
+                    let inQuotes = false;
                     
-                    if (parts.length < 2) {
-                        console.warn(`行 ${i + 1}: 形式が不正です - ${line}`);
-                        continue;
+                    for (let j = 0; j < line.length; j++) {
+                        const char = line[j];
+                        if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if ((char === ',' || char === '\t') && !inQuotes) {
+                            parts.push(currentPart.trim());
+                            currentPart = '';
+                        } else {
+                            currentPart += char;
+                        }
                     }
+                    parts.push(currentPart.trim()); // 最後の部分
                     
-                    const dateStr = parts[0];
-                    const taskName = parts[1];
+                    if (parts.length === 0) continue;
                     
-                    if (!dateStr || !taskName) continue;
-                    
-                    tasks.push({
-                        date: dateStr,
-                        title: taskName,
-                        description: parts[2] || ''
-                    });
+                    // 最初のフィールドが日付かどうかを判定
+                    const firstField = parts[0];
+                    if (isDate(firstField)) {
+                        // 日付が変わったので新しい日付を設定
+                        currentDate = firstField;
+                        // 残りのフィールドをタスクとして処理
+                        for (let j = 1; j < parts.length; j++) {
+                            const taskName = parts[j].trim();
+                            if (taskName) {
+                                tasks.push({
+                                    date: currentDate,
+                                    title: taskName,
+                                    description: ''
+                                });
+                            }
+                        }
+                    } else {
+                        // 日付がなければ、現在の日付を使用（または前の日付を継続）
+                        if (currentDate === null) {
+                            const today = new Date();
+                            currentDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                        }
+                        
+                        // すべてのフィールドをタスクとして処理
+                        for (let j = 0; j < parts.length; j++) {
+                            const taskName = parts[j].trim();
+                            if (taskName) {
+                                tasks.push({
+                                    date: currentDate,
+                                    title: taskName,
+                                    description: ''
+                                });
+                            }
+                        }
+                    }
                 }
                 
                 if (tasks.length === 0) {
