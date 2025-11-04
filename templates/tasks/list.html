@@ -765,13 +765,20 @@
                 str = str.trim();
                 // パターン1: YYYY-MM-DD, YYYY/MM/DD
                 if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(str)) return true;
-                // パターン2: MM/DD, MM-DD
-                if (/^\d{1,2}[-/]\d{1,2}$/.test(str)) return true;
+                // パターン2: MM/DD, MM-DD（括弧付き対応: 11/4(火)など）
+                if (/^\d{1,2}[-/]\d{1,2}(\([日月火水木金土]\))?$/.test(str)) return true;
                 // パターン3: MM月DD日
                 if (/^\d{1,2}月\d{1,2}日/.test(str)) return true;
                 // パターン4: 今日、明日、明後日などのキーワード
                 if (/^(今日|明日|明後日|あさって)$/.test(str)) return true;
                 return false;
+            }
+            
+            // 日付文字列を正規化（括弧内の曜日を除去）
+            function normalizeDate(dateStr) {
+                if (!dateStr) return dateStr;
+                // 括弧内の曜日を除去: 11/4(火) -> 11/4
+                return dateStr.replace(/\([日月火水木金土]\)/g, '').trim();
             }
             
             // CSVを解析（1行に複数タスク対応）
@@ -805,8 +812,8 @@
                 // 最初のフィールドが日付かどうかを判定
                 const firstField = parts[0];
                 if (isDate(firstField)) {
-                    // 日付が変わったので新しい日付を設定
-                    currentDate = firstField;
+                    // 日付が変わったので新しい日付を設定（正規化）
+                    currentDate = normalizeDate(firstField);
                     // 残りのフィールドをタスクとして処理
                     for (let j = 1; j < parts.length; j++) {
                         const taskName = parts[j].trim();
