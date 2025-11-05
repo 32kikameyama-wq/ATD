@@ -19,21 +19,20 @@ def list_tasks():
     # デバッグ: 現在の日時を出力
     print(f"[DEBUG] Tasks list accessed at: {current_time}, Date: {today}")
     
-    # 日次の自動処理を実行（タスク管理ページでも日次処理を実行）
-    try:
-        from daily_processor import process_daily_rollover
-        result = process_daily_rollover(current_user.id)
-        print(f"[DEBUG] Daily rollover executed in tasks list: {result}")
-    except Exception as e:
-        print(f"[ERROR] Daily rollover error in tasks list: {e}")
-        import traceback
-        traceback.print_exc()
+    # 日次の自動処理は実行しない
+    # 理由: タスク移動後に日次処理を実行すると、「明日のタスク」が「本日のタスク」に移動してしまい、
+    # ユーザーが移動したタスクが戻ってしまうため
+    # 日次処理はダッシュボードで実行される
     
     # 分類別にタスクを取得（アーカイブ済みは除外）
-    # category='today'のタスクをすべて取得（昨日の未完了タスクも含む）
+    # データベースから最新の状態を取得（キャッシュを回避）
+    db.session.expire_all()  # セッションのキャッシュをクリア
     today_tasks = Task.query.filter_by(user_id=current_user.id, category='today', archived=False).order_by(Task.order_index).all()
     tomorrow_tasks = Task.query.filter_by(user_id=current_user.id, category='tomorrow', archived=False).order_by(Task.order_index).all()
     other_tasks = Task.query.filter_by(user_id=current_user.id, category='other', archived=False).order_by(Task.order_index).all()
+    
+    # デバッグ: タスク数を確認
+    print(f"[DEBUG] list_tasks: today_tasks={len(today_tasks)}, tomorrow_tasks={len(tomorrow_tasks)}, other_tasks={len(other_tasks)}")
     
     return render_template('tasks/list.html', 
                          today_tasks=today_tasks,
