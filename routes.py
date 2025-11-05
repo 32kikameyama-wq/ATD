@@ -27,6 +27,7 @@ def dashboard():
     today = datetime.now().date()
     
     # 日次の自動処理（日付切り替え・タスク繰り越し）- 必ず実行
+    get_daily_statistics = None
     try:
         from daily_processor import process_daily_rollover, get_daily_statistics
         process_daily_rollover(current_user.id)
@@ -35,7 +36,9 @@ def dashboard():
         print(f"Daily rollover error: {e}")
         import traceback
         traceback.print_exc()
-        get_daily_statistics = None
+        # get_daily_statisticsがNoneの場合は、後でエラーが発生しないようにする
+        if 'get_daily_statistics' not in locals():
+            get_daily_statistics = None
     
     # パフォーマンスデータを更新（日次処理の後）
     UserPerformance.update_daily_performance(current_user.id, date=today)
@@ -104,9 +107,13 @@ def dashboard():
     }
     
     # 過去7日間の詳細統計
-    if get_daily_statistics:
-        daily_stats = get_daily_statistics(current_user.id, days=7)
-    else:
+    try:
+        if get_daily_statistics and callable(get_daily_statistics):
+            daily_stats = get_daily_statistics(current_user.id, days=7)
+        else:
+            daily_stats = []
+    except Exception as e:
+        print(f"get_daily_statistics error: {e}")
         daily_stats = []
     
     # 今日の統計
