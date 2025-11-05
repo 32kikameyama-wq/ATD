@@ -413,34 +413,240 @@ def daily_report():
     # 今日の日付
     today = datetime.now().date()
     
-    # 今日のタスク統計
-    today_stats = get_daily_statistics(current_user.id, days=1)[0] if get_daily_statistics(current_user.id, days=1) else {
-        'total': 0,
-        'completed': 0,
-        'completion_rate': 0
-    }
+    # URLパラメータから日付と期間を取得
+    selected_date_str = request.args.get('date')
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
     
-    # 過去7日間の統計
-    weekly_stats = get_daily_statistics(current_user.id, days=7)
+    # 日付選択モード（単一日付）
+    if selected_date_str:
+        try:
+            selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+            report_date = selected_date
+            report_mode = 'single'  # 単一日付モード
+        except ValueError:
+            report_date = today
+            report_mode = 'today'
+    # 期間選択モード
+    elif start_date_str and end_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            report_date = start_date  # 表示用
+            report_mode = 'period'  # 期間モード
+            # 期間の日数を計算
+            period_days = (end_date - start_date).days + 1
+        except ValueError:
+            report_date = today
+            report_mode = 'today'
+            period_days = 1
+    else:
+        # デフォルトは今日
+        report_date = today
+        report_mode = 'today'
+        period_days = 1
     
-    # 過去30日間の統計（月間平均用）
-    monthly_stats = get_daily_statistics(current_user.id, days=30)
-    
-    # 今日のタスク一覧
-    today_tasks_list = Task.query.filter(
-        Task.user_id == current_user.id,
-        Task.category == 'today',
-        Task.archived == False
-    ).order_by(Task.priority.desc(), Task.order_index).all()
-    
-    # 完了率の平均
-    avg_completion = sum(s['completion_rate'] for s in weekly_stats) / len(weekly_stats) if weekly_stats else 0
-    
-    # 月間平均完了率
-    monthly_avg_completion = sum(s['completion_rate'] for s in monthly_stats) / len(monthly_stats) if monthly_stats else 0
+    # 報告日（または期間）のタスク統計を取得
+    if report_mode == 'single':
+        # 単一日付の場合、その日の統計を取得
+        # SQLite互換性のため、Python側でフィルタリング
+        all_tasks = Task.query.filter(
+            Task.user_id == current_user.id,
+            Task.archived == False
+        ).all()
+        
+        # その日に作成されたタスク数
+        total_on_date = 0
+        completed_on_date = 0
+        
+        for task in all_tasks:
+            if task.created_at:
+                created_date = task.created_at.date()
+                if created_date == report_date:
+                    total_on_date += 1
+                    
+                if task.completed and task.updated_at:
+                    updated_date = task.updated_at.date()
+                    if updated_date == report_date:
+                        completed_on_date += 1
+        
+        completion_rate = (completed_on_date / total_on_date * 100) if total_on_date > 0 else 0
+        
+        today_stats = {
+            'date': report_date,
+            'total': total_on_date,
+            'completed': completed_on_date,
+            'completion_rate': round(completion_rate, 1)
+        }
+        
+        # その日のタスク一覧を取得
+        today_tasks_list = []
+        for task in all_tasks:
+            if task.created_at:
+                created_date = task.created_at.date()
+                if created_date == report_date:
+                    today_tasks_list.append(task)
+        
+        # その日の総作業時間を計算
+        today_total_seconds = sum(
+            task.total_seconds for task in today_tasks_list 
+            if task.completed and not task.archived
+        )
+        
+        # 週間統計は過去7日間（報告日から）
+        weekly_stats = []
+        for i in range(7):
+            check_date = report_date - timedelta(days=6-i)
+            total_count = 0
+            completed_count = 0
+            
+            for task in all_tasks:
+                if task.created_at:
+                    created_date = task.created_at.date()
+                    if created_date == check_date:
+                        total_count += 1
+                    if task.completed and task.updated_at:
+                        updated_date = task.updated_at.date()
+                        if updated_date == check_date:
+                            completed_count += 1
+            
+            rate = (completed_count / total_count * 100) if total_count > 0 else 0
+            weekly_stats.append({
+                'date': check_date,
+                'total': total_count,
+                'completed': completed_count,
+                'completion_rate': round(rate, 1)
+            })
+        
+        avg_completion = sum(s['completion_rate'] for s in weekly_stats) / len(weekly_stats) if weekly_stats else 0
+        
+        # 月間統計は過去30日間（報告日から）
+        monthly_stats = []
+        for i in range(30):
+            check_date = report_date - timedelta(days=29-i)
+            total_count = 0
+            completed_count = 0
+            
+            for task in all_tasks:
+                if task.created_at:
+                    created_date = task.created_at.date()
+                    if created_date == check_date:
+                        total_count += 1
+                    if task.completed and task.updated_at:
+                        updated_date = task.updated_at.date()
+                        if updated_date == check_date:
+                            completed_count += 1
+            
+            rate = (completed_count / total_count * 100) if total_count > 0 else 0
+            monthly_stats.append({
+                'date': check_date,
+                'total': total_count,
+                'completed': completed_count,
+                'completion_rate': round(rate, 1)
+            })
+        
+        monthly_avg_completion = sum(s['completion_rate'] for s in monthly_stats) / len(monthly_stats) if monthly_stats else 0
+        
+    elif report_mode == 'period':
+        # 期間モードの場合、期間内の統計を集計
+        all_tasks = Task.query.filter(
+            Task.user_id == current_user.id,
+            Task.archived == False
+        ).all()
+        
+        # 期間内のタスクを集計
+        period_tasks = []
+        period_total = 0
+        period_completed = 0
+        period_total_seconds = 0
+        
+        for task in all_tasks:
+            if task.created_at:
+                created_date = task.created_at.date()
+                if start_date <= created_date <= end_date:
+                    period_tasks.append(task)
+                    period_total += 1
+                    if task.completed and task.updated_at:
+                        updated_date = task.updated_at.date()
+                        if start_date <= updated_date <= end_date:
+                            period_completed += 1
+                            period_total_seconds += task.total_seconds
+        
+        period_completion_rate = (period_completed / period_total * 100) if period_total > 0 else 0
+        
+        today_stats = {
+            'date': start_date,
+            'total': period_total,
+            'completed': period_completed,
+            'completion_rate': round(period_completion_rate, 1)
+        }
+        
+        today_tasks_list = period_tasks
+        today_total_seconds = period_total_seconds
+        
+        # 期間内の日次統計を生成
+        weekly_stats = []
+        for i in range(period_days):
+            check_date = start_date + timedelta(days=i)
+            if check_date > end_date:
+                break
+                
+            total_count = 0
+            completed_count = 0
+            
+            for task in all_tasks:
+                if task.created_at:
+                    created_date = task.created_at.date()
+                    if created_date == check_date:
+                        total_count += 1
+                    if task.completed and task.updated_at:
+                        updated_date = task.updated_at.date()
+                        if updated_date == check_date:
+                            completed_count += 1
+            
+            rate = (completed_count / total_count * 100) if total_count > 0 else 0
+            weekly_stats.append({
+                'date': check_date,
+                'total': total_count,
+                'completed': completed_count,
+                'completion_rate': round(rate, 1)
+            })
+        
+        avg_completion = sum(s['completion_rate'] for s in weekly_stats) / len(weekly_stats) if weekly_stats else 0
+        monthly_stats = weekly_stats  # 期間内の統計をそのまま使用
+        monthly_avg_completion = avg_completion
+        
+    else:
+        # デフォルト（今日）の場合
+        today_stats = get_daily_statistics(current_user.id, days=1)[0] if get_daily_statistics(current_user.id, days=1) else {
+            'total': 0,
+            'completed': 0,
+            'completion_rate': 0
+        }
+        
+        # 過去7日間の統計
+        weekly_stats = get_daily_statistics(current_user.id, days=7)
+        
+        # 過去30日間の統計（月間平均用）
+        monthly_stats = get_daily_statistics(current_user.id, days=30)
+        
+        # 今日のタスク一覧
+        today_tasks_list = Task.query.filter(
+            Task.user_id == current_user.id,
+            Task.category == 'today',
+            Task.archived == False
+        ).order_by(Task.priority.desc(), Task.order_index).all()
+        
+        # 完了率の平均
+        avg_completion = sum(s['completion_rate'] for s in weekly_stats) / len(weekly_stats) if weekly_stats else 0
+        
+        # 月間平均完了率
+        monthly_avg_completion = sum(s['completion_rate'] for s in monthly_stats) / len(monthly_stats) if monthly_stats else 0
+        
+        # 今日の総作業時間を計算（完了済みタスクのみ）
+        today_total_seconds = sum(task.total_seconds for task in today_tasks_list if task.completed and not task.archived)
     
     # 連続記録
-    from models import UserPerformance
     latest_perf = UserPerformance.query.filter_by(
         user_id=current_user.id
     ).order_by(UserPerformance.date.desc()).first()
@@ -452,21 +658,23 @@ def daily_report():
     weekly_on_target = avg_completion >= target_completion_rate
     monthly_on_target = monthly_avg_completion >= target_completion_rate
     
-    # 今日の総作業時間を計算（完了済みタスクのみ）
-    today_total_seconds = sum(task.total_seconds for task in today_tasks_list if task.completed and not task.archived)
-    
     return render_template('daily_report.html',
                          today=today,
+                         report_date=report_date,
+                         report_mode=report_mode,
+                         start_date=start_date if report_mode == 'period' else None,
+                         end_date=end_date if report_mode == 'period' else None,
+                         period_days=period_days if report_mode == 'period' else 1,
                          today_stats=today_stats,
                          weekly_stats=weekly_stats,
                          today_tasks=today_tasks_list,
                          avg_completion=round(avg_completion, 1),
                          monthly_avg_completion=round(monthly_avg_completion, 1),
                          streak=streak,
+                         target_completion_rate=target_completion_rate,
                          today_on_target=today_on_target,
                          weekly_on_target=weekly_on_target,
                          monthly_on_target=monthly_on_target,
-                         target_completion_rate=target_completion_rate,
                          today_total_seconds=today_total_seconds)
 
 @main.route('/team-management')
