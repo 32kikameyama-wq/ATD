@@ -29,17 +29,32 @@ def process_daily_rollover(user_id=None):
     
     from models import Task, TaskTemplate, UserPerformance, db as db_instance
     
-    # 今日の日次処理が既に実行されたかチェック
-    # 今日のUserPerformanceレコードが存在する場合、日次処理は既に実行済み
+    # 日付が変わったかどうかをチェック
+    # 昨日のUserPerformanceレコードが存在し、今日のレコードが存在しない場合 = 日付が変わった
+    yesterday = today - timedelta(days=1)
+    yesterday_performance = UserPerformance.query.filter_by(
+        user_id=user_id,
+        date=yesterday
+    ).first()
+    
     today_performance = UserPerformance.query.filter_by(
         user_id=user_id,
         date=today
     ).first()
     
+    # 今日のレコードが既に存在する場合、日次処理は既に実行済み
     if today_performance:
-        # 今日のレコードが存在する場合、日次処理は既に実行済み
         print(f"[DEBUG] Daily rollover already executed today for user {user_id}, skipping")
         return 0, 0, 0, 0
+    
+    # 昨日のレコードが存在しない場合、初回アクセスまたは日付が変わっていない
+    # この場合は、日次処理を実行しない（まだ日付が変わっていない）
+    if not yesterday_performance:
+        print(f"[DEBUG] Daily rollover skipped: Yesterday's record not found (date may not have changed), user={user_id}")
+        return 0, 0, 0, 0
+    
+    # 昨日のレコードが存在し、今日のレコードが存在しない場合 = 日付が変わった
+    print(f"[DEBUG] Daily rollover: Date changed detected (yesterday={yesterday}, today={today}), executing rollover")
     
     # テンプレートからタスクを自動生成
     templates = TaskTemplate.query.filter_by(

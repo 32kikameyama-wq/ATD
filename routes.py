@@ -31,25 +31,14 @@ def dashboard():
     # デバッグ: 現在の日時を出力
     print(f"[DEBUG] Dashboard accessed at: {current_time}, Date: {today}")
     
-    # 日次の自動処理（日付切り替え・タスク繰り越し）- 1日に1回のみ実行
-    # 今日のUserPerformanceレコードが存在しない場合のみ実行
+    # 日次の自動処理（日付切り替え・タスク繰り越し）- 日付が変わった時のみ実行
+    # 昨日のUserPerformanceレコードが存在し、今日のレコードが存在しない場合 = 日付が変わった
     get_daily_statistics = None
     try:
         from daily_processor import process_daily_rollover, get_daily_statistics
-        # 今日のパフォーマンスデータが存在するかチェック
-        today_performance_check = UserPerformance.query.filter_by(
-            user_id=current_user.id,
-            date=today
-        ).first()
-        
-        if not today_performance_check:
-            # 今日のレコードが存在しない場合、日次処理を実行（日付が変わった初回アクセス）
-            result = process_daily_rollover(current_user.id)
-            print(f"[DEBUG] Daily rollover executed: {result}")
-        else:
-            # 今日のレコードが既に存在する場合、日次処理はスキップ
-            print(f"[DEBUG] Daily rollover skipped: Already executed today for user {current_user.id}")
-            get_daily_statistics = None
+        # 日次処理はprocess_daily_rollover内で日付変更をチェックして実行
+        result = process_daily_rollover(current_user.id)
+        print(f"[DEBUG] Daily rollover result: {result}")
     except Exception as e:
         # 日次処理エラーはログに記録
         print(f"[ERROR] Daily rollover error: {e}")
