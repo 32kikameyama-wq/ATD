@@ -242,9 +242,6 @@
                                 </div>
                             </div>
                             <div class="chart-container">
-                                <canvas id="timeChart"></canvas>
-                            </div>
-                            <div class="chart-container">
                                 <canvas id="priorityChart"></canvas>
                             </div>
                         </div>
@@ -390,53 +387,8 @@
                 }
             });
 
-            // 時間分析グラフ（タスク別作業時間）
-            const timeCtx = document.getElementById('timeChart').getContext('2d');
-            {% if task_time_data %}
-            const taskTimeLabels = {{ task_time_data | map(attribute='title') | list | tojson }};
-            const taskTimeData = {{ task_time_data | map(attribute='total_seconds') | list | tojson }};
-            
-            new Chart(timeCtx, {
-                type: 'bar',
-                data: {
-                    labels: taskTimeLabels,
-                    datasets: [{
-                        label: '作業時間（秒）',
-                        data: taskTimeData,
-                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
-                        borderColor: '#3b82f6',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'タスク別作業時間',
-                            font: {
-                                size: 12
-                            }
-                        },
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    const hours = Math.floor(value / 3600);
-                                    const minutes = Math.floor((value % 3600) / 60);
-                                    return `${hours}:${String(minutes).padStart(2, '0')}`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            // 時間分析グラフ（タスク別作業時間）- 非表示
+            // タスク別作業時間のグラフは表示しない
             {% endif %}
 
             // 優先度分析グラフ

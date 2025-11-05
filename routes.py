@@ -23,17 +23,22 @@ def dashboard():
     from models import Task, db, UserPerformance
     from datetime import datetime, timedelta
     
-    # パフォーマンスデータを更新
-    UserPerformance.update_daily_performance(current_user.id)
+    # 日付を取得（タイムゾーン対応）
+    today = datetime.now().date()
     
-    # 日次の自動処理（日付切り替え・タスク繰り越し）
+    # 日次の自動処理（日付切り替え・タスク繰り越し）- 必ず実行
     try:
         from daily_processor import process_daily_rollover, get_daily_statistics
         process_daily_rollover(current_user.id)
     except Exception as e:
-        # 日次処理エラーは無視（通常の操作に影響しない）
+        # 日次処理エラーはログに記録
         print(f"Daily rollover error: {e}")
+        import traceback
+        traceback.print_exc()
         get_daily_statistics = None
+    
+    # パフォーマンスデータを更新（日次処理の後）
+    UserPerformance.update_daily_performance(current_user.id, date=today)
     
     # 本日のタスクを取得（優先順位順）
     today_tasks = Task.query.filter_by(
@@ -56,14 +61,14 @@ def dashboard():
     # 進捗率（パーセンテージ）
     progress_percentage = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
     
-    # 今日のパフォーマンスデータを取得
+    # 今日のパフォーマンスデータを取得（今日の日付を使用）
     today_performance = UserPerformance.query.filter_by(
         user_id=current_user.id,
-        date=datetime.now().date()
+        date=today
     ).first()
     
     # 過去7日間のパフォーマンスデータ
-    end_date = datetime.now().date()
+    end_date = today
     start_date = end_date - timedelta(days=6)
     
     performance_data = UserPerformance.query.filter(

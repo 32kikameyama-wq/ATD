@@ -4,6 +4,7 @@
 - タスクの繰り越し処理
 """
 from datetime import datetime, timedelta, date as date_module
+import pytz
 
 
 def process_daily_rollover(user_id=None):
@@ -17,7 +18,13 @@ def process_daily_rollover(user_id=None):
     
     注: ダッシュボードにアクセスしたときに自動実行されます
     """
-    today = date_module.today()
+    # 日本時間（JST）で今日の日付を取得
+    try:
+        jst = pytz.timezone('Asia/Tokyo')
+        today = datetime.now(jst).date()
+    except:
+        # pytzが利用できない場合は、システムの日付を使用
+        today = date_module.today()
     
     if not user_id:
         return 0, 0, 0, 0
@@ -75,7 +82,10 @@ def process_daily_rollover(user_id=None):
             task.archived_at = two_days_ago
         archived_count += 1
     
-    # 1. 明日のタスクを本日のタスクに移動
+    # 1. 昨日以前の本日のタスク（未完了）はそのまま本日のタスクとして残す
+    # これは何もしない（既にcategory='today'なので）
+    
+    # 2. 明日のタスクを本日のタスクに移動
     tomorrow_tasks = Task.query.filter(
         Task.user_id == user_id,
         Task.category == 'tomorrow',
@@ -88,7 +98,7 @@ def process_daily_rollover(user_id=None):
         task.updated_at = datetime.now()
         advanced_count += 1
     
-    # 2. カレンダーで指定されたタスク（start_date/end_dateが今日になったタスク）を明日のタスクに繰り上げ
+    # 3. カレンダーで指定されたタスク（start_date/end_dateが今日になったタスク）を明日のタスクに繰り上げ
     # start_date <= today <= end_date のタスクで、category='other'のものを探す
     calendar_tasks = Task.query.filter(
         Task.user_id == user_id,
@@ -106,8 +116,8 @@ def process_daily_rollover(user_id=None):
             task.updated_at = datetime.now()
             calendar_moved_count += 1
     
-    # 3. 本日のタスク（未完了）はそのまま本日のタスクとして残す
-    # これは何もしない（既にcategory='today'なので）
+    # 4. 昨日以前の本日のタスク（未完了）で、start_dateが昨日以前のものはそのまま残す
+    # これは既にcategory='today'なので何もしない
     
     db_instance.session.commit()
     
