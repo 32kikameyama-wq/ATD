@@ -11,15 +11,23 @@ def list_tasks():
     """タスク一覧"""
     from datetime import date, datetime
     
-    # 日付を取得
-    today = datetime.now().date()
+    # 日付を取得（現在時刻から取得）
+    now = datetime.now()
+    today = now.date()
+    current_time = now.strftime('%Y-%m-%d %H:%M:%S')
+    
+    # デバッグ: 現在の日時を出力
+    print(f"[DEBUG] Tasks list accessed at: {current_time}, Date: {today}")
     
     # 日次の自動処理を実行（タスク管理ページでも日次処理を実行）
     try:
         from daily_processor import process_daily_rollover
-        process_daily_rollover(current_user.id)
+        result = process_daily_rollover(current_user.id)
+        print(f"[DEBUG] Daily rollover executed in tasks list: {result}")
     except Exception as e:
-        print(f"Daily rollover error in tasks list: {e}")
+        print(f"[ERROR] Daily rollover error in tasks list: {e}")
+        import traceback
+        traceback.print_exc()
     
     # 分類別にタスクを取得（アーカイブ済みは除外）
     # category='today'のタスクをすべて取得（昨日の未完了タスクも含む）

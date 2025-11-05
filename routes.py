@@ -23,17 +23,23 @@ def dashboard():
     from models import Task, db, UserPerformance
     from datetime import datetime, timedelta
     
-    # 日付を取得（タイムゾーン対応）
-    today = datetime.now().date()
+    # 日付を取得（現在時刻から取得）
+    now = datetime.now()
+    today = now.date()
+    current_time = now.strftime('%Y-%m-%d %H:%M:%S')
+    
+    # デバッグ: 現在の日時を出力
+    print(f"[DEBUG] Dashboard accessed at: {current_time}, Date: {today}")
     
     # 日次の自動処理（日付切り替え・タスク繰り越し）- 必ず実行
     get_daily_statistics = None
     try:
         from daily_processor import process_daily_rollover, get_daily_statistics
-        process_daily_rollover(current_user.id)
+        result = process_daily_rollover(current_user.id)
+        print(f"[DEBUG] Daily rollover executed: {result}")
     except Exception as e:
         # 日次処理エラーはログに記録
-        print(f"Daily rollover error: {e}")
+        print(f"[ERROR] Daily rollover error: {e}")
         import traceback
         traceback.print_exc()
         # get_daily_statisticsがNoneの場合は、後でエラーが発生しないようにする
