@@ -403,31 +403,57 @@ def toggle_task(task_id):
 @login_required
 def move_task(task_id):
     """タスクの分類移動"""
-    task = Task.query.get_or_404(task_id)
-    
-    # 自分のタスクか確認
-    if task.user_id != current_user.id:
-        flash('このタスクを変更する権限がありません', 'error')
+    try:
+        task = Task.query.get_or_404(task_id)
+        
+        # デバッグ: リクエスト情報をログに出力
+        print(f"[DEBUG] move_task called: task_id={task_id}, user_id={current_user.id}, task.user_id={task.user_id}")
+        
+        # 自分のタスクか確認
+        if task.user_id != current_user.id:
+            print(f"[ERROR] move_task: Permission denied. task.user_id={task.user_id}, current_user.id={current_user.id}")
+            flash('このタスクを変更する権限がありません', 'error')
+            return redirect(url_for('tasks.list_tasks'))
+        
+        new_category = request.form.get('category')
+        print(f"[DEBUG] move_task: new_category={new_category}")
+        
+        if not new_category or new_category not in ['today', 'tomorrow', 'other']:
+            print(f"[ERROR] move_task: Invalid category={new_category}")
+            flash('無効な分類です', 'error')
+            return redirect(url_for('tasks.list_tasks'))
+        
+        # 現在のカテゴリと同じ場合は何もしない
+        if task.category == new_category:
+            print(f"[DEBUG] move_task: Task already in category {new_category}, skipping")
+            flash('タスクは既にその分類にあります', 'info')
+            return redirect(url_for('tasks.list_tasks'))
+        
+        # 新しい分類での次のorder_indexを取得
+        max_order = db.session.query(db.func.max(Task.order_index)).filter_by(
+            user_id=current_user.id,
+            category=new_category
+        ).scalar() or 0
+        
+        old_category = task.category
+        task.category = new_category
+        task.order_index = max_order + 1
+        
+        print(f"[DEBUG] move_task: Moving task from {old_category} to {new_category}, new order_index={task.order_index}")
+        
+        db.session.commit()
+        
+        category_names = {'today': '本日のタスク', 'tomorrow': '明日のタスク', 'other': 'その他のタスク'}
+        flash(f'タスクを{category_names[new_category]}に移動しました', 'success')
+        print(f"[DEBUG] move_task: Successfully moved task {task_id} to {new_category}")
         return redirect(url_for('tasks.list_tasks'))
-    
-    new_category = request.form.get('category')
-    if new_category not in ['today', 'tomorrow', 'other']:
-        flash('無効な分類です', 'error')
+        
+    except Exception as e:
+        print(f"[ERROR] move_task: Exception occurred: {e}")
+        import traceback
+        traceback.print_exc()
+        flash(f'エラーが発生しました: {str(e)}', 'error')
         return redirect(url_for('tasks.list_tasks'))
-    
-    # 新しい分類での次のorder_indexを取得
-    max_order = db.session.query(db.func.max(Task.order_index)).filter_by(
-        user_id=current_user.id,
-        category=new_category
-    ).scalar() or 0
-    
-    task.category = new_category
-    task.order_index = max_order + 1
-    db.session.commit()
-    
-    category_names = {'today': '本日のタスク', 'tomorrow': '明日のタスク', 'other': 'その他のタスク'}
-    flash(f'タスクを{category_names[new_category]}に移動しました', 'success')
-    return redirect(url_for('tasks.list_tasks'))
 
 @tasks.route('/tasks/<int:task_id>/toggle-tracking', methods=['POST'])
 @login_required
