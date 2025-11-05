@@ -85,8 +85,9 @@ def process_daily_rollover(user_id=None):
             task.archived_at = two_days_ago
         archived_count += 1
     
-    # 1. 昨日以前の本日のタスク（未完了）はそのまま本日のタスクとして残す
-    # これは何もしない（既にcategory='today'なので）
+    # 1. 昨日以前に作成された本日のタスク（未完了）を確認
+    # 昨日以前に作成されたタスクは、start_dateが今日でない限り、そのまま残す
+    # （未完了のタスクは引き続き作業するため）
     
     # 2. 明日のタスクを本日のタスクに移動
     tomorrow_tasks = Task.query.filter(

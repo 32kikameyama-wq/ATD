@@ -9,18 +9,47 @@ tasks = Blueprint('tasks', __name__)
 @login_required
 def list_tasks():
     """タスク一覧"""
-    from datetime import date
+    from datetime import date, datetime
+    
+    # 日付を取得
+    today = datetime.now().date()
+    
+    # 日次の自動処理を実行（タスク管理ページでも日次処理を実行）
+    try:
+        from daily_processor import process_daily_rollover
+        process_daily_rollover(current_user.id)
+    except Exception as e:
+        print(f"Daily rollover error in tasks list: {e}")
     
     # 分類別にタスクを取得（アーカイブ済みは除外）
-    today_tasks = Task.query.filter_by(user_id=current_user.id, category='today', archived=False).order_by(Task.order_index).all()
+    all_today_tasks = Task.query.filter_by(user_id=current_user.id, category='today', archived=False).order_by(Task.order_index).all()
     tomorrow_tasks = Task.query.filter_by(user_id=current_user.id, category='tomorrow', archived=False).order_by(Task.order_index).all()
     other_tasks = Task.query.filter_by(user_id=current_user.id, category='other', archived=False).order_by(Task.order_index).all()
+    
+    # 今日作成されたタスク、またはstart_dateが今日のタスクのみをフィルタリング
+    today_tasks = []
+    for task in all_today_tasks:
+        # 今日作成されたタスク、またはstart_dateが今日のタスク
+        if task.created_at:
+            created_date = task.created_at.date()
+        else:
+            created_date = today
+        
+        # start_dateが設定されている場合は、start_dateを優先
+        if task.start_date:
+            task_display_date = task.start_date
+        else:
+            task_display_date = created_date
+        
+        # 今日の日付と一致する場合のみ表示
+        if task_display_date == today or created_date == today:
+            today_tasks.append(task)
     
     return render_template('tasks/list.html', 
                          today_tasks=today_tasks,
                          tomorrow_tasks=tomorrow_tasks,
                          other_tasks=other_tasks,
-                         current_date=date.today())
+                         current_date=today)
 
 @tasks.route('/tasks/create', methods=['GET', 'POST'])
 @login_required
