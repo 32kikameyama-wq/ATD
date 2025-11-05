@@ -17,8 +17,12 @@ def process_daily_rollover(user_id=None):
     
     注: ダッシュボードにアクセスしたときに自動実行されます
     """
-    # 今日の日付を取得（システムの日付を使用）
-    today = date_module.today()
+    # 今日の日付を取得（現在時刻から取得）
+    now = datetime.now()
+    today = now.date()
+    current_time = now.strftime('%Y-%m-%d %H:%M:%S')
+    
+    print(f"[DEBUG] Daily rollover started at: {current_time}, Date: {today}, User: {user_id}")
     
     if not user_id:
         return 0, 0, 0, 0
