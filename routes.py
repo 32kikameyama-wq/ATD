@@ -117,9 +117,13 @@ def dashboard():
     # タスク別の作業時間データ（時間帯別ではなく完了タスク別）
     task_time_data = []
     for task in today_tasks:
-        if task.completed and not task.archived:
+        if task.completed and not task.archived and task.total_seconds > 0:
+            # タイトルが長すぎる場合は切り詰める（30文字まで）
+            title = task.title[:30] + '...' if len(task.title) > 30 else task.title
+            # 変な文字が含まれている可能性があるので、改行や特殊文字を除去
+            title = title.replace('\n', ' ').replace('\r', ' ').strip()
             task_time_data.append({
-                'title': task.title,
+                'title': title,
                 'total_seconds': task.total_seconds,
                 'formatted_time': task.format_time()
             })
