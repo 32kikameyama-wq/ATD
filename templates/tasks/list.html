@@ -679,6 +679,24 @@
         });
     });
 
+    // フォーム送信をデバッグ（「明日へ」ボタンの問題を調査）
+    document.addEventListener('DOMContentLoaded', function() {
+        // すべての「明日へ」ボタンのフォームを監視
+        const forms = document.querySelectorAll('form[action*="move_task"]');
+        forms.forEach(form => {
+            const categoryInput = form.querySelector('input[name="category"]');
+            if (categoryInput && categoryInput.value === 'tomorrow') {
+                form.addEventListener('submit', function(e) {
+                    console.log('[DEBUG] 明日へボタンがクリックされました');
+                    console.log('[DEBUG] Form action:', form.action);
+                    console.log('[DEBUG] Category:', categoryInput.value);
+                    console.log('[DEBUG] Task ID:', form.action.match(/\/tasks\/(\d+)\/move/)?.[1]);
+                    // フォーム送信を続行
+                });
+            }
+        });
+    });
+
     // 時間計測機能
     function toggleTimeTracking(taskId) {
         const btn = document.getElementById('time-toggle-' + taskId);
