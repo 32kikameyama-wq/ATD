@@ -60,12 +60,21 @@ def process_daily_rollover(user_id=None):
     
     # 完了したタスクをアーカイブ（2日前以前の完了タスクで未アーカイブのもの）
     two_days_ago = today - timedelta(days=2)
-    completed_tasks = Task.query.filter(
+    # SQLite互換性のため、Python側でフィルタリング
+    all_completed_tasks = Task.query.filter(
         Task.user_id == user_id,
         Task.completed == True,
-        Task.archived == False,
-        db_instance.func.date(Task.updated_at) <= two_days_ago
+        Task.archived == False
     ).all()
+    
+    completed_tasks = []
+    for task in all_completed_tasks:
+        if task.updated_at:
+            task_date = task.updated_at.date()
+        else:
+            task_date = task.created_at.date() if task.created_at else today
+        if task_date <= two_days_ago:
+            completed_tasks.append(task)
     
     archived_count = 0
     for task in completed_tasks:
@@ -128,22 +137,29 @@ def get_daily_statistics(user_id, days=7):
     start_date = end_date - timedelta(days=days - 1)
     
     # 過去N日間のタスク統計
+    # SQLite互換性のため、Python側でフィルタリング
+    all_tasks = Task.query.filter(
+        Task.user_id == user_id
+    ).all()
+    
     stats = []
     for i in range(days):
         current_date = start_date + timedelta(days=i)
         
-        # その日のタスク数
-        total_on_date = Task.query.filter(
-            Task.user_id == user_id,
-            db_instance.func.date(Task.created_at) == current_date
-        ).count()
+        # その日のタスク数（Python側でフィルタリング）
+        total_on_date = 0
+        completed_on_date = 0
         
-        # その日の完了タスク数
-        completed_on_date = Task.query.filter(
-            Task.user_id == user_id,
-            Task.completed == True,
-            db_instance.func.date(Task.updated_at) == current_date
-        ).count()
+        for task in all_tasks:
+            if task.created_at:
+                created_date = task.created_at.date()
+                if created_date == current_date:
+                    total_on_date += 1
+            
+            if task.completed and task.updated_at:
+                updated_date = task.updated_at.date()
+                if updated_date == current_date:
+                    completed_on_date += 1
         
         # 完了率
         completion_rate = (completed_on_date / total_on_date * 100) if total_on_date > 0 else 0
