@@ -15,4 +15,5 @@ Flask-Login==0.6.3
 # その他
 python-dotenv==1.0.0  # 環境変数管理
 python-dateutil==2.8.2  # 日付解析（壁打ち機能用）
+pytz==2024.1  # タイムゾーン管理
 groq==0.4.1  # Groq LLM API（無料枠あり）
