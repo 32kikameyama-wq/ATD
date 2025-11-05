@@ -929,7 +929,7 @@ input[type="date"]::-webkit-datetime-edit-text {
 
 .dashboard-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 2fr;
     grid-template-rows: 1fr 1fr;
     gap: var(--spacing-md);
     max-width: 100%;
@@ -937,6 +937,20 @@ input[type="date"]::-webkit-datetime-edit-text {
     box-sizing: border-box;
     height: calc(100vh - 120px);
     min-height: 500px;
+}
+
+.dashboard-grid .analysis-card {
+    grid-column: span 1;
+}
+
+/* チーム管理ページ用のグリッド（元のレイアウトを維持） */
+.team-management-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .dashboard-grid .card {

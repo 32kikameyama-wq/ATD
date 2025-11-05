@@ -44,56 +44,40 @@
             <a href="{{ url_for('main.create_team') }}" class="btn btn-primary">+ 新しいチーム</a>
         </div>
 
-        <div class="dashboard-grid">
+        <div class="team-management-grid">
                 <!-- 左カラム -->
                 <div class="team-left">
                     <!-- チーム全体 -->
-                    <div class="team-section">
+                    <div class="team-section" style="min-height: 400px;">
                         <div class="section-header">
                             <h3>・チーム全体</h3>
                         </div>
-                        <div class="team-stats-card">
-                            {% if user_teams %}
-                                {% set total_teams = user_teams|length %}
-                                {% set total_tasks = team_stats.values() | sum(attribute='total') %}
-                                {% set total_completed = team_stats.values() | sum(attribute='completed') %}
-                                {% set overall_progress = (total_completed / total_tasks * 100) if total_tasks > 0 else 0 %}
-                                
-                                <div class="stat-box">
-                                    <div class="stat-number">{{ "%.1f"|format(overall_progress) }}%</div>
-                                    <div class="stat-text">完了率</div>
-                                </div>
-                                <div class="stat-box">
-                                    <div class="stat-number">{{ total_completed }}</div>
-                                    <div class="stat-text">完了タスク</div>
-                                </div>
-                                <div class="stat-box">
-                                    <div class="stat-number">{{ total_teams }}</div>
-                                    <div class="stat-text">所属チーム</div>
-                                </div>
-                            {% else %}
-                                <div class="stat-box">
-                                    <div class="stat-number">0</div>
-                                    <div class="stat-text">完了率</div>
-                                </div>
-                                <div class="stat-box">
-                                    <div class="stat-number">0</div>
-                                    <div class="stat-text">完了タスク</div>
-                                </div>
-                                <div class="stat-box">
-                                    <div class="stat-number">0</div>
-                                    <div class="stat-text">所属チーム</div>
-                                </div>
-                            {% endif %}
+                        <div class="team-stats-card" style="display: flex; align-items: center; justify-content: center; height: calc(100% - 60px); gap: 10px;">
+                            <div class="stat-box" style="flex: 1; margin: 0;">
+                                <div class="stat-number">{{ "%.1f"|format(overall_progress) }}%</div>
+                                <div class="stat-text">完了率</div>
+                            </div>
+                            <div class="stat-box" style="flex: 1; margin: 0;">
+                                <div class="stat-number">{{ overall_total_tasks }}</div>
+                                <div class="stat-text">タスク数</div>
+                            </div>
+                            <div class="stat-box" style="flex: 1; margin: 0;">
+                                <div class="stat-number">{{ overall_completed_tasks }}</div>
+                                <div class="stat-text">完了タスク</div>
+                            </div>
+                            <div class="stat-box" style="flex: 1; margin: 0;">
+                                <div class="stat-number">{{ total_teams }}</div>
+                                <div class="stat-text">所属チーム</div>
+                            </div>
                         </div>
                     </div>
 
                     <!-- チーム一覧 -->
-                    <div class="team-section">
+                    <div class="team-section" style="margin-top: 1.5rem; min-height: 400px;">
                         <div class="section-header">
                             <h3>・所属チーム</h3>
                         </div>
-                        <div class="team-tasks-content">
+                        <div class="team-tasks-content" style="display: flex; flex-direction: column; height: 100%;">
                             {% if user_teams %}
                                 {% for team in user_teams %}
                                     <div class="team-card">
@@ -105,8 +89,12 @@
                                         </div>
                                         <div class="team-stats">
                                             <div class="stat-item">
-                                                <span class="stat-label">タスク数</span>
+                                                <span class="stat-label">チームタスク数</span>
                                                 <span class="stat-value">{{ team_stats[team.id].total }}件</span>
+                                            </div>
+                                            <div class="stat-item">
+                                                <span class="stat-label">完了タスク</span>
+                                                <span class="stat-value">{{ team_stats[team.id].completed }}件</span>
                                             </div>
                                             <div class="stat-item">
                                                 <span class="stat-label">完了率</span>
@@ -138,23 +126,53 @@
 
                 <!-- 右カラム -->
                 <div class="team-right">
+                    <!-- チームメンバー全体 -->
+                    <div class="team-section" style="min-height: 400px;">
+                        <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3>・チームメンバー全体</h3>
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <label for="team-select-personal" style="font-size: 0.75rem; color: var(--text-secondary);">チーム:</label>
+                                <select id="team-select-personal" onchange="updatePersonalTeam()" style="padding: 3px 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.75rem; min-width: 150px;">
+                                    <option value="">-- チームを選択 --</option>
+                                    {% for team in user_teams %}
+                                        <option value="{{ team.id }}" {% if selected_team_id == team.id %}selected{% endif %}>{{ team.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="team-stats-card" style="display: flex; align-items: center; justify-content: center; height: calc(100% - 60px); gap: 10px;">
+                            <div class="stat-box" style="flex: 1; margin: 0;">
+                                <div class="stat-number">{{ "%.1f"|format(personal_progress_percentage) }}%</div>
+                                <div class="stat-text">完了率</div>
+                            </div>
+                            <div class="stat-box" style="flex: 1; margin: 0;">
+                                <div class="stat-number">{{ personal_total_tasks }}</div>
+                                <div class="stat-text">タスク数</div>
+                            </div>
+                            <div class="stat-box" style="flex: 1; margin: 0;">
+                                <div class="stat-number">{{ personal_completed_tasks }}</div>
+                                <div class="stat-text">完了タスク数</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- メンバー別パフォーマンス -->
-                    <div class="team-section">
+                    <div class="team-section" style="margin-top: 1.5rem; min-height: 400px;">
                         <div class="section-header">
                             <h3>・メンバー別パフォーマンス</h3>
                         </div>
-                        <div class="member-performance-content">
+                        <div class="member-performance-content" style="display: flex; flex-direction: column; height: 100%;">
                             {% if user_teams %}
                                 <div style="margin-bottom: 1rem;">
-                                    <label for="team-select" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">チームを選択:</label>
-                                    <select id="team-select" class="form-control">
+                                    <label for="team-select" style="display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-primary);">チームを選択:</label>
+                                    <select id="team-select" class="form-control" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem;">
                                         <option value="">-- チームを選択 --</option>
                                         {% for team in user_teams %}
                                             <option value="{{ team.id }}">{{ team.name }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div id="members-list">
+                                <div id="members-list" style="flex: 1; overflow-y: auto;">
                                     <p style="color: #666; font-style: italic; text-align: center; padding: 2rem;">
                                         上記からチームを選択してください
                                     </p>
@@ -167,12 +185,16 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
         </div>
     </div>
 
     <script>
         // チーム選択時のメンバー一覧表示
-        document.getElementById('team-select').addEventListener('change', function() {
+        const teamSelect = document.getElementById('team-select');
+        if (teamSelect) {
+            teamSelect.addEventListener('change', function() {
             const teamId = this.value;
             const membersList = document.getElementById('members-list');
             
@@ -216,7 +238,8 @@
                     console.error('Error:', error);
                     membersList.innerHTML = '<p style="color: #f44336; text-align: center; padding: 2rem;">エラーが発生しました</p>';
                 });
-        });
+            });
+        }
         
         // 個人/チーム切り替え
         document.querySelectorAll('.user-control').forEach(control => {
@@ -236,6 +259,19 @@
                 }
             });
         });
+
+
+        // チームメンバー全体のチーム選択
+        function updatePersonalTeam() {
+            const teamId = document.getElementById('team-select-personal').value;
+            const url = new URL(window.location.href);
+            if (teamId) {
+                url.searchParams.set('selected_team_id', teamId);
+            } else {
+                url.searchParams.delete('selected_team_id');
+            }
+            window.location.href = url.toString();
+        }
     </script>
 </body>
 </html>

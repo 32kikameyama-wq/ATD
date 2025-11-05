@@ -124,6 +124,23 @@ def dashboard():
                 'formatted_time': task.format_time()
             })
     
+    # 過去のタスクを取得（URLパラメータから日付を取得）
+    selected_date_str = request.args.get('past_date')
+    past_tasks = []
+    selected_date = None
+    
+    if selected_date_str:
+        try:
+            selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+            # 指定された日付のタスクを取得（完了したタスクも含む）
+            past_tasks = Task.query.filter(
+                Task.user_id == current_user.id,
+                Task.archived == False,
+                db.func.date(Task.created_at) == selected_date
+            ).order_by(Task.order_index).all()
+        except ValueError:
+            pass
+    
     return render_template('dashboard.html', 
                          today_tasks=today_tasks,
                          completed_tasks=completed_tasks,
@@ -138,7 +155,9 @@ def dashboard():
                          today_performance=today_performance,
                          streak_days=today_performance.streak_days if today_performance else 0,
                          daily_stats=daily_stats,
-                         today_stats=today_stats)
+                         today_stats=today_stats,
+                         past_tasks=past_tasks,
+                         selected_date=selected_date)
 
 @main.route('/personal-tasks')
 @login_required
@@ -431,18 +450,47 @@ def daily_report():
 @login_required
 def team_management():
     """チーム管理"""
-    from models import Team, TeamMember, TeamTask
+    from models import Team, TeamMember, TeamTask, Task, User
+    from datetime import datetime, date
+    
+    # 期間パラメータの取得（デフォルトは今日）
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            start_date = date.today()
+    else:
+        start_date = date.today()
+    
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            end_date = date.today()
+    else:
+        end_date = date.today()
+    
+    # チームメンバー全体用のチーム選択パラメータを取得
+    selected_team_id = request.args.get('selected_team_id', type=int)
     
     # ユーザーが所属するチームを取得
     user_teams = Team.query.join(TeamMember).filter(
         TeamMember.user_id == current_user.id
     ).all()
     
-    # チームのタスク数とメンバー数を取得
+    # チームのタスク数とメンバー数を取得（期間フィルタなし）
     team_stats = {}
     for team in user_teams:
-        total_tasks = TeamTask.query.filter_by(team_id=team.id).count()
-        completed_tasks = TeamTask.query.filter_by(team_id=team.id, completed=True).count()
+        # 全チームタスクを取得（期間フィルタなし）
+        all_team_tasks = TeamTask.query.filter(
+            TeamTask.team_id == team.id
+        ).all()
+        
+        total_tasks = len(all_team_tasks)
+        completed_tasks = sum(1 for task in all_team_tasks if task.completed)
         
         # メンバー数と管理者権限をチェック
         member_count = TeamMember.query.filter_by(team_id=team.id).count()
@@ -463,9 +511,62 @@ def team_management():
             'is_admin': is_team_admin or is_system_admin
         }
     
+    # チーム全体の統計（期間フィルタなし）
+    # チームタスク（TeamTask）を集計：チームから割り当てられたタスク＋割り当てられていないが存在するタスク
+    all_team_ids = [team.id for team in user_teams]
+    
+    # 全チームタスクを取得（期間フィルタなし）
+    all_team_tasks = TeamTask.query.filter(
+        TeamTask.team_id.in_(all_team_ids)
+    ).all() if all_team_ids else []
+    
+    # 統計を計算（期間フィルタなし）
+    overall_total_tasks = len(all_team_tasks)
+    overall_completed_tasks = sum(1 for task in all_team_tasks if task.completed)
+    overall_progress = (overall_completed_tasks / overall_total_tasks * 100) if overall_total_tasks > 0 else 0
+    total_teams = len(user_teams)
+    
+    # チームメンバー全体：選択したチームのメンバーの個人タスクの統計を計算（期間フィルタなし）
+    # 選択したチームのメンバーの個人タスク（Task）を集計
+    if selected_team_id:
+        # 選択したチームのメンバーを取得
+        team_members = TeamMember.query.filter_by(team_id=selected_team_id).all()
+        member_ids = [member.user_id for member in team_members]
+        
+        if member_ids:
+            # 選択したチームのメンバーの個人タスクを取得（archived=Falseのみ、期間フィルタなし）
+            all_personal_tasks = Task.query.filter(
+                Task.user_id.in_(member_ids),
+                Task.archived == False
+            ).all()
+            
+            # 統計を計算
+            personal_total_tasks = len(all_personal_tasks)
+            personal_completed_tasks = sum(1 for task in all_personal_tasks if task.completed)
+            personal_progress_percentage = (personal_completed_tasks / personal_total_tasks * 100) if personal_total_tasks > 0 else 0
+        else:
+            personal_total_tasks = 0
+            personal_completed_tasks = 0
+            personal_progress_percentage = 0
+    else:
+        # チームが選択されていない場合は0
+        personal_total_tasks = 0
+        personal_completed_tasks = 0
+        personal_progress_percentage = 0
+    
     return render_template('team_management.html', 
                          user_teams=user_teams,
-                         team_stats=team_stats)
+                         team_stats=team_stats,
+                         personal_total_tasks=personal_total_tasks,
+                         personal_completed_tasks=personal_completed_tasks,
+                         personal_progress_percentage=personal_progress_percentage,
+                         start_date=start_date,
+                         end_date=end_date,
+                         overall_total_tasks=overall_total_tasks,
+                         overall_completed_tasks=overall_completed_tasks,
+                         overall_progress=overall_progress,
+                         total_teams=total_teams,
+                         selected_team_id=selected_team_id)
 
 @main.route('/team/create', methods=['GET', 'POST'])
 @login_required
@@ -1003,7 +1104,8 @@ def admin():
 @login_required
 def team_dashboard(team_id):
     """チームダッシュボード"""
-    from models import Team, TeamMember, TeamTask, User
+    from models import Team, TeamMember, TeamTask, User, Task
+    from datetime import datetime, date, timedelta
     
     # チームの存在確認とアクセス権限チェック
     team = Team.query.get_or_404(team_id)
@@ -1016,21 +1118,46 @@ def team_dashboard(team_id):
         flash('このチームにアクセスする権限がありません', 'error')
         return redirect(url_for('main.team_management'))
     
-    # チームの本日のタスクを取得
-    today_tasks = TeamTask.query.filter_by(
-        team_id=team_id,
-        category='today'
+    # 期間パラメータの取得（デフォルトは今日）
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            start_date = date.today()
+    else:
+        start_date = date.today()
+    
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            end_date = date.today()
+    else:
+        end_date = date.today()
+    
+    # 期間内のチームタスクを取得（created_atでフィルタ）
+    team_tasks_query = TeamTask.query.filter(
+        TeamTask.team_id == team_id
+    )
+    
+    # 期間内のチームタスクを取得
+    team_tasks = team_tasks_query.filter(
+        db.func.date(TeamTask.created_at) >= start_date,
+        db.func.date(TeamTask.created_at) <= end_date
     ).order_by(TeamTask.order_index).all()
     
-    # チームの完了済みタスク数
-    completed_tasks = TeamTask.query.filter_by(
-        team_id=team_id,
-        category='today',
-        completed=True
+    # 期間内のチームタスクの完了済みタスク数
+    completed_tasks = team_tasks_query.filter(
+        db.func.date(TeamTask.created_at) >= start_date,
+        db.func.date(TeamTask.created_at) <= end_date,
+        TeamTask.completed == True
     ).count()
     
     # 総タスク数
-    total_tasks = len(today_tasks)
+    total_tasks = len(team_tasks)
     
     # 進捗率
     progress_percentage = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
@@ -1040,17 +1167,21 @@ def team_dashboard(team_id):
         TeamMember.team_id == team_id
     ).all()
     
-    # メンバー別タスク数
+    # メンバー別タスク数（チームタスク）
     member_stats = {}
     for member in team_members:
-        assigned_tasks = TeamTask.query.filter_by(
-            team_id=team_id,
-            assigned_to=member.id
+        assigned_tasks = TeamTask.query.filter(
+            TeamTask.team_id == team_id,
+            TeamTask.assigned_to == member.id,
+            db.func.date(TeamTask.created_at) >= start_date,
+            db.func.date(TeamTask.created_at) <= end_date
         ).count()
-        completed_assigned = TeamTask.query.filter_by(
-            team_id=team_id,
-            assigned_to=member.id,
-            completed=True
+        completed_assigned = TeamTask.query.filter(
+            TeamTask.team_id == team_id,
+            TeamTask.assigned_to == member.id,
+            TeamTask.completed == True,
+            db.func.date(TeamTask.created_at) >= start_date,
+            db.func.date(TeamTask.created_at) <= end_date
         ).count()
         
         member_stats[member.id] = {
@@ -1059,14 +1190,35 @@ def team_dashboard(team_id):
             'completion_rate': (completed_assigned / assigned_tasks * 100) if assigned_tasks > 0 else 0
         }
     
+    # チームメンバー全員の個人タスク（Task）の統計を取得
+    member_user_ids = [member.id for member in team_members]
+    
+    # 期間内の個人タスクを取得
+    personal_tasks = Task.query.filter(
+        Task.user_id.in_(member_user_ids),
+        Task.archived == False,
+        db.func.date(Task.created_at) >= start_date,
+        db.func.date(Task.created_at) <= end_date
+    ).all()
+    
+    # 個人タスクの合計値
+    personal_total_tasks = len(personal_tasks)
+    personal_completed_tasks = sum(1 for task in personal_tasks if task.completed)
+    personal_progress_percentage = (personal_completed_tasks / personal_total_tasks * 100) if personal_total_tasks > 0 else 0
+    
     return render_template('team_dashboard.html',
                          team=team,
-                         today_tasks=today_tasks,
+                         today_tasks=team_tasks,
                          completed_tasks=completed_tasks,
                          total_tasks=total_tasks,
                          progress_percentage=progress_percentage,
                          team_members=team_members,
-                         member_stats=member_stats)
+                         member_stats=member_stats,
+                         start_date=start_date,
+                         end_date=end_date,
+                         personal_total_tasks=personal_total_tasks,
+                         personal_completed_tasks=personal_completed_tasks,
+                         personal_progress_percentage=personal_progress_percentage)
 
 @main.route('/team-task-detail/<int:team_id>/node/<int:node_id>')
 @login_required

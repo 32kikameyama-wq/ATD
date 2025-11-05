@@ -8,19 +8,19 @@ from datetime import datetime, timedelta, date as date_module
 
 def process_daily_rollover(user_id=None):
     """
-    日次の自動処理を実行（ユーザーごとに1日1回のみ）
+    日次の自動処理を実行（0時00分になったら自動実行）
     - テンプレートからタスクを自動生成（毎日/毎週/毎月）
-    - 今日の完了タスクをアーカイブ（未アーカイブのみ）
-    - 今日の未完了タスクを明日へ繰り越し
-    - 明日のタスクを今日へ移動
-    - その他のタスクはそのまま
+    - 完了したタスクをアーカイブ（2日前以前の完了タスクで未アーカイブのもの）
+    - 明日のタスクを本日のタスクに移動
+    - カレンダーで指定されたタスク（start_date/end_dateが今日になったタスク）を明日のタスクに繰り上げ
+    - 本日のタスク（未完了）はそのまま本日のタスクとして残す
     
-    注: 24時を過ぎてからダッシュボードにアクセスしたときに自動実行されます
+    注: ダッシュボードにアクセスしたときに自動実行されます
     """
     today = date_module.today()
     
     if not user_id:
-        return 0, 0
+        return 0, 0, 0, 0
     
     from models import Task, TaskTemplate, db as db_instance
     
@@ -57,42 +57,25 @@ def process_daily_rollover(user_id=None):
                 db_instance.session.add(new_task)
                 generated_count += 1
     
-    # 完了したタスクをアーカイブ（昨日以前の完了タスクで未アーカイブのもの）
-    yesterday = today - timedelta(days=1)
+    # 完了したタスクをアーカイブ（2日前以前の完了タスクで未アーカイブのもの）
+    two_days_ago = today - timedelta(days=2)
     completed_tasks = Task.query.filter(
         Task.user_id == user_id,
         Task.completed == True,
         Task.archived == False,
-        db_instance.func.date(Task.updated_at) <= yesterday
+        db_instance.func.date(Task.updated_at) <= two_days_ago
     ).all()
     
     archived_count = 0
     for task in completed_tasks:
         task.archived = True
-        # archived_atは date型なので、昨日の日付を設定
         if task.updated_at:
             task.archived_at = task.updated_at.date()
         else:
-            task.archived_at = yesterday
+            task.archived_at = two_days_ago
         archived_count += 1
     
-    # 今日の未完了タスクを明日へ繰り越し
-    today_uncompleted = Task.query.filter(
-        Task.user_id == user_id,
-        Task.category == 'today',
-        Task.completed == False,
-        Task.archived == False
-    ).all()
-    
-    moved_count = 0
-    for task in today_uncompleted:
-        # 昨日以前のタスクのみ繰り越す
-        if task.updated_at.date() < today:
-            task.category = 'tomorrow'
-            task.updated_at = datetime.now()
-            moved_count += 1
-    
-    # 明日のタスクを今日へ移動
+    # 1. 明日のタスクを本日のタスクに移動
     tomorrow_tasks = Task.query.filter(
         Task.user_id == user_id,
         Task.category == 'tomorrow',
@@ -105,9 +88,30 @@ def process_daily_rollover(user_id=None):
         task.updated_at = datetime.now()
         advanced_count += 1
     
+    # 2. カレンダーで指定されたタスク（start_date/end_dateが今日になったタスク）を明日のタスクに繰り上げ
+    # start_date <= today <= end_date のタスクで、category='other'のものを探す
+    calendar_tasks = Task.query.filter(
+        Task.user_id == user_id,
+        Task.category == 'other',
+        Task.archived == False,
+        Task.start_date <= today,
+        Task.end_date >= today
+    ).all()
+    
+    calendar_moved_count = 0
+    for task in calendar_tasks:
+        # 今日がタスクの期間内なら、明日のタスクに繰り上げ
+        if task.start_date <= today <= task.end_date:
+            task.category = 'tomorrow'
+            task.updated_at = datetime.now()
+            calendar_moved_count += 1
+    
+    # 3. 本日のタスク（未完了）はそのまま本日のタスクとして残す
+    # これは何もしない（既にcategory='today'なので）
+    
     db_instance.session.commit()
     
-    return moved_count, advanced_count, archived_count, generated_count
+    return advanced_count, calendar_moved_count, archived_count, generated_count
 
 
 def get_daily_statistics(user_id, days=7):

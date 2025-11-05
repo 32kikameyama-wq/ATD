@@ -50,7 +50,16 @@
                             <p class="team-description">{{ team.description }}</p>
                         {% endif %}
                     </div>
-                    <a href="{{ url_for('main.team_management') }}" class="btn btn-secondary btn-sm">チーム管理に戻る</a>
+                    <div class="header-actions">
+                        <div class="date-range-selector">
+                            <label for="start-date">開始日:</label>
+                            <input type="date" id="start-date" value="{{ start_date.strftime('%Y-%m-%d') }}" onchange="updateDateRange()">
+                            <label for="end-date" style="margin-left: 10px;">終了日:</label>
+                            <input type="date" id="end-date" value="{{ end_date.strftime('%Y-%m-%d') }}" onchange="updateDateRange()">
+                            <button onclick="resetToToday()" class="btn btn-sm btn-secondary" style="margin-left: 10px;">本日</button>
+                        </div>
+                        <a href="{{ url_for('main.team_management') }}" class="btn btn-secondary btn-sm">チーム管理に戻る</a>
+                    </div>
                 </div>
 
                 <!-- ダッシュボードグリッド -->
@@ -59,11 +68,18 @@
                     <div class="card performance-card">
                         <div class="card-header">
                             <h3>・チームパフォーマンス</h3>
+                            <div class="period-info">
+                                {% if start_date == end_date %}
+                                    {{ start_date.strftime('%Y年%m月%d日') }}
+                                {% else %}
+                                    {{ start_date.strftime('%Y年%m月%d日') }} ～ {{ end_date.strftime('%Y年%m月%d日') }}
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="performance-stats">
                             <div class="stat-item">
                                 <div class="stat-value">{{ total_tasks }}</div>
-                                <div class="stat-label">今日のタスク</div>
+                                <div class="stat-label">チームタスク</div>
                             </div>
                             <div class="stat-item">
                                 <div class="stat-value">{{ completed_tasks }}</div>
@@ -79,7 +95,7 @@
                     <!-- 上段右：今日のタスク -->
                     <div class="card today-tasks-card">
                         <div class="card-header">
-                            <h3>・今日のタスク ({{ total_tasks }}件)</h3>
+                            <h3>・{% if start_date == end_date %}今日のタスク{% else %}期間内のタスク{% endif %} ({{ total_tasks }}件)</h3>
                         </div>
                         <div class="today-tasks-content">
                             {% if today_tasks %}
@@ -117,8 +133,59 @@
                         </div>
                     </div>
 
-                    <!-- 下段左：メンバー別進捗 -->
+                    <!-- 下段左：チームメンバー全体 -->
+                    <div class="card performance-card">
+                        <div class="card-header">
+                            <h3>・チームメンバー全体</h3>
+                            <div class="period-info">
+                                {% if start_date == end_date %}
+                                    {{ start_date.strftime('%Y年%m月%d日') }}
+                                {% else %}
+                                    {{ start_date.strftime('%Y年%m月%d日') }} ～ {{ end_date.strftime('%Y年%m月%d日') }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="performance-stats">
+                            <div class="stat-item">
+                                <div class="stat-value">{{ "%.1f"|format(personal_progress_percentage) }}%</div>
+                                <div class="stat-label">完了率</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ personal_total_tasks }}</div>
+                                <div class="stat-label">タスク数</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ personal_completed_tasks }}</div>
+                                <div class="stat-label">完了タスク数</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 下段右：チーム統計 -->
                     <div class="card analysis-card">
+                        <div class="card-header">
+                            <h3>・チーム統計</h3>
+                        </div>
+                        <div class="analysis-content">
+                            <div class="team-stats">
+                                <div class="stat-item">
+                                    <div class="stat-label">チームメンバー数</div>
+                                    <div class="stat-value">{{ team_members|length }}人</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">チームタスク数</div>
+                                    <div class="stat-value">{{ total_tasks }}件</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">完了率</div>
+                                    <div class="stat-value">{{ "%.1f"|format(progress_percentage) }}%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- メンバー別進捗（下に移動） -->
+                    <div class="card analysis-card" style="grid-column: 1 / -1;">
                         <div class="card-header">
                             <h3>・メンバー別進捗</h3>
                         </div>
@@ -136,29 +203,6 @@
                                     </div>
                                 </div>
                             {% endfor %}
-                        </div>
-                    </div>
-
-                    <!-- 下段右：チーム統計 -->
-                    <div class="card analysis-card">
-                        <div class="card-header">
-                            <h3>・チーム統計</h3>
-                        </div>
-                        <div class="analysis-content">
-                            <div class="team-stats">
-                                <div class="stat-item">
-                                    <div class="stat-label">チームメンバー数</div>
-                                    <div class="stat-value">{{ team_members|length }}人</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">総タスク数</div>
-                                    <div class="stat-value">{{ total_tasks }}件</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-label">完了率</div>
-                                    <div class="stat-value">{{ "%.1f"|format(progress_percentage) }}%</div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -224,6 +268,65 @@
             padding: 2px 6px;
             border-radius: 3px;
         }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .date-range-selector {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .date-range-selector label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .date-range-selector input[type="date"] {
+            padding: 5px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: var(--font-size-sm);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .period-info {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            font-weight: normal;
+        }
     </style>
+
+    <script>
+        function updateDateRange() {
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            
+            if (startDate && endDate) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('start_date', startDate);
+                url.searchParams.set('end_date', endDate);
+                window.location.href = url.toString();
+            }
+        }
+
+        function resetToToday() {
+            const today = new Date().toISOString().split('T')[0];
+            const url = new URL(window.location.href);
+            url.searchParams.set('start_date', today);
+            url.searchParams.set('end_date', today);
+            window.location.href = url.toString();
+        }
+    </script>
 </body>
 </html>

@@ -82,63 +82,122 @@
                         </div>
                     </div>
 
-                    <!-- 上段右：今日のタスク -->
-                    <div class="card today-tasks-card">
-                        <div class="card-header">
-                            <h3>・今日のタスク ({{ total_tasks }}件)</h3>
-                            <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-sm btn-outline">すべて表示</a>
-                        </div>
-                        <div class="today-tasks-content">
-                            {% if today_tasks %}
-                                {% for task in today_tasks[:5] %}
-                                    <div class="dashboard-task-item {% if task.completed %}completed{% endif %}" data-task-id="{{ task.id }}">
-                                        <div class="task-checkbox">
-                                            <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
-                                                <button type="submit" class="task-toggle-btn {% if task.completed %}completed{% endif %}">
-                                                    {% if task.completed %}✓{% else %}○{% endif %}
-                                                </button>
-                                            </form>
-                                        </div>
-                                        <div class="task-info">
-                                            <div class="task-title">{{ task.title }}</div>
-                                            <div class="task-meta">
-                                                <span class="priority-badge priority-{{ task.priority }}">
-                                                    {% if task.priority == 'high' %}高
-                                                    {% elif task.priority == 'medium' %}中
-                                                    {% elif task.priority == 'low' %}低
-                                                    {% else %}{{ task.priority }}{% endif %}
-                                                </span>
-                                                {% if task.due_date %}
-                                                    <span class="due-date">{{ task.due_date }}</span>
-                                                {% endif %}
-                                                <span style="color: #666; font-size: 0.85rem;">⏱️ {{ task.format_time() if task.format_time else '00:00:00' }}</span>
-                                                {% if task.is_tracking %}
-                                                    <span style="color: #f44336; font-size: 0.85rem; animation: blink 1s infinite;">● 計測中</span>
-                                                {% endif %}
+                    <!-- 上段右：今日のタスクと過去のタスクを横並び -->
+                    <div style="display: flex; gap: var(--spacing-md); height: 100%;">
+                        <!-- 本日のタスク -->
+                        <div class="card today-tasks-card" style="flex: 1;">
+                            <div class="card-header">
+                                <h3>・今日のタスク ({{ total_tasks }}件)</h3>
+                                <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-sm btn-outline">すべて表示</a>
+                            </div>
+                            <div class="today-tasks-content">
+                                {% if today_tasks %}
+                                    {% for task in today_tasks[:5] %}
+                                        <div class="dashboard-task-item {% if task.completed %}completed{% endif %}" data-task-id="{{ task.id }}">
+                                            <div class="task-checkbox">
+                                                <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                                    <button type="submit" class="task-toggle-btn {% if task.completed %}completed{% endif %}">
+                                                        {% if task.completed %}✓{% else %}○{% endif %}
+                                                    </button>
+                                                </form>
+                                            </div>
+                                            <div class="task-info">
+                                                <div class="task-title">{{ task.title }}</div>
+                                                <div class="task-meta">
+                                                    <span class="priority-badge priority-{{ task.priority }}">
+                                                        {% if task.priority == 'high' %}高
+                                                        {% elif task.priority == 'medium' %}中
+                                                        {% elif task.priority == 'low' %}低
+                                                        {% else %}{{ task.priority }}{% endif %}
+                                                    </span>
+                                                    {% if task.due_date %}
+                                                        <span class="due-date">{{ task.due_date }}</span>
+                                                    {% endif %}
+                                                    <span style="color: #666; font-size: 0.85rem;">⏱️ {{ task.format_time() if task.format_time else '00:00:00' }}</span>
+                                                    {% if task.is_tracking %}
+                                                        <span style="color: #f44336; font-size: 0.85rem; animation: blink 1s infinite;">● 計測中</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="task-controls">
+                                                <button class="btn btn-sm btn-outline" onclick="moveTaskUp({{ task.id }})">↑</button>
+                                                <button class="btn btn-sm btn-outline" onclick="moveTaskDown({{ task.id }})">↓</button>
                                             </div>
                                         </div>
-                                        <div class="task-controls">
-                                            <button class="btn btn-sm btn-outline" onclick="moveTaskUp({{ task.id }})">↑</button>
-                                            <button class="btn btn-sm btn-outline" onclick="moveTaskDown({{ task.id }})">↓</button>
+                                    {% endfor %}
+                                    {% if today_tasks|length > 5 %}
+                                        <div class="more-tasks">
+                                            <a href="{{ url_for('tasks.list_tasks') }}">他{{ today_tasks|length - 5 }}件のタスクを表示</a>
                                         </div>
-                                    </div>
-                                {% endfor %}
-                                {% if today_tasks|length > 5 %}
-                                    <div class="more-tasks">
-                                        <a href="{{ url_for('tasks.list_tasks') }}">他{{ today_tasks|length - 5 }}件のタスクを表示</a>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="no-tasks">
+                                        <p>本日のタスクはありません</p>
+                                        <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">タスクを作成</a>
                                     </div>
                                 {% endif %}
-                            {% else %}
-                                <div class="no-tasks">
-                                    <p>本日のタスクはありません</p>
-                                    <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">タスクを作成</a>
+                            </div>
+                        </div>
+
+                        <!-- 過去のタスク -->
+                        <div class="card today-tasks-card" style="flex: 1;">
+                            <div class="card-header">
+                                <h3>・過去のタスク</h3>
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <input type="date" id="past-date-selector" onchange="loadPastTasks()" style="padding: 3px 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.75rem;">
+                                    {% if selected_date %}
+                                        <button onclick="clearPastTasks()" class="btn btn-sm btn-outline" style="padding: 3px 8px; font-size: 0.75rem;">クリア</button>
+                                    {% endif %}
                                 </div>
-                            {% endif %}
+                            </div>
+                            <div class="today-tasks-content" style="max-height: 400px; overflow-y: auto;">
+                                {% if selected_date %}
+                                    <div style="margin-bottom: 10px; padding: 10px; background: #f0f9ff; border-radius: 4px;">
+                                        <strong>{{ selected_date.strftime('%Y年%m月%d日') }}のタスク</strong>
+                                    </div>
+                                    {% if past_tasks %}
+                                        {% for task in past_tasks %}
+                                            <div class="dashboard-task-item {% if task.completed %}completed{% endif %}" style="margin-bottom: 10px; padding: 10px; border: 1px solid #e0e0e0; border-radius: 4px;">
+                                                <div style="display: flex; align-items: center; gap: 10px;">
+                                                    <div style="font-size: 1.2rem;">
+                                                        {% if task.completed %}✓{% else %}○{% endif %}
+                                                    </div>
+                                                    <div style="flex: 1;">
+                                                        <div style="font-weight: bold; {% if task.completed %}text-decoration: line-through; opacity: 0.6;{% endif %}">{{ task.title }}</div>
+                                                        <div style="font-size: 0.85rem; color: #666; margin-top: 5px;">
+                                                            <span class="priority-badge priority-{{ task.priority }}">
+                                                                {% if task.priority == 'high' %}高
+                                                                {% elif task.priority == 'medium' %}中
+                                                                {% elif task.priority == 'low' %}低
+                                                                {% else %}{{ task.priority }}{% endif %}
+                                                            </span>
+                                                            {% if task.due_date %}
+                                                                <span style="margin-left: 5px;">期限: {{ task.due_date }}</span>
+                                                            {% endif %}
+                                                            {% if task.completed %}
+                                                                <span style="margin-left: 5px; color: #059669;">完了</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="no-tasks">
+                                            <p>この日のタスクはありません</p>
+                                        </div>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="no-tasks">
+                                        <p>日付を選択して過去のタスクを表示</p>
+                                    </div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
 
-                    <!-- 下段左：進捗分析 -->
-                    <div class="card analysis-card">
+                    <!-- 下段：進捗分析と時間分析を横並び -->
+                    <div class="card analysis-card" style="grid-column: 1;">
                         <div class="card-header">
                             <h3>・進捗分析</h3>
                         </div>
@@ -169,7 +228,7 @@
                     </div>
 
                     <!-- 下段右：時間分析 -->
-                    <div class="card analysis-card">
+                    <div class="card analysis-card" style="grid-column: 2;">
                         <div class="card-header">
                             <h3>・時間分析</h3>
                         </div>
@@ -217,6 +276,30 @@
                 }
             });
         });
+
+        // 過去のタスクを読み込む
+        function loadPastTasks() {
+            const dateInput = document.getElementById('past-date-selector');
+            const selectedDate = dateInput.value;
+            
+            if (selectedDate) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('past_date', selectedDate);
+                window.location.href = url.toString();
+            }
+        }
+
+        // 過去のタスク表示をクリア
+        function clearPastTasks() {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('past_date');
+            window.location.href = url.toString();
+        }
+
+        // 選択された日付をセット
+        {% if selected_date %}
+            document.getElementById('past-date-selector').value = '{{ selected_date.strftime('%Y-%m-%d') }}';
+        {% endif %}
 
         // タスクの優先順位変更
         function moveTaskUp(taskId) {
