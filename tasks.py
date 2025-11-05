@@ -429,19 +429,37 @@ def move_task(task_id):
             flash('タスクは既にその分類にあります', 'info')
             return redirect(url_for('tasks.list_tasks'))
         
+        # 古いカテゴリを記録
+        old_category = task.category
+        
         # 新しい分類での次のorder_indexを取得
         max_order = db.session.query(db.func.max(Task.order_index)).filter_by(
             user_id=current_user.id,
             category=new_category
         ).scalar() or 0
         
-        old_category = task.category
+        # タスクのカテゴリを更新
         task.category = new_category
         task.order_index = max_order + 1
+        task.updated_at = datetime.now()
         
-        print(f"[DEBUG] move_task: Moving task from {old_category} to {new_category}, new order_index={task.order_index}")
+        print(f"[DEBUG] move_task: Moving task {task_id} from {old_category} to {new_category}, new order_index={task.order_index}")
+        print(f"[DEBUG] move_task: Task before commit - category={task.category}, order_index={task.order_index}")
         
+        # 変更をコミット
+        db.session.add(task)
         db.session.commit()
+        
+        # コミット後の確認
+        db.session.refresh(task)
+        print(f"[DEBUG] move_task: Task after commit - category={task.category}, order_index={task.order_index}")
+        
+        # データベースから再取得して確認
+        verify_task = Task.query.get(task_id)
+        if verify_task:
+            print(f"[DEBUG] move_task: Verified task category={verify_task.category}")
+        else:
+            print(f"[ERROR] move_task: Task {task_id} not found after commit!")
         
         category_names = {'today': '本日のタスク', 'tomorrow': '明日のタスク', 'other': 'その他のタスク'}
         flash(f'タスクを{category_names[new_category]}に移動しました', 'success')
