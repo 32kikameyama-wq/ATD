@@ -44,31 +44,12 @@ def dashboard():
     UserPerformance.update_daily_performance(current_user.id, date=today)
     
     # 本日のタスクを取得（優先順位順）
-    # 今日作成されたタスク、またはstart_dateが今日のタスクのみを表示
-    all_today_tasks = Task.query.filter_by(
+    # category='today'のタスクをすべて取得（昨日の未完了タスクも含む）
+    today_tasks = Task.query.filter_by(
         user_id=current_user.id, 
         category='today',
         archived=False
     ).order_by(Task.order_index).all()
-    
-    # 今日作成されたタスク、またはstart_dateが今日のタスクのみをフィルタリング
-    today_tasks = []
-    for task in all_today_tasks:
-        # 今日作成されたタスク、またはstart_dateが今日のタスク
-        if task.created_at:
-            created_date = task.created_at.date()
-        else:
-            created_date = today
-        
-        # start_dateが設定されている場合は、start_dateを優先
-        if task.start_date:
-            task_display_date = task.start_date
-        else:
-            task_display_date = created_date
-        
-        # 今日の日付と一致する場合のみ表示
-        if task_display_date == today or created_date == today:
-            today_tasks.append(task)
     
     # 完了済みタスク数
     completed_tasks = Task.query.filter_by(
