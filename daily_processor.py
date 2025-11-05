@@ -15,7 +15,7 @@ def process_daily_rollover(user_id=None):
     - カレンダーで指定されたタスク（start_date/end_dateが今日になったタスク）を明日のタスクに繰り上げ
     - 本日のタスク（未完了）はそのまま本日のタスクとして残す
     
-    注: ダッシュボードにアクセスしたときに自動実行されます
+    注: ダッシュボードにアクセスしたときに自動実行されます（1日に1回のみ）
     """
     # 今日の日付を取得（現在時刻から取得）
     now = datetime.now()
@@ -27,7 +27,19 @@ def process_daily_rollover(user_id=None):
     if not user_id:
         return 0, 0, 0, 0
     
-    from models import Task, TaskTemplate, db as db_instance
+    from models import Task, TaskTemplate, UserPerformance, db as db_instance
+    
+    # 今日の日次処理が既に実行されたかチェック
+    # 今日のUserPerformanceレコードが存在する場合、日次処理は既に実行済み
+    today_performance = UserPerformance.query.filter_by(
+        user_id=user_id,
+        date=today
+    ).first()
+    
+    if today_performance:
+        # 今日のレコードが存在する場合、日次処理は既に実行済み
+        print(f"[DEBUG] Daily rollover already executed today for user {user_id}, skipping")
+        return 0, 0, 0, 0
     
     # テンプレートからタスクを自動生成
     templates = TaskTemplate.query.filter_by(
@@ -94,6 +106,9 @@ def process_daily_rollover(user_id=None):
     # （未完了のタスクは引き続き作業するため）
     
     # 2. 明日のタスクを本日のタスクに移動
+    # 注意: これは日付が変わったとき（0時00分）にのみ実行すべき
+    # 今日の日次処理が初めて実行される場合のみ、「明日のタスク」を「本日のタスク」に移動
+    # これは、昨日の「明日のタスク」が今日の「本日のタスク」になるため
     tomorrow_tasks = Task.query.filter(
         Task.user_id == user_id,
         Task.category == 'tomorrow',
@@ -105,6 +120,8 @@ def process_daily_rollover(user_id=None):
         task.category = 'today'
         task.updated_at = datetime.now()
         advanced_count += 1
+    
+    print(f"[DEBUG] Daily rollover: Moved {advanced_count} tasks from 'tomorrow' to 'today'")
     
     # 3. カレンダーで指定されたタスク（start_date/end_dateが今日になったタスク）を明日のタスクに繰り上げ
     # start_date <= today <= end_date のタスクで、category='other'のものを探す
@@ -127,7 +144,10 @@ def process_daily_rollover(user_id=None):
     # 4. 昨日以前の本日のタスク（未完了）で、start_dateが昨日以前のものはそのまま残す
     # これは既にcategory='today'なので何もしない
     
+    # コミット
     db_instance.session.commit()
+    
+    print(f"[DEBUG] Daily rollover completed: advanced={advanced_count}, calendar={calendar_moved_count}, archived={archived_count}, generated={generated_count}")
     
     return advanced_count, calendar_moved_count, archived_count, generated_count
 
