@@ -249,9 +249,9 @@
                                 
                                 <div class="task-actions">
                                     <div class="task-move-buttons">
-                                        <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="POST" style="display:inline;">
+                                        <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('タスクを明日のタスクに移動しますか？');">
                                             <input type="hidden" name="category" value="tomorrow">
-                                            <button type="submit" class="btn btn-sm btn-outline">明日へ</button>
+                                            <button type="submit" class="btn btn-sm btn-outline" onclick="this.form.submit(); return true;">明日へ</button>
                                         </form>
                                         <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="POST" style="display:inline;">
                                             <input type="hidden" name="category" value="other">
