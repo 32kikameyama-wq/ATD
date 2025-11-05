@@ -187,7 +187,51 @@
             <!-- ヘッダー -->
             <div class="report-header">
                 <h1>📊 日報レポート</h1>
-                <div class="report-date">{{ today.strftime('%Y年%m月%d日') }}</div>
+                <div class="report-date">
+                    {% if report_mode == 'period' %}
+                        {{ start_date.strftime('%Y年%m月%d日') }} ～ {{ end_date.strftime('%Y年%m月%d日') }} ({{ period_days }}日間)
+                    {% else %}
+                        {{ report_date.strftime('%Y年%m月%d日') }}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 日付・期間選択 -->
+            <div style="margin-bottom: 2rem; padding: 1.5rem; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h3 style="margin-top: 0; margin-bottom: 1rem; color: #333;">日付・期間選択</h3>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                    <!-- 単一日付選択 -->
+                    <div style="flex: 1; min-width: 200px;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: #666; font-size: 0.9rem;">日付を選択</label>
+                        <input type="date" id="date-selector" value="{{ report_date.strftime('%Y-%m-%d') }}" 
+                               style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                    </div>
+                    
+                    <!-- 期間選択 -->
+                    <div style="flex: 1; min-width: 200px;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: #666; font-size: 0.9rem;">開始日</label>
+                        <input type="date" id="start-date" value="{% if report_mode == 'period' %}{{ start_date.strftime('%Y-%m-%d') }}{% else %}{{ report_date.strftime('%Y-%m-%d') }}{% endif %}" 
+                               style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                    </div>
+                    
+                    <div style="flex: 1; min-width: 200px;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: #666; font-size: 0.9rem;">終了日</label>
+                        <input type="date" id="end-date" value="{% if report_mode == 'period' %}{{ end_date.strftime('%Y-%m-%d') }}{% else %}{{ report_date.strftime('%Y-%m-%d') }}{% endif %}" 
+                               style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                    </div>
+                    
+                    <!-- ボタン -->
+                    <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                        <button onclick="applyDateFilter()" 
+                                style="padding: 0.5rem 1.5rem; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; white-space: nowrap;">
+                            適用
+                        </button>
+                        <button onclick="resetToToday()" 
+                                style="padding: 0.5rem 1.5rem; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; white-space: nowrap;">
+                            本日に戻す
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- 統計カード -->
@@ -279,6 +323,31 @@
     </div>
 
     <script>
+        function applyDateFilter() {
+            const dateSelector = document.getElementById('date-selector');
+            const startDate = document.getElementById('start-date');
+            const endDate = document.getElementById('end-date');
+            
+            // 日付選択が変更されている場合は単一日付モード
+            if (dateSelector.value && dateSelector.value !== '{{ today.strftime("%Y-%m-%d") }}') {
+                window.location.href = `{{ url_for('main.daily_report') }}?date=${dateSelector.value}`;
+            }
+            // 期間選択が変更されている場合は期間モード
+            else if (startDate.value && endDate.value && 
+                     (startDate.value !== endDate.value || 
+                      startDate.value !== '{{ today.strftime("%Y-%m-%d") }}')) {
+                window.location.href = `{{ url_for('main.daily_report') }}?start_date=${startDate.value}&end_date=${endDate.value}`;
+            }
+            // どちらも変更されていない場合は本日に戻す
+            else {
+                window.location.href = '{{ url_for("main.daily_report") }}';
+            }
+        }
+        
+        function resetToToday() {
+            window.location.href = '{{ url_for("main.daily_report") }}';
+        }
+        
         function copyReportToClipboard() {
             const reportText = generateReportText();
             navigator.clipboard.writeText(reportText).then(function() {
