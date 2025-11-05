@@ -4,7 +4,6 @@
 - タスクの繰り越し処理
 """
 from datetime import datetime, timedelta, date as date_module
-import pytz
 
 
 def process_daily_rollover(user_id=None):
@@ -18,13 +17,8 @@ def process_daily_rollover(user_id=None):
     
     注: ダッシュボードにアクセスしたときに自動実行されます
     """
-    # 日本時間（JST）で今日の日付を取得
-    try:
-        jst = pytz.timezone('Asia/Tokyo')
-        today = datetime.now(jst).date()
-    except:
-        # pytzが利用できない場合は、システムの日付を使用
-        today = date_module.today()
+    # 今日の日付を取得（システムの日付を使用）
+    today = date_module.today()
     
     if not user_id:
         return 0, 0, 0, 0
