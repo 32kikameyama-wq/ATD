@@ -249,9 +249,9 @@
                                 
                                 <div class="task-actions">
                                     <div class="task-move-buttons">
-                                        <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('タスクを明日のタスクに移動しますか？');">
+                                        <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="POST" style="display:inline;">
                                             <input type="hidden" name="category" value="tomorrow">
-                                            <button type="submit" class="btn btn-sm btn-outline" onclick="this.form.submit(); return true;">明日へ</button>
+                                            <button type="submit" class="btn btn-sm btn-outline">明日へ</button>
                                         </form>
                                         <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="POST" style="display:inline;">
                                             <input type="hidden" name="category" value="other">
@@ -477,9 +477,9 @@
                                             <input type="hidden" name="category" value="today">
                                             <button type="submit" class="btn btn-sm btn-outline">今日へ</button>
                                         </form>
-                                        <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('タスクを明日のタスクに移動しますか？');">
+                                        <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="POST" style="display:inline;">
                                             <input type="hidden" name="category" value="tomorrow">
-                                            <button type="submit" class="btn btn-sm btn-outline" onclick="this.form.submit(); return true;">明日へ</button>
+                                            <button type="submit" class="btn btn-sm btn-outline">明日へ</button>
                                         </form>
                                     </div>
                                     <div class="task-main-actions">
@@ -675,24 +675,6 @@
             const mode = this.textContent.trim();
             if (mode === 'チーム') {
                 window.location.href = '/team-management';
-            }
-        });
-    });
-
-    // フォーム送信をデバッグ（「明日へ」ボタンの問題を調査）
-    document.addEventListener('DOMContentLoaded', function() {
-        // すべての「明日へ」ボタンのフォームを監視
-        const forms = document.querySelectorAll('form[action*="move_task"]');
-        forms.forEach(form => {
-            const categoryInput = form.querySelector('input[name="category"]');
-            if (categoryInput && categoryInput.value === 'tomorrow') {
-                form.addEventListener('submit', function(e) {
-                    console.log('[DEBUG] 明日へボタンがクリックされました');
-                    console.log('[DEBUG] Form action:', form.action);
-                    console.log('[DEBUG] Category:', categoryInput.value);
-                    console.log('[DEBUG] Task ID:', form.action.match(/\/tasks\/(\d+)\/move/)?.[1]);
-                    // フォーム送信を続行
-                });
             }
         });
     });
