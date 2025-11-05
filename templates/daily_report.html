@@ -368,7 +368,7 @@
         }
 
         function generateReportText() {
-            const today = '{{ today.strftime("%Y年%m月%d日") }}';
+            const today = '{% if report_mode == "period" %}{{ start_date.strftime("%Y年%m月%d日") }} ～ {{ end_date.strftime("%Y年%m月%d日") }}{% else %}{{ report_date.strftime("%Y年%m月%d日") }}{% endif %}';
             const todayRate = {{ today_stats.completion_rate }};
             const todayCompleted = {{ today_stats.completed }};
             const todayTotal = {{ today_stats.total }};
