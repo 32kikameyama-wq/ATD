@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 db = SQLAlchemy()
 
@@ -114,7 +115,7 @@ class UserPerformance(db.Model):
     def update_daily_performance(user_id, date=None):
         """日次パフォーマンスデータを更新"""
         if date is None:
-            date = datetime.now().date()
+            date = datetime.now(ZoneInfo('Asia/Tokyo')).date()
         
         # 既存のレコードを取得または作成
         performance = UserPerformance.query.filter_by(

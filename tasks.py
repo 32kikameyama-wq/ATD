@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 from flask_login import login_required, current_user
 from models import db, Task
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 tasks = Blueprint('tasks', __name__)
 
@@ -13,7 +14,7 @@ def list_tasks():
     from collections import OrderedDict
     
     # 日付を取得（現在時刻から取得）
-    now = datetime.now()
+    now = datetime.now(ZoneInfo('Asia/Tokyo'))
     today = now.date()
     current_time = now.strftime('%Y-%m-%d %H:%M:%S')
     
@@ -454,7 +455,7 @@ def move_task(task_id):
         # タスクのカテゴリを更新
         task.category = new_category
         task.order_index = max_order + 1
-        task.updated_at = datetime.now()
+        task.updated_at = datetime.now(ZoneInfo('Asia/Tokyo')).replace(tzinfo=None)
         
         # コミット
         db.session.commit()

@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, jsonify, request
 from flask_login import current_user, login_required
 from datetime import datetime, timedelta, date
+from zoneinfo import ZoneInfo
 from models import db
 
 # ブループリントを作成
@@ -24,7 +25,7 @@ def dashboard():
     from datetime import datetime, timedelta
     
     # 日付を取得（現在時刻から取得）
-    now = datetime.now()
+    now = datetime.now(ZoneInfo('Asia/Tokyo'))
     today = now.date()
     current_time = now.strftime('%Y-%m-%d %H:%M:%S')
     
@@ -291,7 +292,8 @@ def generate_task_from_template(template_id):
     if target_date_str:
         target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
     else:
-        target_date = datetime.now().date()
+        from zoneinfo import ZoneInfo
+        target_date = datetime.now(ZoneInfo('Asia/Tokyo')).date()
     
     # テンプレートからタスク作成
     new_task = template.create_task_from_template(target_date)
@@ -313,7 +315,8 @@ def calendar():
     year = request.args.get('year', None, type=int)
     month = request.args.get('month', None, type=int)
     
-    now = datetime.now()
+    from zoneinfo import ZoneInfo
+    now = datetime.now(ZoneInfo('Asia/Tokyo'))
     if not year or not month:
         year = now.year
         month = now.month
@@ -413,7 +416,7 @@ def daily_report():
     from daily_processor import get_daily_statistics
     
     # 今日の日付
-    today = datetime.now().date()
+    today = datetime.now(ZoneInfo('Asia/Tokyo')).date()
     
     # URLパラメータから日付と期間を取得
     selected_date_str = request.args.get('date')
@@ -1322,7 +1325,7 @@ def admin():
     total_tasks = Task.query.count()
     total_teams = Team.query.count()
     active_users = UserPerformance.query.filter(
-        UserPerformance.date >= datetime.now().date() - timedelta(days=7)
+        UserPerformance.date >= datetime.now(ZoneInfo('Asia/Tokyo')).date() - timedelta(days=7)
     ).distinct(UserPerformance.user_id).count()
     
     return render_template('admin.html',
@@ -2814,7 +2817,7 @@ def export_data():
     json_str = json.dumps(export_data, ensure_ascii=False, indent=2)
     
     # ファイル名を生成（日時を含める）
-    filename = f'atd_backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+    filename = f"atd_backup_{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%Y%m%d_%H%M%S')}.json"
     
     # レスポンスを作成
     response = make_response(json_str)

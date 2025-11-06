@@ -4,6 +4,7 @@
 - タスクの繰り越し処理
 """
 from datetime import datetime, timedelta, date as date_module
+from zoneinfo import ZoneInfo
 
 
 def process_daily_rollover(user_id=None):
@@ -17,10 +18,11 @@ def process_daily_rollover(user_id=None):
     
     注: ダッシュボードにアクセスしたときに自動実行されます（1日に1回のみ）
     """
-    # 今日の日付を取得（現在時刻から取得）
-    now = datetime.now()
+    # 今日の日付を取得（日本時間基準）
+    now = datetime.now(ZoneInfo('Asia/Tokyo'))
     today = now.date()
     current_time = now.strftime('%Y-%m-%d %H:%M:%S')
+    now_naive = now.replace(tzinfo=None)
     
     print(f"[DEBUG] Daily rollover started at: {current_time}, Date: {today}, User: {user_id}")
     
@@ -133,7 +135,7 @@ def process_daily_rollover(user_id=None):
     advanced_count = 0
     for task in tomorrow_tasks:
         task.category = 'today'
-        task.updated_at = datetime.now()
+        task.updated_at = now_naive
         advanced_count += 1
     
     print(f"[DEBUG] Daily rollover: Moved {advanced_count} tasks from 'tomorrow' to 'today'")
@@ -153,7 +155,7 @@ def process_daily_rollover(user_id=None):
         # 今日がタスクの期間内なら、明日のタスクに繰り上げ
         if task.start_date <= today <= task.end_date:
             task.category = 'tomorrow'
-            task.updated_at = datetime.now()
+            task.updated_at = now_naive
             calendar_moved_count += 1
     
     # 4. 昨日以前の本日のタスク（未完了）で、start_dateが昨日以前のものはそのまま残す
