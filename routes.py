@@ -1860,6 +1860,7 @@ def toggle_team_task():
     
     # 完了状態を切り替え
     personal_task.completed = not personal_task.completed
+    personal_task.completed_at = datetime.utcnow() if personal_task.completed else None
     
     # 完了にした場合、時間計測を停止
     if personal_task.completed and personal_task.is_tracking:
@@ -2369,6 +2370,7 @@ def update_personal_mindmap_node(node_id):
                     task.description = data.get('description', '')
                 if 'completed' in data:
                     task.completed = data['completed']
+                    task.completed_at = datetime.utcnow() if task.completed else None
                 
                 # パフォーマンス更新
                 UserPerformance.update_daily_performance(current_user.id)
@@ -2744,6 +2746,7 @@ def export_data():
         'tracking_start_time': t.tracking_start_time.isoformat() if t.tracking_start_time else None,
         'total_seconds': t.total_seconds,
         'team_task_id': t.team_task_id,
+        'completed_at': t.completed_at.isoformat() if t.completed_at else None,
         'created_at': t.created_at.isoformat() if t.created_at else None,
         'updated_at': t.updated_at.isoformat() if t.updated_at else None
     } for t in tasks]
@@ -3089,6 +3092,8 @@ def import_data():
                 new_task.created_at = datetime.fromisoformat(task_data['created_at'].replace('Z', '+00:00'))
             if task_data.get('updated_at'):
                 new_task.updated_at = datetime.fromisoformat(task_data['updated_at'].replace('Z', '+00:00'))
+            if task_data.get('completed_at'):
+                new_task.completed_at = datetime.fromisoformat(task_data['completed_at'].replace('Z', '+00:00'))
             db.session.add(new_task)
             db.session.flush()
             id_mapping['tasks'][old_id] = new_task.id

@@ -10,6 +10,7 @@ tasks = Blueprint('tasks', __name__)
 def list_tasks():
     """タスク一覧"""
     from datetime import date, datetime
+    from collections import OrderedDict
     
     # 日付を取得（現在時刻から取得）
     now = datetime.now()
@@ -30,6 +31,20 @@ def list_tasks():
     today_tasks = Task.query.filter_by(user_id=current_user.id, category='today', archived=False).order_by(Task.order_index).all()
     tomorrow_tasks = Task.query.filter_by(user_id=current_user.id, category='tomorrow', archived=False).order_by(Task.order_index).all()
     other_tasks = Task.query.filter_by(user_id=current_user.id, category='other', archived=False).order_by(Task.order_index).all()
+
+    completed_tasks = Task.query.filter(
+        Task.user_id == current_user.id,
+        Task.completed == True,
+        Task.archived == False,
+        Task.completed_at.isnot(None)
+    ).order_by(Task.completed_at.desc()).limit(200).all()
+
+    completed_tasks_by_date = OrderedDict()
+    for task in completed_tasks:
+        date_key = task.completed_at.date()
+        if date_key not in completed_tasks_by_date:
+            completed_tasks_by_date[date_key] = []
+        completed_tasks_by_date[date_key].append(task)
     
     # デバッグ: タスク数を確認
     print(f"[DEBUG] list_tasks: today_tasks={len(today_tasks)}, tomorrow_tasks={len(tomorrow_tasks)}, other_tasks={len(other_tasks)}")
@@ -38,6 +53,7 @@ def list_tasks():
                          today_tasks=today_tasks,
                          tomorrow_tasks=tomorrow_tasks,
                          other_tasks=other_tasks,
+                         completed_tasks_by_date=completed_tasks_by_date,
                          current_date=today)
 
 @tasks.route('/tasks/create', methods=['GET', 'POST'])
@@ -350,6 +366,7 @@ def toggle_task(task_id):
     
     # 完了状態を切り替え
     task.completed = not task.completed
+    task.completed_at = datetime.utcnow() if task.completed else None
     
     # 完了にした場合、時間計測を停止
     if task.completed and task.is_tracking:

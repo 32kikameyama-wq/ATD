@@ -10,7 +10,10 @@
     <!-- 上部ナビゲーションバー -->
     <nav class="navbar">
         <div class="navbar-content">
-            <div class="navbar-brand">ATD</div>
+            <div class="navbar-brand">
+    <span class="brand-title">ATD</span>
+    <span class="brand-date">{{ current_date_display }}</span>
+</div>
             <div class="navbar-menu">
                 <a href="{{ url_for('main.team_management') }}" class="navbar-item active">チーム</a>
                 <a href="{{ url_for('main.team_mindmap') }}" class="navbar-item">チーム目標</a>

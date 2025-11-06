@@ -38,17 +38,26 @@ def create_app(config_class=Config):
     
     # テンプレートコンテキストプロセッサー（全ページ共通データ）
     @app.context_processor
-    def inject_notification_count():
-        """全てのテンプレートに未読通知数を渡す"""
+    def inject_common_context():
+        """全ページ共通のテンプレート変数を提供"""
         from flask_login import current_user
+        from datetime import datetime
+
+        context = {
+            'current_date_display': datetime.now().strftime('%Y/%m/%d')
+        }
+
         if current_user.is_authenticated:
             from models import Notification
             unread_count = Notification.query.filter_by(
                 user_id=current_user.id,
                 read=False
             ).count()
-            return {'unread_notifications': unread_count}
-        return {'unread_notifications': 0}
+            context['unread_notifications'] = unread_count
+        else:
+            context['unread_notifications'] = 0
+
+        return context
     
     # ブループリント登録
     app.register_blueprint(main)

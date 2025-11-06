@@ -42,6 +42,7 @@ class Task(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     completed = db.Column(db.Boolean, default=False, nullable=False)
+    completed_at = db.Column(db.DateTime, nullable=True)
     due_date = db.Column(db.Date)
     start_date = db.Column(db.Date)  # 開始期間
     end_date = db.Column(db.Date)    # 終了期間
@@ -129,7 +130,8 @@ class UserPerformance(db.Model):
         completed_today = Task.query.filter(
             Task.user_id == user_id,
             Task.completed == True,
-            db.func.date(Task.updated_at) == date
+            Task.completed_at.isnot(None),
+            db.func.date(Task.completed_at) == date
         ).count()
         
         # その日のタスク作成数
@@ -149,7 +151,8 @@ class UserPerformance(db.Model):
             Task.user_id == user_id,
             Task.completed == True,
             Task.archived == False,
-            db.func.date(Task.updated_at) == date
+            Task.completed_at.isnot(None),
+            db.func.date(Task.completed_at) == date
         ).scalar() or 0
         
         # データを更新

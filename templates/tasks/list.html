@@ -78,13 +78,60 @@
             color: #1976D2;
             font-weight: bold;
         }
+        .completed-history-card {
+            margin-top: 2rem;
+        }
+        .completed-history {
+            padding: 1.5rem;
+        }
+        .completed-date-group {
+            margin-bottom: 1.5rem;
+        }
+        .completed-date-heading {
+            font-size: 1.05rem;
+            font-weight: bold;
+            margin-bottom: 0.75rem;
+            display: flex;
+            gap: 0.75rem;
+            align-items: baseline;
+        }
+        .completed-count {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .completed-task-card {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+        }
+        .completed-task-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .completed-task-description {
+            margin: 0 0 8px;
+            color: #555;
+            line-height: 1.5;
+        }
+        .completed-task-meta {
+            font-size: 0.85rem;
+            color: #777;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
     </style>
 </head>
 <body>
     <!-- 上部ナビゲーションバー -->
     <nav class="navbar">
         <div class="navbar-content">
-            <div class="navbar-brand">ATD</div>
+            <div class="navbar-brand">
+    <span class="brand-title">ATD</span>
+    <span class="brand-date">{{ current_date_display }}</span>
+</div>
             <div class="navbar-menu">
                         <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
                         <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item active">タスク管理</a>
@@ -507,6 +554,43 @@
                         <p class="no-tasks">その他のタスクはありません</p>
                     {% endif %}
                 </div>
+            </div>
+        </div>
+
+        <div class="card completed-history-card">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <h3 style="margin: 0;">完了履歴</h3>
+                <span style="font-size: 0.85rem; color: #777;">直近200件まで表示します</span>
+            </div>
+            <div class="completed-history">
+                {% if completed_tasks_by_date %}
+                    {% for date_key, tasks in completed_tasks_by_date.items() %}
+                        <div class="completed-date-group">
+                            <div class="completed-date-heading">
+                                <span>📅 {{ date_key.strftime('%Y年%m月%d日') }}</span>
+                                <span class="completed-count">{{ tasks|length }} 件</span>
+                            </div>
+                            {% for task in tasks %}
+                                <div class="completed-task-card">
+                                    <div class="completed-task-title">{{ task.title }}</div>
+                                    {% if task.description %}
+                                        <p class="completed-task-description">{{ task.description }}</p>
+                                    {% endif %}
+                                    <div class="completed-task-meta">
+                                        {% if task.end_date %}<span>期限: {{ task.end_date.strftime('%Y/%m/%d') }}</span>{% endif %}
+                                        {% if task.completed_at %}<span>完了時刻: {{ task.completed_at.strftime('%H:%M') }}</span>{% endif %}
+                                        <span>
+                                            カテゴリ:
+                                            {% if task.category == 'today' %}本日{% elif task.category == 'tomorrow' %}明日{% elif task.category == 'other' %}その他{% else %}{{ task.category }}{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="no-tasks">完了履歴はまだありません。タスクを完了するとここに表示されます。</p>
+                {% endif %}
             </div>
         </div>
     
@@ -1002,6 +1086,13 @@
             alert('エラーが発生しました');
         });
     }
+
+    const initialDateKey = new Date().toDateString();
+    setInterval(() => {
+        if (new Date().toDateString() !== initialDateKey) {
+            window.location.reload();
+        }
+    }, 60000);
     </script>
 </body>
 </html>

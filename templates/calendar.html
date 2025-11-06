@@ -127,7 +127,10 @@
     <!-- 上部ナビゲーションバー -->
     <nav class="navbar">
         <div class="navbar-content">
-            <div class="navbar-brand">ATD</div>
+            <div class="navbar-brand">
+    <span class="brand-title">ATD</span>
+    <span class="brand-date">{{ current_date_display }}</span>
+</div>
             <div class="navbar-menu">
                 <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
                 <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
