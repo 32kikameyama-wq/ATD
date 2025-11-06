@@ -1,0 +1,61 @@
+{% extends 'mobile/base.html' %}
+{% block head_title %}設定 - ATD Mobile{% endblock %}
+{% set active_tab = 'settings' %}
+
+{% block header_profile %}
+<div class="mobile-profile-card">
+    <div class="mobile-profile-avatar">S</div>
+    <div class="mobile-profile-info">
+        <div class="mobile-profile-name">設定 & 管理</div>
+        <div class="mobile-status-input">アカウントやシステム設定を変更</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="mobile-section">
+    <div class="mobile-section-title">アカウント</div>
+    <div class="mobile-card">
+        <div class="mobile-list">
+            <a href="{{ url_for('main.profile') }}" class="mobile-action-chip">プロフィール編集</a>
+            <a href="{{ url_for('auth.logout') }}" class="mobile-action-chip highlight">ログアウト</a>
+        </div>
+    </div>
+</section>
+
+{% if current_user.is_admin %}
+<section class="mobile-section">
+    <div class="mobile-section-title">管理者メニュー</div>
+    <div class="mobile-card">
+        <div class="mobile-section-actions">
+            <a href="{{ url_for('main.admin') }}" class="mobile-action-chip">管理者ダッシュボード</a>
+            <a href="{{ url_for('main.team_management') }}" class="mobile-action-chip">チーム管理</a>
+            <a href="{{ url_for('main.task_templates') }}" class="mobile-action-chip">テンプレート管理</a>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<section class="mobile-section">
+    <div class="mobile-section-title">ヘルプ</div>
+    <div class="mobile-card">
+        <div class="mobile-list">
+            <div class="mobile-list-item">
+                <div class="mobile-list-icon">💡</div>
+                <div class="mobile-list-content">
+                    <div class="mobile-list-title">使い方ガイド</div>
+                    <div class="mobile-list-meta">近日公開予定</div>
+                </div>
+            </div>
+            <div class="mobile-list-item">
+                <div class="mobile-list-icon">📮</div>
+                <div class="mobile-list-content">
+                    <div class="mobile-list-title">お問い合わせ</div>
+                    <div class="mobile-list-meta">contact@example.com</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+

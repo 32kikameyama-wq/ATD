@@ -1,0 +1,98 @@
+{% extends 'mobile/base.html' %}
+{% block head_title %}ホーム - ATD Mobile{% endblock %}
+{% set active_tab = 'home' %}
+
+{% block header_profile %}
+<div class="mobile-profile-card">
+    <div class="mobile-profile-avatar">
+        {{ (current_user.display_name or current_user.username)[0] if current_user.is_authenticated else 'A' }}
+    </div>
+    <div class="mobile-profile-info">
+        <div class="mobile-profile-name">{{ current_user.display_name or current_user.username }}</div>
+        <div class="mobile-status-input">ステータスメッセージを入力</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="mobile-section">
+    <div class="mobile-section-title">今日のサマリー</div>
+    <div class="mobile-stat-grid">
+        <div class="mobile-stat-card">
+            <div class="mobile-stat-label">完了率</div>
+            <div class="mobile-stat-value">{{ '%.0f'|format(progress_percentage) }}%</div>
+            <div class="mobile-card-subtext">{{ completed_tasks }}/{{ total_tasks }} タスク</div>
+        </div>
+        <div class="mobile-stat-card">
+            <div class="mobile-stat-label">連続達成</div>
+            <div class="mobile-stat-value">{{ today_stats.streak_days if today_stats else 0 }}日</div>
+            <div class="mobile-card-subtext">今日作成 {{ today_stats.tasks_created if today_stats else 0 }} 件</div>
+        </div>
+    </div>
+</section>
+
+<section class="mobile-section">
+    <div class="mobile-card">
+        <div class="mobile-card-header">
+            <span>今日のタスク</span>
+            <a href="{{ url_for('tasks.list_tasks') }}" class="mobile-link-row">すべて表示</a>
+        </div>
+        {% if today_tasks %}
+            <div class="mobile-list">
+                {% for task in today_tasks[:5] %}
+                <div class="mobile-list-item">
+                    <div class="mobile-list-icon">{{ loop.index }}</div>
+                    <div class="mobile-list-content">
+                        <div class="mobile-list-title">{{ task.title }}</div>
+                        <div class="mobile-list-meta">
+                            {% if task.end_date %}期限 {{ task.end_date.strftime('%m/%d') }}・{% endif %}優先度 {{ task.priority|upper }}
+                        </div>
+                    </div>
+                    {% if task.completed %}
+                        <span class="mobile-badge">完了</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="mobile-empty">本日のタスクはありません</div>
+        {% endif %}
+    </div>
+</section>
+
+<section class="mobile-section">
+    <div class="mobile-card">
+        <div class="mobile-card-header">
+            <span>チームの進捗</span>
+            <a href="{{ url_for('main.team_management') }}" class="mobile-link-row">詳細を見る</a>
+        </div>
+        <div class="mobile-list">
+            <div class="mobile-list-item">
+                <div class="mobile-list-icon">📈</div>
+                <div class="mobile-list-content">
+                    <div class="mobile-list-title">全体進捗</div>
+                    <div class="mobile-list-meta">完了率 {{ team_progress }}%</div>
+                </div>
+            </div>
+            <div class="mobile-list-item">
+                <div class="mobile-list-icon">🧑‍🤝‍🧑</div>
+                <div class="mobile-list-content">
+                    <div class="mobile-list-title">メンバー</div>
+                    <div class="mobile-list-meta">{{ team_member_count }} 名参加中</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mobile-section">
+    <div class="mobile-section-title">クイックアクセス</div>
+    <div class="mobile-section-actions">
+        <a href="{{ url_for('tasks.create_task') }}" class="mobile-action-chip highlight">タスクを作成</a>
+        <a href="{{ url_for('main.calendar') }}" class="mobile-action-chip">カレンダー</a>
+        <a href="{{ url_for('main.mindmap') }}" class="mobile-action-chip">マインドマップ</a>
+        <a href="{{ url_for('main.daily_report') }}" class="mobile-action-chip">日報レポート</a>
+    </div>
+</section>
+{% endblock %}
+

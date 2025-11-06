@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block head_title %}ATD Mobile{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
+</head>
+{% set body_class = 'mobile-body' %}
+<body class="{{ body_class }}">
+    <div class="mobile-app">
+        <header class="mobile-header">
+            <div class="mobile-header-top">
+                <div>
+                    <div class="mobile-header-title">ATD</div>
+                    <div class="mobile-header-date">{{ current_date_display }}</div>
+                </div>
+                <a href="{{ url_for('main.notifications') }}" class="mobile-pill-action">通知 {{ unread_notifications }}</a>
+            </div>
+            {% block header_profile %}{% endblock %}
+        </header>
+
+        <main class="mobile-content">
+            {% block content %}{% endblock %}
+            <div class="mobile-bottom-spacer"></div>
+        </main>
+
+        <nav class="mobile-tabbar">
+            <a href="{{ url_for('main.mobile_home') }}" class="mobile-tablink {% if active_tab == 'home' %}active{% endif %}"><span>ホーム</span></a>
+            <a href="{{ url_for('main.mobile_tasks') }}" class="mobile-tablink {% if active_tab == 'tasks' %}active{% endif %}"><span>タスク</span></a>
+            <a href="{{ url_for('main.mobile_team') }}" class="mobile-tablink {% if active_tab == 'team' %}active{% endif %}"><span>チーム</span></a>
+            <a href="{{ url_for('main.mobile_notifications') }}" class="mobile-tablink {% if active_tab == 'notifications' %}active{% endif %}"><span>通知</span></a>
+            <a href="{{ url_for('main.mobile_settings') }}" class="mobile-tablink {% if active_tab == 'settings' %}active{% endif %}"><span>設定</span></a>
+        </nav>
+    </div>
+</body>
+</html>
+

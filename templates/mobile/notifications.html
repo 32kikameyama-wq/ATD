@@ -1,0 +1,59 @@
+{% extends 'mobile/base.html' %}
+{% block head_title %}通知 - ATD Mobile{% endblock %}
+{% set active_tab = 'notifications' %}
+
+{% block header_profile %}
+<div class="mobile-profile-card">
+    <div class="mobile-profile-avatar">N</div>
+    <div class="mobile-profile-info">
+        <div class="mobile-profile-name">通知センター</div>
+        <div class="mobile-status-input">最新の更新情報が届きます</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="mobile-section">
+    <div class="mobile-section-title">未読通知</div>
+    {% if unread_notifications_list %}
+        <div class="mobile-card">
+            <div class="mobile-list">
+                {% for notification in unread_notifications_list %}
+                <div class="mobile-list-item">
+                    <div class="mobile-list-icon">●</div>
+                    <div class="mobile-list-content">
+                        <div class="mobile-list-title">{{ notification.title }}</div>
+                        <div class="mobile-list-meta">{{ notification.message }}</div>
+                    </div>
+                    <span class="mobile-badge">NEW</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <div class="mobile-empty">未読通知はありません</div>
+    {% endif %}
+</section>
+
+<section class="mobile-section">
+    <div class="mobile-section-title">すべての通知</div>
+    {% if all_notifications %}
+        <div class="mobile-card">
+            <div class="mobile-list">
+                {% for notification in all_notifications %}
+                <div class="mobile-list-item">
+                    <div class="mobile-list-icon">{{ loop.index }}</div>
+                    <div class="mobile-list-content">
+                        <div class="mobile-list-title">{{ notification.title }}</div>
+                        <div class="mobile-list-meta">{{ notification.message }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <div class="mobile-empty">通知履歴はありません</div>
+    {% endif %}
+</section>
+{% endblock %}
+

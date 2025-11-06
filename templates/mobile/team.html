@@ -1,0 +1,81 @@
+{% extends 'mobile/base.html' %}
+{% block head_title %}チーム - ATD Mobile{% endblock %}
+{% set active_tab = 'team' %}
+
+{% block header_profile %}
+<div class="mobile-profile-card">
+    <div class="mobile-profile-avatar">C</div>
+    <div class="mobile-profile-info">
+        <div class="mobile-profile-name">チームハブ</div>
+        <div class="mobile-status-input">チームの進行状況をすばやく確認</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="mobile-section">
+    <div class="mobile-section-title">所属チーム</div>
+    {% if team_overview %}
+        {% for team in team_overview %}
+        <div class="mobile-card">
+            <div class="mobile-card-header">
+                <span>{{ team.name }}</span>
+                <span class="mobile-badge">{{ team.progress }}%</span>
+            </div>
+            <div class="mobile-list">
+                <div class="mobile-list-item">
+                    <div class="mobile-list-icon">🧑‍🤝‍🧑</div>
+                    <div class="mobile-list-content">
+                        <div class="mobile-list-title">メンバー数</div>
+                        <div class="mobile-list-meta">{{ team.members }} 名</div>
+                    </div>
+                </div>
+                <div class="mobile-list-item">
+                    <div class="mobile-list-icon">🗂️</div>
+                    <div class="mobile-list-content">
+                        <div class="mobile-list-title">タスク</div>
+                        <div class="mobile-list-meta">完了 {{ team.completed_tasks }} / 合計 {{ team.total_tasks }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mobile-section-actions">
+                <a href="{{ url_for('main.team_management') }}" class="mobile-action-chip">詳細管理</a>
+                <a href="{{ url_for('main.team_tasks') }}" class="mobile-action-chip">タスク一覧</a>
+                <a href="{{ url_for('main.team_mindmap') }}" class="mobile-action-chip">マインドマップ</a>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="mobile-empty">所属しているチームがまだありません</div>
+        <div class="mobile-section-actions">
+            <a href="{{ url_for('main.team_create') }}" class="mobile-action-chip highlight">チームを作成</a>
+        </div>
+    {% endif %}
+</section>
+
+<section class="mobile-section">
+    <div class="mobile-card">
+        <div class="mobile-card-header">
+            <span>アクティブなチームタスク</span>
+            <a href="{{ url_for('main.team_tasks') }}" class="mobile-link-row">すべて表示</a>
+        </div>
+        {% if active_team_tasks %}
+            <div class="mobile-list">
+                {% for task in active_team_tasks[:5] %}
+                <div class="mobile-list-item">
+                    <div class="mobile-list-icon">{{ loop.index }}</div>
+                    <div class="mobile-list-content">
+                        <div class="mobile-list-title">{{ task.title }}</div>
+                        <div class="mobile-list-meta">期限 {{ task.due_date.strftime('%m/%d') if task.due_date }}・担当 {{ task.assignee_names }}</div>
+                    </div>
+                    {% if task.completed %}<span class="mobile-badge">完了</span>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="mobile-empty">未完了のチームタスクはありません</div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+

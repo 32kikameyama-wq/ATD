@@ -185,6 +185,149 @@ def dashboard():
                          past_tasks=past_tasks,
                          selected_date=selected_date)
 
+
+@main.route('/mobile')
+@login_required
+def mobile_index():
+    return redirect(url_for('main.mobile_home'))
+
+
+@main.route('/mobile/home')
+@login_required
+def mobile_home():
+    from models import Task, UserPerformance, TeamMember, TeamTask
+
+    now = datetime.now(ZoneInfo('Asia/Tokyo'))
+    today = now.date()
+
+    UserPerformance.update_daily_performance(current_user.id, date=today)
+
+    today_tasks = Task.query.filter_by(
+        user_id=current_user.id,
+        category='today',
+        archived=False
+    ).order_by(Task.order_index).all()
+
+    completed_tasks = sum(1 for task in today_tasks if task.completed)
+    total_tasks = len(today_tasks)
+    progress_percentage = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+
+    today_stats = UserPerformance.query.filter_by(
+        user_id=current_user.id,
+        date=today
+    ).first()
+
+    memberships = TeamMember.query.filter_by(user_id=current_user.id).all()
+    team_ids = [membership.team_id for membership in memberships if membership.team_id]
+
+    if team_ids:
+        total_team_tasks = TeamTask.query.filter(TeamTask.team_id.in_(team_ids)).count()
+        completed_team_tasks = TeamTask.query.filter(
+            TeamTask.team_id.in_(team_ids),
+            TeamTask.completed == True
+        ).count()
+        team_member_count = TeamMember.query.filter(TeamMember.team_id.in_(team_ids)).count()
+        team_progress = int(completed_team_tasks / total_team_tasks * 100) if total_team_tasks else 0
+    else:
+        team_member_count = 0
+        team_progress = 0
+
+    return render_template('mobile/home.html',
+                           today_tasks=today_tasks,
+                           progress_percentage=progress_percentage,
+                           completed_tasks=completed_tasks,
+                           total_tasks=total_tasks,
+                           today_stats=today_stats,
+                           team_progress=team_progress,
+                           team_member_count=team_member_count)
+
+
+@main.route('/mobile/tasks')
+@login_required
+def mobile_tasks():
+    from models import Task
+
+    today_tasks = Task.query.filter_by(user_id=current_user.id, category='today', archived=False).order_by(Task.order_index).all()
+    tomorrow_tasks = Task.query.filter_by(user_id=current_user.id, category='tomorrow', archived=False).order_by(Task.order_index).all()
+    other_tasks = Task.query.filter_by(user_id=current_user.id, category='other', archived=False).order_by(Task.order_index).all()
+
+    return render_template('mobile/tasks.html',
+                           today_tasks=today_tasks,
+                           tomorrow_tasks=tomorrow_tasks,
+                           other_tasks=other_tasks)
+
+
+@main.route('/mobile/team')
+@login_required
+def mobile_team():
+    from models import Team, TeamMember, TeamTask, TaskAssignee, User
+
+    memberships = TeamMember.query.filter_by(user_id=current_user.id).all()
+    team_ids = [membership.team_id for membership in memberships if membership.team_id]
+
+    team_overview = []
+    active_team_tasks = []
+
+    if team_ids:
+        teams = Team.query.filter(Team.id.in_(team_ids)).all()
+        for team in teams:
+            members = TeamMember.query.filter_by(team_id=team.id).count()
+            total_tasks = TeamTask.query.filter_by(team_id=team.id).count()
+            completed_tasks = TeamTask.query.filter_by(team_id=team.id, completed=True).count()
+            progress = int(completed_tasks / total_tasks * 100) if total_tasks else 0
+            team_overview.append({
+                'name': team.name,
+                'members': members,
+                'total_tasks': total_tasks,
+                'completed_tasks': completed_tasks,
+                'progress': progress
+            })
+
+        team_tasks = TeamTask.query.filter(TeamTask.team_id.in_(team_ids)).order_by(TeamTask.due_date.asc(), TeamTask.created_at.desc()).all()
+        for task in team_tasks:
+            assignees = TaskAssignee.query.filter_by(team_task_id=task.id).all()
+            assignee_names = []
+            for assignee in assignees:
+                user = User.query.get(assignee.user_id)
+                if user:
+                    assignee_names.append(user.display_name or user.username)
+            active_team_tasks.append({
+                'id': task.id,
+                'title': task.title,
+                'due_date': task.due_date,
+                'completed': task.completed,
+                'assignee_names': ', '.join(assignee_names) if assignee_names else '未割り当て'
+            })
+
+    return render_template('mobile/team.html',
+                           team_overview=team_overview,
+                           active_team_tasks=active_team_tasks)
+
+
+@main.route('/mobile/notifications')
+@login_required
+def mobile_notifications():
+    from models import Notification
+
+    unread_notifications_list = Notification.query.filter_by(
+        user_id=current_user.id,
+        read=False
+    ).order_by(Notification.created_at.desc()).all()
+
+    all_notifications = Notification.query.filter_by(
+        user_id=current_user.id
+    ).order_by(Notification.created_at.desc()).limit(30).all()
+
+    return render_template('mobile/notifications.html',
+                           unread_notifications_list=unread_notifications_list,
+                           all_notifications=all_notifications)
+
+
+@main.route('/mobile/settings')
+@login_required
+def mobile_settings():
+    return render_template('mobile/settings.html')
+
 @main.route('/personal-tasks')
 @login_required
 def personal_tasks():
