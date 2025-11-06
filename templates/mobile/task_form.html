@@ -1,0 +1,99 @@
+{% extends 'mobile/base.html' %}
+{% block head_title %}タスク作成 - ATD Mobile{% endblock %}
+{% set active_tab = 'tasks' %}
+
+{% block header_profile %}
+<div class="mobile-profile-card">
+    <div class="mobile-profile-avatar">📝</div>
+    <div class="mobile-profile-info">
+        <div class="mobile-profile-name">タスクを追加</div>
+        <div class="mobile-status-input">必要な情報を入力して保存しましょう</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="mobile-section">
+    <div class="mobile-form-card">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mobile-alert-group">
+                    {% for category, message in messages %}
+                        <div class="mobile-alert mobile-alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="mobile-form" id="mobile-task-form">
+            <div class="mobile-form-group">
+                <label for="title" class="mobile-form-label">タイトル *</label>
+                <input type="text" id="title" name="title" class="mobile-form-input"
+                    value="{{ form_data.get('title', '') }}" placeholder="タスクの名前を入力"
+                    required>
+            </div>
+
+            <div class="mobile-form-group">
+                <label for="description" class="mobile-form-label">メモ</label>
+                <textarea id="description" name="description" rows="4" class="mobile-form-textarea"
+                    placeholder="詳細を入力（任意）">{{ form_data.get('description', '') }}</textarea>
+            </div>
+
+            <div class="mobile-form-row">
+                <div class="mobile-form-group">
+                    <label for="start_date" class="mobile-form-label">開始日 *</label>
+                    <input type="date" id="start_date" name="start_date" class="mobile-form-input"
+                        value="{{ form_data.get('start_date', '') }}" required>
+                </div>
+                <div class="mobile-form-group">
+                    <label for="end_date" class="mobile-form-label">終了日 *</label>
+                    <input type="date" id="end_date" name="end_date" class="mobile-form-input"
+                        value="{{ form_data.get('end_date', '') }}" required>
+                </div>
+            </div>
+
+            <div class="mobile-form-group">
+                <label for="category" class="mobile-form-label">分類 *</label>
+                <div class="mobile-segmented-control">
+                    {% for value, label in category_choices %}
+                    <label class="mobile-segmented-option">
+                        <input type="radio" name="category" value="{{ value }}"
+                            {% if form_data.get('category') == value %}checked{% endif %} required>
+                        <span>{{ label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="mobile-form-group">
+                <label for="priority" class="mobile-form-label">優先度 *</label>
+                <div class="mobile-segmented-control priority">
+                    {% for value, label in priority_choices %}
+                    <label class="mobile-segmented-option">
+                        <input type="radio" name="priority" value="{{ value }}"
+                            {% if form_data.get('priority') == value %}checked{% endif %} required>
+                        <span>{{ label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="mobile-form-actions">
+                <button type="submit" class="mobile-primary-button" id="mobile-task-submit">保存する</button>
+                <a href="{{ url_for('main.mobile_tasks') }}" class="mobile-secondary-button">戻る</a>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('mobile-task-form').addEventListener('submit', function() {
+    const submitBtn = document.getElementById('mobile-task-submit');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '保存中…';
+});
+</script>
+{% endblock %}
+

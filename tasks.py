@@ -139,6 +139,136 @@ def create_task():
     return render_template('tasks/create.html')
 
 
+@tasks.route('/mobile/tasks/create', methods=['GET', 'POST'])
+@login_required
+def mobile_create_task():
+    """モバイル向けタスク作成"""
+    now = datetime.now(ZoneInfo('Asia/Tokyo'))
+    today_str = now.date().isoformat()
+    default_category = request.args.get('category', '')
+    default_date = request.args.get('date', today_str)
+
+    form_data = dict(request.form) if request.method == 'POST' else {}
+    if 'start_date' not in form_data or not form_data.get('start_date'):
+        form_data['start_date'] = default_date
+    if 'end_date' not in form_data or not form_data.get('end_date'):
+        form_data['end_date'] = default_date
+    if 'category' not in form_data or not form_data.get('category'):
+        form_data['category'] = default_category or 'today'
+    if 'priority' not in form_data or not form_data.get('priority'):
+        form_data['priority'] = 'medium'
+
+    category_choices = [
+        ('today', '本日のタスク'),
+        ('tomorrow', '明日のタスク'),
+        ('other', 'その他のタスク'),
+    ]
+    priority_choices = [
+        ('high', '高'),
+        ('medium', '中'),
+        ('low', '低'),
+    ]
+
+    if request.method == 'POST':
+        title = request.form.get('title')
+        description = request.form.get('description')
+        start_date_str = request.form.get('start_date')
+        end_date_str = request.form.get('end_date')
+        priority = request.form.get('priority')
+        category = request.form.get('category')
+
+        if not title or not start_date_str or not end_date_str or not priority or not category:
+            flash('必須項目を入力してください', 'error')
+            return render_template(
+                'mobile/task_form.html',
+                form_data=form_data,
+                category_choices=category_choices,
+                priority_choices=priority_choices
+            )
+
+        start_date = None
+        if start_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                flash('有効な開始日を入力してください', 'error')
+                return render_template(
+                    'mobile/task_form.html',
+                    form_data=form_data,
+                    category_choices=category_choices,
+                    priority_choices=priority_choices
+                )
+
+        end_date = None
+        if end_date_str:
+            try:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                flash('有効な終了日を入力してください', 'error')
+                return render_template(
+                    'mobile/task_form.html',
+                    form_data=form_data,
+                    category_choices=category_choices,
+                    priority_choices=priority_choices
+                )
+
+        if start_date and end_date and start_date > end_date:
+            flash('開始日は終了日より前でなければなりません', 'error')
+            return render_template(
+                'mobile/task_form.html',
+                form_data=form_data,
+                category_choices=category_choices,
+                priority_choices=priority_choices
+            )
+
+        existing_task = Task.query.filter_by(
+            title=title,
+            start_date=start_date,
+            end_date=end_date,
+            user_id=current_user.id
+        ).first()
+
+        if existing_task:
+            flash('同じタイトルと期間のタスクが既に存在します', 'error')
+            return render_template(
+                'mobile/task_form.html',
+                form_data=form_data,
+                category_choices=category_choices,
+                priority_choices=priority_choices
+            )
+
+        max_order = db.session.query(db.func.max(Task.order_index)).filter_by(
+            user_id=current_user.id,
+            category=category
+        ).scalar() or 0
+
+        new_task = Task(
+            title=title,
+            description=description,
+            start_date=start_date,
+            end_date=end_date,
+            priority=priority,
+            category=category,
+            order_index=max_order + 1,
+            user_id=current_user.id
+        )
+
+        db.session.add(new_task)
+        db.session.commit()
+
+        from models import UserPerformance
+        UserPerformance.update_daily_performance(current_user.id)
+
+        flash('タスクを作成しました', 'success')
+        return redirect(url_for('main.mobile_tasks'))
+
+    return render_template(
+        'mobile/task_form.html',
+        form_data=form_data,
+        category_choices=category_choices,
+        priority_choices=priority_choices
+    )
+
 @tasks.route('/tasks/import-csv', methods=['POST'])
 @login_required
 def import_csv():

@@ -65,9 +65,9 @@
 </section>
 {% endfor %}
 
-<div class="mobile-section-actions">
-    <a href="{{ url_for('tasks.create_task', view='desktop') }}" class="mobile-action-chip highlight">新しいタスクを作成</a>
-    <a href="{{ url_for('main.mobile_calendar') }}" class="mobile-action-chip">カレンダービュー</a>
+    <div class="mobile-section-actions">
+        <a href="{{ url_for('tasks.mobile_create_task') }}" class="mobile-action-chip highlight">新しいタスクを作成</a>
+        <a href="{{ url_for('main.mobile_calendar') }}" class="mobile-action-chip">カレンダービュー</a>
 </div>
 
 <script>
