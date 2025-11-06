@@ -1648,245 +1648,216 @@ input[type="date"]::-webkit-datetime-edit-text {
 }
 
 @media (max-width: 768px) {
-    .main-layout {
+    body {
+        background: var(--gray-100);
+    }
+
+    .navbar {
+        position: sticky;
+        top: 0;
+    }
+
+    .navbar-content {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
+        height: auto;
+    }
+
+    .navbar-brand {
+        min-width: auto;
+        padding-bottom: 0;
+    }
+
+    .navbar-menu {
+        width: 100%;
+        overflow-x: auto;
+        justify-content: flex-start;
+        gap: var(--spacing-sm);
+        scrollbar-width: thin;
+    }
+
+    .navbar-item {
+        flex: 1 0 auto;
+        min-width: 100px;
+        height: auto;
+        font-size: var(--font-size-sm);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: var(--border-radius);
+    }
+
+    .user-controls {
+        width: 100%;
+        justify-content: space-between;
+        gap: var(--spacing-sm);
+        flex-wrap: wrap;
         margin-left: 0;
     }
-    
-    .navbar {
-        width: 100%;
+
+    .user-control {
+        flex: 1 1 calc(50% - var(--spacing-sm));
+        min-width: 120px;
+        height: 38px;
+        font-size: var(--font-size-sm);
+        border-radius: var(--border-radius);
     }
-    
+
     .container {
         padding: var(--spacing-md);
     }
-    
-    .navbar-content {
+
+    .page-header {
+        margin-bottom: var(--spacing-lg);
+        text-align: left;
+    }
+
+    .page-header h1 {
+        font-size: var(--font-size-xl);
+    }
+
+    .page-header .btn {
+        padding: var(--spacing-xs) var(--spacing-md);
+        font-size: var(--font-size-sm);
+    }
+
+    .card {
+        padding: var(--spacing-md);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-md);
+    }
+
+    .card-header {
         flex-direction: column;
-        gap: var(--spacing-md);
+        align-items: flex-start;
+        gap: var(--spacing-xs);
     }
-    
-    .navbar-left {
-        flex-direction: column;
-        gap: var(--spacing-md);
+
+    .card-header h3 {
+        font-size: var(--font-size-base);
     }
-    
-    .navbar-right {
-        flex-direction: column;
-        gap: var(--spacing-md);
+
+    .card-header .btn,
+    .card-header a {
+        width: 100%;
+        text-align: center;
     }
-    
-    .navbar-menu {
-        display: none;
-    }
-    
-    .navbar-brand {
-        flex-direction: column;
-        min-width: 90px;
-    }
-    .navbar-brand .brand-title {
-        font-size: 1.2rem;
-    }
-    .navbar-brand .brand-date {
-        font-size: 0.7rem;
-    }
-    
-    .dashboard-grid {
+
+    .dashboard-grid,
+    .team-grid,
+    .profile-stats,
+    .quick-actions {
+        display: grid;
         grid-template-columns: 1fr;
-        grid-template-rows: auto auto auto;
+        gap: var(--spacing-md);
     }
-    
-    .performance-card,
-    .today-tasks-card {
-        grid-column: 1;
-    }
-    
-    .analysis-card {
-        grid-column: 1;
-        grid-row: 3;
-    }
-    
-    .filter-controls {
+
+    .summary-cards,
+    .overview-cards {
         flex-direction: column;
+        gap: var(--spacing-md);
     }
-    
+
+    .task-card,
+    .team-card,
+    .mindmap-card {
+        padding: var(--spacing-md);
+    }
+
     .task-meta {
         flex-direction: column;
+        gap: var(--spacing-xs);
     }
-    
-    .timer-controls {
-        flex-direction: column;
-    }
-    
-    .quick-actions {
-        grid-template-columns: 1fr;
-    }
-    
-    .team-actions {
-        flex-direction: column;
-    }
-    
+
+    .task-actions,
+    .team-actions,
+    .form-actions,
     .mindmap-actions {
         flex-direction: column;
+        gap: var(--spacing-sm);
     }
-    
-    .form-actions {
-        flex-direction: column;
+
+    .task-actions form,
+    .task-actions a,
+    .team-actions form,
+    .team-actions a,
+    .form-actions .btn,
+    .mindmap-actions .btn {
+        width: 100%;
     }
-    
-    .profile-stats {
-        grid-template-columns: 1fr;
+
+    table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        border-spacing: 0;
+    }
+
+    .form-group {
+        margin-bottom: var(--spacing-md);
+    }
+
+    .form-group label {
+        font-size: var(--font-size-sm);
+    }
+
+    .form-control {
+        font-size: var(--font-size-sm);
+        padding: var(--spacing-xs) var(--spacing-sm);
     }
 }
 
 /* スマートフォン対応 (max-width: 480px) */
 @media (max-width: 480px) {
-    /* ナビゲーションバー */
-    .navbar {
-        padding: var(--spacing-sm);
-    }
-    
-    .navbar-brand {
-        min-width: 80px;
-    }
-    .navbar-brand .brand-title {
-        font-size: 1rem;
-    }
-    .navbar-brand .brand-date {
-        font-size: 0.65rem;
-    }
-    
-    .user-controls {
-        flex-wrap: wrap;
-        gap: var(--spacing-xs);
-    }
-    
-    .user-control {
-        font-size: 0.85rem;
+    .navbar-content {
         padding: var(--spacing-xs) var(--spacing-sm);
     }
-    
-    /* コンテナ */
+
+    .navbar-item {
+        min-width: 95px;
+    }
+
+    .user-control {
+        flex-basis: 100%;
+        min-width: 100%;
+    }
+
     .container {
-        padding: var(--spacing-sm);
-    }
-    
-    /* ページヘッダー */
-    .page-header h1 {
-        font-size: 1.5rem;
-    }
-    
-    .page-header p {
-        font-size: 0.9rem;
-    }
-    
-    /* カード */
-    .card {
-        padding: var(--spacing-md);
-        margin-bottom: var(--spacing-md);
-    }
-    
-    .card h3 {
-        font-size: 1.1rem;
-    }
-    
-    /* ボタン */
-    .btn {
-        font-size: 0.9rem;
         padding: var(--spacing-sm) var(--spacing-md);
     }
-    
-    .btn-sm {
-        font-size: 0.8rem;
-        padding: var(--spacing-xs) var(--spacing-sm);
+
+    .card {
+        padding: var(--spacing-md);
     }
-    
-    /* フォーム */
-    .form-group {
-        margin-bottom: var(--spacing-md);
+
+    .btn,
+    .btn-sm,
+    .btn-outline,
+    .btn-secondary,
+    .btn-primary {
+        width: 100%;
     }
-    
-    .form-control {
-        font-size: 1rem; /* スマホでズームを防ぐ */
+
+    .task-card,
+    .team-card,
+    .mindmap-card,
+    .notification-card {
+        padding: var(--spacing-md);
+    }
+
+    .task-card .task-controls,
+    .task-card .task-move-buttons {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .calendar-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-sm);
+    }
+
+    .calendar-day {
         padding: var(--spacing-sm);
-    }
-    
-    /* テーブル */
-    table {
-        font-size: 0.85rem;
-    }
-    
-    /* マインドマップ */
-    .mindmap-container {
-        overflow-x: auto;
-    }
-    
-    /* 通知バッジ */
-    .badge {
-        font-size: 0.7rem;
-        padding: 2px 6px;
-    }
-    
-    /* スタッツグリッド */
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    /* ユーザーカード */
-    .user-info {
-        flex-direction: column;
-        gap: var(--spacing-sm);
-    }
-    
-    .user-stats {
-        grid-template-columns: 1fr;
-    }
-    
-    .user-actions {
-        width: 100%;
-    }
-    
-    /* ダッシュボード */
-    .dashboard-grid {
-        gap: var(--spacing-md);
-    }
-    
-    .stat-value {
-        font-size: 2rem;
-    }
-    
-    /* チーム管理 */
-    .team-card {
-        padding: var(--spacing-md);
-    }
-    
-    /* タスクリスト */
-    .task-item {
-        padding: var(--spacing-md);
-    }
-    
-    .task-meta {
-        font-size: 0.85rem;
-    }
-    
-    /* フィルター */
-    .filter-controls {
-        gap: var(--spacing-sm);
-    }
-    
-    /* チームマップ */
-    .mindmap-column {
-        width: 100%;
-    }
-    
-    .mindmap-card {
-        width: 100%;
-        margin-bottom: var(--spacing-md);
-    }
-    
-    /* チャート */
-    .chart-container {
-        width: 100%;
-        overflow-x: auto;
     }
 }
 
