@@ -498,57 +498,42 @@ def generate_task_from_template(template_id):
     flash(f'テンプレートからタスクを作成しました', 'success')
     return redirect(url_for('tasks.list_tasks'))
 
-@main.route('/calendar')
-@login_required
-def calendar():
-    """カレンダー表示"""
+def _build_calendar_context(year=None, month=None):
+    """カレンダー画面で共通利用するデータを生成"""
     from models import Task, TaskTemplate
     from datetime import datetime, timedelta
     import calendar as cal
-    
-    # 表示する月の取得
-    year = request.args.get('year', None, type=int)
-    month = request.args.get('month', None, type=int)
-    
     from zoneinfo import ZoneInfo
+
     now = datetime.now(ZoneInfo('Asia/Tokyo'))
-    if not year or not month:
-        year = now.year
-        month = now.month
-    
-    # 月の最初の日と最後の日
-    first_day = datetime(year, month, 1).date()
-    last_day_num = cal.monthrange(year, month)[1]
-    last_day = datetime(year, month, last_day_num).date()
-    
-    # カレンダーの最初と最後の日（前後の月の分も含める）
-    # weekday(): 月曜日=0, 火曜日=1, ..., 日曜日=6
-    # カレンダー表示: 日曜日=0, 月曜日=1, ..., 土曜日=6
-    # なので weekday() + 1 で変換し、7で割った余りを使う
-    first_weekday = (first_day.weekday() + 1) % 7  # 日曜日基準に変換
+    target_year = year or now.year
+    target_month = month or now.month
+
+    first_day = datetime(target_year, target_month, 1).date()
+    last_day_num = cal.monthrange(target_year, target_month)[1]
+    last_day = datetime(target_year, target_month, last_day_num).date()
+
+    first_weekday = (first_day.weekday() + 1) % 7
     calendar_start = first_day - timedelta(days=first_weekday)
-    
-    last_weekday = (last_day.weekday() + 1) % 7  # 日曜日基準に変換
+
+    last_weekday = (last_day.weekday() + 1) % 7
     calendar_end = last_day + timedelta(days=(6 - last_weekday))
-    
-    # 表示範囲内のタスクを取得
+
     all_tasks = Task.query.filter(
         Task.user_id == current_user.id,
         Task.start_date >= calendar_start,
         Task.start_date <= calendar_end,
         Task.archived == False
     ).all()
-    
-    # 日付ごとにタスクを整理（JSON化可能な形式に変換）
+
     tasks_by_date = {}
-    tasks_by_date_json = {}  # JSON用
+    tasks_by_date_json = {}
     for task in all_tasks:
         date_key = task.start_date.strftime('%Y-%m-%d')
         if date_key not in tasks_by_date:
             tasks_by_date[date_key] = []
             tasks_by_date_json[date_key] = []
         tasks_by_date[date_key].append(task)
-        # JSON用に辞書形式で保存
         tasks_by_date_json[date_key].append({
             'id': task.id,
             'title': task.title,
@@ -558,49 +543,88 @@ def calendar():
             'start_date': task.start_date.strftime('%Y-%m-%d'),
             'end_date': task.end_date.strftime('%Y-%m-%d') if task.end_date else None
         })
-    
-    # カレンダー表示用の日付リストを生成
+
     calendar_dates = []
     current_date = calendar_start
     while current_date <= calendar_end:
         calendar_dates.append(current_date)
         current_date += timedelta(days=1)
-    
-    # テンプレート一覧も取得
+
     templates = TaskTemplate.query.filter_by(
         user_id=current_user.id,
         is_active=True
     ).order_by(TaskTemplate.created_at.desc()).all()
-    
-    # 前後の月のリンク
-    prev_month = month - 1
-    prev_year = year
+
+    prev_month = target_month - 1
+    prev_year = target_year
     if prev_month < 1:
         prev_month = 12
         prev_year -= 1
-    
-    next_month = month + 1
-    next_year = year
+
+    next_month = target_month + 1
+    next_year = target_year
     if next_month > 12:
         next_month = 1
         next_year += 1
-    
-    return render_template('calendar.html',
-                         year=year,
-                         month=month,
-                         now=now,
-                         first_day=first_day,
-                         last_day=last_day,
-                         calendar_start=calendar_start,
-                         calendar_end=calendar_end,
-                         calendar_dates=calendar_dates,
-                         tasks_by_date=tasks_by_date,
-                         tasks_by_date_json=tasks_by_date_json,
-                         templates=templates,
-                         prev_year=prev_year,
-                         prev_month=prev_month,
-                         next_year=next_year,
-                         next_month=next_month)
+
+    calendar_weeks = [
+        calendar_dates[i:i + 7] for i in range(0, len(calendar_dates), 7)
+    ]
+
+    return {
+        'year': target_year,
+        'month': target_month,
+        'now': now,
+        'first_day': first_day,
+        'last_day': last_day,
+        'calendar_start': calendar_start,
+        'calendar_end': calendar_end,
+        'calendar_dates': calendar_dates,
+        'calendar_weeks': calendar_weeks,
+        'tasks_by_date': tasks_by_date,
+        'tasks_by_date_json': tasks_by_date_json,
+        'templates': templates,
+        'prev_year': prev_year,
+        'prev_month': prev_month,
+        'next_year': next_year,
+        'next_month': next_month,
+        'today_str': now.strftime('%Y-%m-%d')
+    }
+
+
+@main.route('/calendar')
+@login_required
+def calendar():
+    """カレンダー表示（デスクトップ）"""
+    year = request.args.get('year', None, type=int)
+    month = request.args.get('month', None, type=int)
+    context = _build_calendar_context(year=year, month=month)
+    return render_template('calendar.html', **context)
+
+
+@main.route('/mobile/calendar')
+@login_required
+def mobile_calendar():
+    """モバイル向けカレンダー表示"""
+    year = request.args.get('year', None, type=int)
+    month = request.args.get('month', None, type=int)
+    context = _build_calendar_context(year=year, month=month)
+
+    selected_date = request.args.get('date') or context['today_str']
+    from datetime import datetime
+    try:
+        selected_date_obj = datetime.strptime(selected_date, '%Y-%m-%d').date()
+    except ValueError:
+        selected_date = context['today_str']
+        selected_date_obj = datetime.strptime(selected_date, '%Y-%m-%d').date()
+
+    weekday_labels = ['月', '火', '水', '木', '金', '土', '日']
+    context['selected_date'] = selected_date
+    context['selected_date_display'] = f"{selected_date_obj.strftime('%Y年%m月%d日')}（{weekday_labels[selected_date_obj.weekday()]}）"
+    context['selected_day_tasks'] = context['tasks_by_date'].get(selected_date, [])
+    context['weekday_headers'] = ['日', '月', '火', '水', '木', '金', '土']
+
+    return render_template('mobile/calendar.html', **context)
 
 @main.route('/daily-report')
 @login_required

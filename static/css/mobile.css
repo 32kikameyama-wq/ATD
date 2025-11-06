@@ -406,3 +406,217 @@ body.mobile-body {
     margin: 16px 0;
 }
 
+/* モバイルカレンダー */
+.mobile-calendar-container {
+    background: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mobile-calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--mobile-surface);
+    border-radius: var(--mobile-radius);
+    padding: 12px 16px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+.mobile-calendar-title {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.mobile-calendar-nav {
+    background: rgba(0, 139, 139, 0.12);
+    color: var(--mobile-accent);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.mobile-calendar-nav:active {
+    background: rgba(0, 139, 139, 0.2);
+}
+
+.mobile-calendar-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.mobile-calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 12px;
+    color: var(--mobile-muted);
+}
+
+.mobile-calendar-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mobile-calendar-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+}
+
+.mobile-calendar-day {
+    background: var(--mobile-surface);
+    border-radius: 14px;
+    padding: 10px 8px;
+    min-height: 68px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mobile-calendar-day.is-outside {
+    opacity: 0.4;
+}
+
+.mobile-calendar-day.is-today {
+    border-width: 2px;
+    border-color: var(--mobile-accent);
+}
+
+.mobile-calendar-day.is-selected {
+    background: var(--mobile-accent);
+    color: white;
+}
+
+.mobile-calendar-day.is-selected .mobile-day-dot {
+    opacity: 0.8;
+}
+
+.mobile-calendar-day.is-selected .mobile-day-count {
+    color: white;
+}
+
+.mobile-day-number {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.mobile-day-dots {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.mobile-day-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--mobile-muted);
+    opacity: 0.8;
+}
+
+.mobile-day-dot.priority-high {
+    background: #f44336;
+}
+
+.mobile-day-dot.priority-medium {
+    background: #ff9800;
+}
+
+.mobile-day-dot.priority-low {
+    background: #2196F3;
+}
+
+.mobile-day-dot.completed {
+    opacity: 0.5;
+}
+
+.mobile-day-count {
+    font-size: 11px;
+    color: var(--mobile-muted);
+    font-weight: 600;
+}
+
+.mobile-calendar-detail {
+    background: var(--mobile-surface);
+    border-radius: var(--mobile-radius);
+    padding: 16px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+}
+
+.mobile-calendar-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.mobile-calendar-detail-date {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.mobile-calendar-detail-meta {
+    font-size: 12px;
+    color: var(--mobile-muted);
+    margin-top: 4px;
+}
+
+.mobile-calendar-task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mobile-calendar-task-card {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    padding: 12px;
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+    transition: transform 0.1s ease;
+}
+
+.mobile-calendar-task-card.is-completed {
+    background: rgba(0, 0, 0, 0.03);
+    color: var(--mobile-muted);
+}
+
+.mobile-calendar-task-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.mobile-calendar-task-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--mobile-muted);
+    flex-wrap: wrap;
+}
+
+.mobile-calendar-task-desc {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--mobile-muted);
+    line-height: 1.4;
+}
+

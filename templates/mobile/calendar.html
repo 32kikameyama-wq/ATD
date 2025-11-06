@@ -1,0 +1,211 @@
+{% extends 'mobile/base.html' %}
+{% block head_title %}カレンダー - ATD Mobile{% endblock %}
+{% set active_tab = 'tasks' %}
+
+{% block header_profile %}
+<div class="mobile-profile-card">
+    <div class="mobile-profile-avatar">
+        📅
+    </div>
+    <div class="mobile-profile-info">
+        <div class="mobile-profile-name">モバイルカレンダー</div>
+        <div class="mobile-status-input">今月の予定を月表示で確認</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="mobile-section">
+    <div class="mobile-calendar-container">
+        <div class="mobile-calendar-header">
+            <button class="mobile-calendar-nav" data-action="prev" data-target="{{ url_for('main.mobile_calendar', year=prev_year, month=prev_month) }}">‹</button>
+            <div class="mobile-calendar-title">{{ year }}年{{ month }}月</div>
+            <button class="mobile-calendar-nav" data-action="next" data-target="{{ url_for('main.mobile_calendar', year=next_year, month=next_month) }}">›</button>
+        </div>
+        <div class="mobile-calendar-actions">
+            <a class="mobile-pill-action" href="{{ url_for('main.mobile_calendar') }}">今月へ戻る</a>
+            <a class="mobile-pill-action" href="{{ url_for('tasks.create_task') }}">タスクを追加</a>
+        </div>
+
+        <div class="mobile-calendar-weekdays">
+            {% for label in weekday_headers %}
+            <div class="mobile-calendar-weekday">{{ label }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mobile-calendar-grid" id="mobile-calendar-grid">
+            {% for week in calendar_weeks %}
+            <div class="mobile-calendar-week">
+                {% for current_date in week %}
+                {% set date_key = current_date.strftime('%Y-%m-%d') %}
+                {% set is_other_month = current_date < first_day or current_date > last_day %}
+                {% set is_today = date_key == today_str %}
+                {% set is_selected = date_key == selected_date %}
+                {% set day_tasks = tasks_by_date.get(date_key, []) %}
+                <button
+                    type="button"
+                    class="mobile-calendar-day{% if is_other_month %} is-outside{% endif %}{% if is_today %} is-today{% endif %}{% if is_selected %} is-selected{% endif %}"
+                    data-date="{{ date_key }}"
+                    data-href="{{ url_for('main.mobile_calendar', year=year, month=month, date=date_key) }}"
+                >
+                    <span class="mobile-day-number">{{ current_date.day }}</span>
+                    <div class="mobile-day-dots">
+                        {% for task in day_tasks[:4] %}
+                        <span class="mobile-day-dot priority-{{ task.priority }}{% if task.completed %} completed{% endif %}"></span>
+                        {% endfor %}
+                        {% if day_tasks|length > 4 %}
+                        <span class="mobile-day-count">+{{ day_tasks|length - 4 }}</span>
+                        {% endif %}
+                    </div>
+                </button>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="mobile-section">
+    <div class="mobile-calendar-detail">
+        <div class="mobile-calendar-detail-header">
+            <div>
+                <div class="mobile-calendar-detail-date" id="mobile-selected-date">{{ selected_date_display }}</div>
+                <div class="mobile-calendar-detail-meta" id="mobile-selected-count">
+                    タスク {{ selected_day_tasks|length }} 件
+                </div>
+            </div>
+            <a id="mobile-selected-create" class="mobile-pill-action" href="{{ url_for('tasks.create_task') }}?date={{ selected_date }}">この日に追加</a>
+        </div>
+        <div class="mobile-calendar-task-list" id="mobile-calendar-task-list">
+            {% if selected_day_tasks %}
+                {% for task in selected_day_tasks %}
+                <div class="mobile-calendar-task-card{% if task.completed %} is-completed{% endif %}">
+                    <div class="mobile-calendar-task-title">{{ task.title }}</div>
+                    <div class="mobile-calendar-task-meta">
+                        <span class="mobile-badge">優先度 {{ task.priority|upper }}</span>
+                        {% if task.completed %}<span class="mobile-task-status">完了</span>{% else %}<span>未完了</span>{% endif %}
+                    </div>
+                    {% if task.description %}
+                    <div class="mobile-calendar-task-desc">{{ task.description }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="mobile-empty">この日のタスクはありません</div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const calendarGrid = document.getElementById('mobile-calendar-grid');
+    const selectedDateLabel = document.getElementById('mobile-selected-date');
+    const selectedCountLabel = document.getElementById('mobile-selected-count');
+    const selectedCreateLink = document.getElementById('mobile-selected-create');
+    const taskListContainer = document.getElementById('mobile-calendar-task-list');
+
+    const dayData = {{ tasks_by_date_json | tojson }};
+    const weekdayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+
+    function formatDateLabel(isoDate) {
+        const date = new Date(isoDate);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        const weekday = weekdayLabels[date.getDay()];
+        return `${year}年${month}月${day}日（${weekday}）`;
+    }
+
+    function createTaskCard(task) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'mobile-calendar-task-card' + (task.completed ? ' is-completed' : '');
+
+        const title = document.createElement('div');
+        title.className = 'mobile-calendar-task-title';
+        title.textContent = task.title || '(タイトル未設定)';
+        wrapper.appendChild(title);
+
+        const meta = document.createElement('div');
+        meta.className = 'mobile-calendar-task-meta';
+
+        const prioritySpan = document.createElement('span');
+        prioritySpan.className = 'mobile-badge';
+        const priorityLabel = (task.priority || 'medium').toUpperCase();
+        prioritySpan.textContent = `優先度 ${priorityLabel}`;
+        meta.appendChild(prioritySpan);
+
+        const statusSpan = document.createElement('span');
+        statusSpan.className = 'mobile-task-status';
+        statusSpan.textContent = task.completed ? '完了' : '未完了';
+        meta.appendChild(statusSpan);
+
+        wrapper.appendChild(meta);
+
+        if (task.description) {
+            const desc = document.createElement('div');
+            desc.className = 'mobile-calendar-task-desc';
+            desc.textContent = task.description;
+            wrapper.appendChild(desc);
+        }
+
+        return wrapper;
+    }
+
+    function updateDetail(dateKey) {
+        const tasks = dayData[dateKey] || [];
+        selectedDateLabel.textContent = formatDateLabel(dateKey);
+        selectedCountLabel.textContent = `タスク ${tasks.length} 件`;
+        selectedCreateLink.href = `{{ url_for('tasks.create_task') }}?date=${dateKey}`;
+
+        taskListContainer.innerHTML = '';
+        if (tasks.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'mobile-empty';
+            empty.textContent = 'この日のタスクはありません';
+            taskListContainer.appendChild(empty);
+        } else {
+            tasks.forEach(task => {
+                taskListContainer.appendChild(createTaskCard(task));
+            });
+        }
+    }
+
+    function handleDaySelection(button) {
+        document.querySelectorAll('.mobile-calendar-day').forEach(day => day.classList.remove('is-selected'));
+        button.classList.add('is-selected');
+        const dateKey = button.getAttribute('data-date');
+        updateDetail(dateKey);
+        history.replaceState({}, '', button.getAttribute('data-href'));
+    }
+
+    if (calendarGrid) {
+        calendarGrid.addEventListener('click', (event) => {
+            const target = event.target.closest('.mobile-calendar-day');
+            if (!target) return;
+            event.preventDefault();
+            handleDaySelection(target);
+        });
+    }
+
+    document.querySelectorAll('.mobile-calendar-nav').forEach(button => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            const url = button.getAttribute('data-target');
+            if (url) {
+                window.location.href = url;
+            }
+        });
+    });
+
+    // JSONデータ側で完了フラグが true/false なので、初期描画時の完了スタイルを補完
+    document.querySelectorAll('.mobile-calendar-task-card').forEach(card => {
+        const status = card.querySelector('.mobile-task-status');
+        if (status && status.textContent.trim() === '完了') {
+            card.classList.add('is-completed');
+        }
+    });
+</script>
+{% endblock %}
+
