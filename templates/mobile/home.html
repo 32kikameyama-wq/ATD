@@ -88,7 +88,7 @@
 <section class="mobile-section">
     <div class="mobile-section-title">クイックアクセス</div>
     <div class="mobile-section-actions">
-    <a href="{{ url_for('tasks.create_task', view='desktop') }}" class="mobile-action-chip highlight">タスクを作成</a>
+        <a href="{{ url_for('tasks.mobile_create_task') }}" class="mobile-action-chip highlight">タスクを作成</a>
     <a href="{{ url_for('main.mobile_calendar') }}" class="mobile-action-chip">カレンダー</a>
         <a href="{{ url_for('main.mindmap', view='desktop') }}" class="mobile-action-chip">マインドマップ</a>
         <a href="{{ url_for('main.daily_report', view='desktop') }}" class="mobile-action-chip">日報レポート</a>

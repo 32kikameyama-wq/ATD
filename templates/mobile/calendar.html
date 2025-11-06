@@ -24,7 +24,7 @@
         </div>
         <div class="mobile-calendar-actions">
             <a class="mobile-pill-action" href="{{ url_for('main.mobile_calendar') }}">今月へ戻る</a>
-            <a class="mobile-pill-action" href="{{ url_for('tasks.create_task') }}">タスクを追加</a>
+            <a class="mobile-pill-action" href="{{ url_for('tasks.mobile_create_task') }}">タスクを追加</a>
         </div>
 
         <div class="mobile-calendar-weekdays">
@@ -74,7 +74,7 @@
                     タスク {{ selected_day_tasks|length }} 件
                 </div>
             </div>
-            <a id="mobile-selected-create" class="mobile-pill-action" href="{{ url_for('tasks.create_task') }}?date={{ selected_date }}">この日に追加</a>
+            <a id="mobile-selected-create" class="mobile-pill-action" href="{{ url_for('tasks.mobile_create_task') }}?date={{ selected_date }}">この日に追加</a>
         </div>
         <div class="mobile-calendar-task-list" id="mobile-calendar-task-list">
             {% if selected_day_tasks %}
@@ -157,7 +157,7 @@
         const tasks = dayData[dateKey] || [];
         selectedDateLabel.textContent = formatDateLabel(dateKey);
         selectedCountLabel.textContent = `タスク ${tasks.length} 件`;
-        selectedCreateLink.href = `{{ url_for('tasks.create_task') }}?date=${dateKey}`;
+        selectedCreateLink.href = `{{ url_for('tasks.mobile_create_task') }}?date=${dateKey}`;
 
         taskListContainer.innerHTML = '';
         if (tasks.length === 0) {

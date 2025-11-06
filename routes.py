@@ -33,6 +33,7 @@ def redirect_mobile_users():
         '/dashboard': 'main.mobile_home',
         '/tasks': 'main.mobile_tasks',
         '/personal-tasks': 'main.mobile_tasks',
+        '/tasks/create': 'tasks.mobile_create_task',
         '/team-management': 'main.mobile_team',
         '/team-tasks': 'main.mobile_team',
         '/team-mindmap': 'main.mobile_team_mindmap',
