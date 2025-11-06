@@ -7,6 +7,43 @@ from models import db
 # ブループリントを作成
 main = Blueprint('main', __name__)
 
+
+def _is_mobile_user_agent():
+    ua = request.headers.get('User-Agent', '').lower()
+    mobile_keywords = ['iphone', 'android', 'ipad', 'ipod', 'mobile']
+    return any(keyword in ua for keyword in mobile_keywords)
+
+
+@main.before_app_request
+def redirect_mobile_users():
+    if request.method != 'GET':
+        return
+    if not current_user.is_authenticated:
+        return
+    if request.path.startswith('/mobile') or request.path.startswith('/static'):
+        return
+    if request.args.get('view') == 'desktop':
+        return
+    if not _is_mobile_user_agent():
+        return
+
+    normalized_path = request.path.rstrip('/') or '/'
+    mobile_route_map = {
+        '/': 'main.mobile_home',
+        '/dashboard': 'main.mobile_home',
+        '/tasks': 'main.mobile_tasks',
+        '/personal-tasks': 'main.mobile_tasks',
+        '/team-management': 'main.mobile_team',
+        '/team-tasks': 'main.mobile_team',
+        '/notifications': 'main.mobile_notifications',
+        '/profile': 'main.mobile_settings',
+    }
+
+    endpoint = mobile_route_map.get(normalized_path)
+    if endpoint:
+        return redirect(url_for(endpoint))
+
+
 @main.route('/')
 def index():
     """ホームページ"""
