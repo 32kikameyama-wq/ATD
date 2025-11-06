@@ -48,7 +48,7 @@
     {% else %}
         <div class="mobile-empty">所属しているチームがまだありません</div>
         <div class="mobile-section-actions">
-            <a href="{{ url_for('main.team_create', view='desktop') }}" class="mobile-action-chip highlight">チームを作成</a>
+            <a href="{{ url_for('main.create_team', view='desktop') }}" class="mobile-action-chip highlight">チームを作成</a>
         </div>
     {% endif %}
 </section>

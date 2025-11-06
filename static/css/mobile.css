@@ -359,6 +359,25 @@ body.mobile-body {
     border-radius: 14px;
 }
 
+.mobile-card-description {
+    margin: 8px 0 14px;
+    color: var(--mobile-muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.mobile-task-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.mobile-task-tags .mobile-badge {
+    background: rgba(0, 139, 139, 0.16);
+    color: var(--mobile-accent);
+}
+
 .mobile-link-row {
     display: flex;
     justify-content: flex-end;

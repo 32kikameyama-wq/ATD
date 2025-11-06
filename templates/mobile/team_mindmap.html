@@ -1,0 +1,69 @@
+{% extends 'mobile/base.html' %}
+{% block head_title %}チーム目標 - ATD Mobile{% endblock %}
+{% set active_tab = 'team' %}
+
+{% block header_profile %}
+<div class="mobile-profile-card">
+    <div class="mobile-profile-avatar">🗺️</div>
+    <div class="mobile-profile-info">
+        <div class="mobile-profile-name">チームマインドマップ</div>
+        <div class="mobile-status-input">チームごとの目標カードを一覧でチェック</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="mobile-section">
+    {% if team_mindmaps %}
+        {% for entry in team_mindmaps %}
+        <div class="mobile-card">
+            <div class="mobile-card-header">
+                <span>{{ entry.team.name }}</span>
+                <a href="{{ url_for('main.team_mindmap', view='desktop') }}" class="mobile-action-chip">デスクトップ表示</a>
+            </div>
+            {% if entry.team.description %}
+            <div class="mobile-card-description">{{ entry.team.description }}</div>
+            {% endif %}
+
+            {% if entry.mindmaps %}
+                <div class="mobile-list">
+                    {% for mindmap in entry.mindmaps %}
+                    <div class="mobile-list-item">
+                        <div class="mobile-list-icon">📌</div>
+                        <div class="mobile-list-content">
+                            <div class="mobile-list-title">{{ mindmap.name }}</div>
+                            <div class="mobile-list-meta">
+                                {% if mindmap.date %}{{ mindmap.date.strftime('%Y/%m/%d') }}・{% endif %}
+                                ノード {{ mindmap.node_summaries|length }} 件
+                            </div>
+                            {% if mindmap.description %}
+                            <div class="mobile-list-meta">{{ mindmap.description }}</div>
+                            {% endif %}
+                            {% if mindmap.node_summaries %}
+                            <div class="mobile-task-tags">
+                                {% for node in mindmap.node_summaries[:4] %}
+                                <span class="mobile-badge">{{ node.title }} {{ node.progress }}%</span>
+                                {% endfor %}
+                                {% if mindmap.node_summaries|length > 4 %}
+                                <span class="mobile-badge">+{{ mindmap.node_summaries|length - 4 }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="mobile-empty">このチームのマインドマップはまだありません</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="mobile-empty">表示できるチームマインドマップがありません</div>
+        <div class="mobile-section-actions">
+            <a href="{{ url_for('main.create_team', view='desktop') }}" class="mobile-action-chip highlight">チームを作成</a>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
+

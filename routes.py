@@ -346,15 +346,48 @@ def mobile_team():
 @main.route('/mobile/team-mindmap')
 @login_required
 def mobile_team_mindmap():
-    from models import Team, TeamMember
+    from models import Team, TeamMember, Mindmap, MindmapNode
 
     memberships = TeamMember.query.filter_by(user_id=current_user.id).all()
     team_ids = [membership.team_id for membership in memberships if membership.team_id]
-    teams = []
+    team_mindmaps = []
     if team_ids:
         teams = Team.query.filter(Team.id.in_(team_ids)).all()
+        for team in teams:
+            mindmaps = Mindmap.query.filter_by(team_id=team.id).order_by(
+                Mindmap.date.desc().nullslast(), Mindmap.created_at.desc()
+            ).all()
+            mindmap_data = []
+            for mindmap in mindmaps:
+                root_nodes = MindmapNode.query.filter_by(
+                    mindmap_id=mindmap.id, parent_id=None
+                ).order_by(MindmapNode.id.asc()).all()
 
-    return render_template('mobile/team_mindmap.html', teams=teams)
+                node_summaries = []
+                for node in root_nodes:
+                    node_summaries.append({
+                        'id': node.id,
+                        'title': node.title,
+                        'progress': node.calculate_progress(),
+                        'children_count': len(node.children),
+                        'is_task': node.is_task,
+                        'due_date': node.due_date
+                    })
+
+                mindmap_data.append({
+                    'id': mindmap.id,
+                    'name': mindmap.name,
+                    'description': mindmap.description,
+                    'date': mindmap.date,
+                    'node_summaries': node_summaries
+                })
+
+            team_mindmaps.append({
+                'team': team,
+                'mindmaps': mindmap_data
+            })
+
+    return render_template('mobile/team_mindmap.html', team_mindmaps=team_mindmaps)
 
 
 @main.route('/mobile/notifications')
