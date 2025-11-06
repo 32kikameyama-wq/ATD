@@ -90,8 +90,8 @@
     <div class="mobile-section-actions">
         <a href="{{ url_for('tasks.create_task', view='desktop') }}" class="mobile-action-chip highlight">タスクを作成</a>
         <a href="{{ url_for('main.calendar', view='desktop') }}" class="mobile-action-chip">カレンダー</a>
-        <a href="{{ url_for('main.mindmap', view='desktop') }}" class="mobile-action-chip">マインドマップ</a>
-        <a href="{{ url_for('main.daily_report', view='desktop') }}" class="mobile-action-chip">日報レポート</a>
+        <a href="{{ url_for('main.mobile_mindmap') }}" class="mobile-action-chip">マインドマップ</a>
+        <a href="{{ url_for('main.mobile_admin') if current_user.is_admin else url_for('main.daily_report', view='desktop') }}" class="mobile-action-chip">{{ '管理ハブ' if current_user.is_admin else '日報レポート' }}</a>
     </div>
 </section>
 {% endblock %}

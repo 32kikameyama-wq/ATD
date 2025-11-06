@@ -511,17 +511,21 @@ def toggle_tracking(task_id):
     
     db.session.commit()
     
-    # パフォーマンスデータを更新（計測停止時のみ）
-    if not task.is_tracking:
-        UserPerformance.update_daily_performance(current_user.id)
+    # パフォーマンスデータを更新
+    UserPerformance.update_daily_performance(current_user.id)
     
-    return jsonify({
-        'success': True,
-        'message': message,
-        'is_tracking': task.is_tracking,
-        'total_seconds': task.total_seconds,
-        'formatted_time': task.format_time()
-    })
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True, 'is_tracking': task.is_tracking})
+    
+    next_url = request.form.get('next') or request.args.get('next')
+    if next_url and next_url.startswith('/'):
+        return redirect(next_url)
+    
+    referer = request.headers.get('Referer')
+    if referer and 'dashboard' in referer:
+        return redirect(url_for('main.dashboard'))
+    else:
+        return redirect(url_for('tasks.list_tasks'))
 
 @tasks.route('/tasks/<int:task_id>/current-time', methods=['GET'])
 @login_required

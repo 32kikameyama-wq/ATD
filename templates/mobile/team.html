@@ -41,7 +41,7 @@
             <div class="mobile-section-actions">
                 <a href="{{ url_for('main.team_management', view='desktop') }}" class="mobile-action-chip">詳細管理</a>
                 <a href="{{ url_for('main.team_tasks', view='desktop') }}" class="mobile-action-chip">タスク一覧</a>
-                <a href="{{ url_for('main.mobile_team_mindmap') }}" class="mobile-action-chip">マインドマップ</a>
+                <a href="{{ url_for('main.mobile_team_mindmap') }}" class="mobile-action-chip">マインドマップを見る</a>
             </div>
         </div>
         {% endfor %}
@@ -54,6 +54,7 @@
 </section>
 
 <section class="mobile-section">
+    <div class="mobile-section-title">アクティブなチームタスク</div>
     <div class="mobile-card">
         <div class="mobile-card-header">
             <span>アクティブなチームタスク</span>

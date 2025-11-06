@@ -36,6 +36,8 @@ def redirect_mobile_users():
         '/team-management': 'main.mobile_team',
         '/team-tasks': 'main.mobile_team',
         '/team-mindmap': 'main.mobile_team_mindmap',
+        '/mindmap': 'main.mobile_mindmap',
+        '/admin': 'main.mobile_admin',
         '/notifications': 'main.mobile_notifications',
         '/profile': 'main.mobile_settings',
     }
