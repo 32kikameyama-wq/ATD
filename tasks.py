@@ -495,19 +495,39 @@ def toggle_tracking(task_id):
     if task.completed:
         return jsonify({'success': False, 'message': '完了済みタスクは計測できません'}), 400
     
-    if task.is_tracking:
-        # 計測停止
-        if task.tracking_start_time:
-            elapsed = (datetime.utcnow() - task.tracking_start_time).total_seconds()
-            task.total_seconds += int(elapsed)
-        task.is_tracking = False
-        task.tracking_start_time = None
-        message = '計測を停止しました'
+    payload = request.get_json(silent=True) or {}
+    action = request.form.get('action') or payload.get('action')
+    message = ''
+
+    if action == 'start':
+        if not task.is_tracking:
+            task.is_tracking = True
+            task.tracking_start_time = datetime.utcnow()
+            message = '計測を開始しました'
+        else:
+            message = '既に計測中です'
+    elif action == 'stop':
+        if task.is_tracking:
+            if task.tracking_start_time:
+                elapsed = (datetime.utcnow() - task.tracking_start_time).total_seconds()
+                task.total_seconds += int(elapsed)
+            task.is_tracking = False
+            task.tracking_start_time = None
+            message = '計測を停止しました'
+        else:
+            message = '計測は開始されていません'
     else:
-        # 計測開始
-        task.is_tracking = True
-        task.tracking_start_time = datetime.utcnow()
-        message = '計測を開始しました'
+        if task.is_tracking:
+            if task.tracking_start_time:
+                elapsed = (datetime.utcnow() - task.tracking_start_time).total_seconds()
+                task.total_seconds += int(elapsed)
+            task.is_tracking = False
+            task.tracking_start_time = None
+            message = '計測を停止しました'
+        else:
+            task.is_tracking = True
+            task.tracking_start_time = datetime.utcnow()
+            message = '計測を開始しました'
     
     db.session.commit()
     
@@ -515,13 +535,30 @@ def toggle_tracking(task_id):
     if not task.is_tracking:
         UserPerformance.update_daily_performance(current_user.id)
     
-    return jsonify({
+    response = {
         'success': True,
         'message': message,
         'is_tracking': task.is_tracking,
         'total_seconds': task.total_seconds,
         'formatted_time': task.format_time()
-    })
+    }
+    
+    content_type = request.headers.get('Content-Type', '')
+    is_ajax = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or request.is_json
+        or bool(payload)
+        or content_type.startswith('application/json')
+    )
+    
+    if is_ajax:
+        return jsonify(response)
+    
+    flash(message, 'success')
+    next_url = request.form.get('next') or request.args.get('next')
+    if next_url and next_url.startswith('/'):
+        return redirect(next_url)
+    return redirect(url_for('tasks.list_tasks'))
 
 @tasks.route('/tasks/<int:task_id>/current-time', methods=['GET'])
 @login_required

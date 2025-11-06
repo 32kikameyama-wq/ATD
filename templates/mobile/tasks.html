@@ -13,172 +13,76 @@
 {% endblock %}
 
 {% block content %}
-<section class="mobile-section">
-    <div class="mobile-section-title">今日のタスク</div>
-    {% if today_tasks %}
-        <div class="mobile-card">
-            <div class="mobile-list">
-                {% for task in today_tasks %}
-                <div class="mobile-list-item">
-                    <div class="mobile-list-icon">{{ loop.index }}</div>
-                    <div class="mobile-list-content">
-                        <div class="mobile-list-title">{{ task.title }}</div>
-                        <div class="mobile-list-meta">
-                            {% if task.end_date %}期限 {{ task.end_date.strftime('%m/%d') }}・{% endif %}優先度 {{ task.priority }}
-                        </div>
-                        <div class="mobile-task-actions">
-                            <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="post">
-                                <input type="hidden" name="category" value="tomorrow">
-                                <input type="hidden" name="next" value="{{ url_for('main.mobile_tasks') }}">
-                                <button type="submit">明日へ</button>
-                            </form>
-                            <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="post">
-                                <input type="hidden" name="category" value="other">
-                                <input type="hidden" name="next" value="{{ url_for('main.mobile_tasks') }}">
-                                <button type="submit">その他へ</button>
-                            </form>
-                            <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="post">
-                                <input type="hidden" name="next" value="{{ url_for('main.mobile_tasks') }}">
-                                <button type="submit">完了切替</button>
-                            </form>
-                        </div>
-                        <div class="mobile-task-actions">
-                            {% if not task.mindmap_node %}
-                            <form action="{{ url_for('tasks.add_to_mindmap', task_id=task.id) }}" method="post">
-                                <input type="hidden" name="next" value="{{ url_for('main.mobile_tasks') }}">
-                                <button type="submit">マップへ</button>
-                            </form>
-                            {% else %}
-                            <span class="mobile-task-note">マップ登録済み</span>
-                            {% endif %}
-                            <button type="button" class="mobile-track-btn" data-task-id="{{ task.id }}">{% if task.is_tracking %}計測停止{% else %}計測開始{% endif %}</button>
-                            <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="mobile-task-link">編集</a>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    {% else %}
-        <div class="mobile-empty">今日のタスクはありません</div>
-    {% endif %}
-</section>
+{% set sections = [
+    {'title': '今日のタスク', 'tasks': today_tasks, 'moves': [('tomorrow', '明日へ'), ('other', 'その他へ')], 'empty': '今日のタスクはありません'},
+    {'title': '明日のタスク', 'tasks': tomorrow_tasks, 'moves': [('today', '今日へ'), ('other', 'その他へ')], 'empty': '明日のタスクはありません'},
+    {'title': 'その他のタスク', 'tasks': other_tasks, 'moves': [('today', '今日へ'), ('tomorrow', '明日へ')], 'empty': 'その他のタスクはまだありません'}
+] %}
 
+{% for section in sections %}
 <section class="mobile-section">
-    <div class="mobile-section-title">明日のタスク</div>
-    {% if tomorrow_tasks %}
-        <div class="mobile-card">
-            <div class="mobile-list">
-                {% for task in tomorrow_tasks %}
-                <div class="mobile-list-item">
-                    <div class="mobile-list-icon">{{ loop.index }}</div>
-                    <div class="mobile-list-content">
-                        <div class="mobile-list-title">{{ task.title }}</div>
-                        <div class="mobile-list-meta">優先度 {{ task.priority }}</div>
-                        <div class="mobile-task-actions">
-                            <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="post">
-                                <input type="hidden" name="category" value="today">
-                                <input type="hidden" name="next" value="{{ url_for('main.mobile_tasks') }}">
-                                <button type="submit">今日へ</button>
-                            </form>
-                            <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="post">
-                                <input type="hidden" name="category" value="other">
-                                <input type="hidden" name="next" value="{{ url_for('main.mobile_tasks') }}">
-                                <button type="submit">その他へ</button>
-                            </form>
-                            <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="post">
-                                <input type="hidden" name="next" value="{{ url_for('main.mobile_tasks') }}">
-                                <button type="submit">完了切替</button>
-                            </form>
-                        </div>
-                        <div class="mobile-task-actions">
-                            {% if not task.mindmap_node %}
-                            <form action="{{ url_for('tasks.add_to_mindmap', task_id=task.id) }}" method="post">
-                                <input type="hidden" name="next" value="{{ url_for('main.mobile_tasks') }}">
-                                <button type="submit">マップへ</button>
-                            </form>
-                            {% else %}
-                            <span class="mobile-task-note">マップ登録済み</span>
-                            {% endif %}
-                            <button type="button" class="mobile-track-btn" data-task-id="{{ task.id }}">{% if task.is_tracking %}計測停止{% else %}計測開始{% endif %}</button>
-                            <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="mobile-task-link">編集</a>
-                        </div>
+    <div class="mobile-section-title">{{ section.title }}</div>
+    {% if section.tasks %}
+    <div class="mobile-task-list">
+        {% for task in section.tasks %}
+        <div class="mobile-task-card">
+            <div class="mobile-task-head">
+                <div>
+                    <div class="mobile-task-title">{{ task.title }}</div>
+                    <div class="mobile-task-meta">
+                        {% if task.end_date %}期限 {{ task.end_date.strftime('%m/%d') }} ・{% endif %}優先度 {{ task.priority }}
                     </div>
+                    {% if task.description %}
+                    <div class="mobile-task-desc">{{ task.description }}</div>
+                    {% endif %}
                 </div>
+                {% if task.completed %}
+                <span class="mobile-task-status">完了</span>
+                {% endif %}
+            </div>
+            <div class="mobile-task-buttons">
+                {% for category, label in section.moves %}
+                <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="post">
+                    <input type="hidden" name="category" value="{{ category }}">
+                    <input type="hidden" name="next" value="{{ url_for('main.mobile_tasks') }}">
+                    <button type="submit" class="mobile-task-button">{{ label }}</button>
+                </form>
                 {% endfor %}
+                <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="post">
+                    <input type="hidden" name="next" value="{{ url_for('main.mobile_tasks') }}">
+                    <button type="submit" class="mobile-task-button">完了切替</button>
+                </form>
+                <button type="button" class="mobile-task-button mobile-track-button" data-task-id="{{ task.id }}" data-action="start" {% if task.is_tracking %}disabled{% endif %}>計測オン</button>
+                <button type="button" class="mobile-task-button mobile-track-button" data-task-id="{{ task.id }}" data-action="stop" {% if not task.is_tracking %}disabled{% endif %}>計測オフ</button>
+                <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="mobile-task-button mobile-task-button--link">編集</a>
             </div>
         </div>
+        {% endfor %}
+    </div>
     {% else %}
-        <div class="mobile-empty">明日のタスクはありません</div>
+    <div class="mobile-empty">{{ section.empty }}</div>
     {% endif %}
 </section>
-
-<section class="mobile-section">
-    <div class="mobile-section-title">その他のタスク</div>
-    {% if other_tasks %}
-        <div class="mobile-card">
-            <div class="mobile-list">
-                {% for task in other_tasks %}
-                <div class="mobile-list-item">
-                    <div class="mobile-list-icon">{{ loop.index }}</div>
-                    <div class="mobile-list-content">
-                        <div class="mobile-list-title">{{ task.title }}</div>
-                        <div class="mobile-list-meta">
-                            登録日 {{ task.created_at.strftime('%m/%d') if task.created_at }}
-                        </div>
-                        <div class="mobile-task-actions">
-                            <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="post">
-                                <input type="hidden" name="category" value="today">
-                                <input type="hidden" name="next" value="{{ url_for('main.mobile_tasks') }}">
-                                <button type="submit">今日へ</button>
-                            </form>
-                            <form action="{{ url_for('tasks.move_task', task_id=task.id) }}" method="post">
-                                <input type="hidden" name="category" value="tomorrow">
-                                <input type="hidden" name="next" value="{{ url_for('main.mobile_tasks') }}">
-                                <button type="submit">明日へ</button>
-                            </form>
-                            <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="post">
-                                <input type="hidden" name="next" value="{{ url_for('main.mobile_tasks') }}">
-                                <button type="submit">完了切替</button>
-                            </form>
-                        </div>
-                        <div class="mobile-task-actions">
-                            {% if not task.mindmap_node %}
-                            <form action="{{ url_for('tasks.add_to_mindmap', task_id=task.id) }}" method="post">
-                                <input type="hidden" name="next" value="{{ url_for('main.mobile_tasks') }}">
-                                <button type="submit">マップへ</button>
-                            </form>
-                            {% else %}
-                            <span class="mobile-task-note">マップ登録済み</span>
-                            {% endif %}
-                            <button type="button" class="mobile-track-btn" data-task-id="{{ task.id }}">{% if task.is_tracking %}計測停止{% else %}計測開始{% endif %}</button>
-                            <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="mobile-task-link">編集</a>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    {% else %}
-        <div class="mobile-empty">その他のタスクはまだありません</div>
-    {% endif %}
-</section>
+{% endfor %}
 
 <div class="mobile-section-actions">
     <a href="{{ url_for('tasks.create_task', view='desktop') }}" class="mobile-action-chip highlight">新しいタスクを作成</a>
     <a href="{{ url_for('main.calendar', view='desktop') }}" class="mobile-action-chip">カレンダービュー</a>
 </div>
+
 <script>
-document.querySelectorAll('.mobile-track-btn').forEach(btn => {
+document.querySelectorAll('.mobile-track-button').forEach(btn => {
     btn.addEventListener('click', () => {
         const taskId = btn.dataset.taskId;
+        const action = btn.dataset.action;
         btn.disabled = true;
-        btn.textContent = '処理中...';
         fetch(`/tasks/${taskId}/toggle-tracking`, {
             method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
-            }
+            },
+            body: JSON.stringify({ action })
         })
         .then(response => response.json())
         .then(data => {
