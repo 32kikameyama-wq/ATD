@@ -35,6 +35,7 @@ def redirect_mobile_users():
         '/personal-tasks': 'main.mobile_tasks',
         '/team-management': 'main.mobile_team',
         '/team-tasks': 'main.mobile_team',
+        '/team-mindmap': 'main.mobile_team_mindmap',
         '/notifications': 'main.mobile_notifications',
         '/profile': 'main.mobile_settings',
     }
@@ -339,6 +340,20 @@ def mobile_team():
     return render_template('mobile/team.html',
                            team_overview=team_overview,
                            active_team_tasks=active_team_tasks)
+
+
+@main.route('/mobile/team-mindmap')
+@login_required
+def mobile_team_mindmap():
+    from models import Team, TeamMember
+
+    memberships = TeamMember.query.filter_by(user_id=current_user.id).all()
+    team_ids = [membership.team_id for membership in memberships if membership.team_id]
+    teams = []
+    if team_ids:
+        teams = Team.query.filter(Team.id.in_(team_ids)).all()
+
+    return render_template('mobile/team_mindmap.html', teams=teams)
 
 
 @main.route('/mobile/notifications')

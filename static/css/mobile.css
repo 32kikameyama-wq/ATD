@@ -164,6 +164,58 @@ body.mobile-body {
     margin-top: 2px;
 }
 
+.mobile-task-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.mobile-task-actions form,
+.mobile-task-actions button,
+.mobile-task-actions a {
+    flex: 1 1 calc(33% - 8px);
+    min-width: 90px;
+    text-align: center;
+}
+
+.mobile-task-actions button,
+.mobile-task-actions a {
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: none;
+    background: rgba(0, 139, 139, 0.12);
+    color: var(--mobile-accent);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.mobile-task-actions button:hover,
+.mobile-task-actions a:hover {
+    background: rgba(0, 139, 139, 0.2);
+}
+
+.mobile-task-note {
+    display: inline-block;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+    font-size: 12px;
+    color: var(--mobile-muted);
+}
+
+.mobile-task-link {
+    display: inline-block;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--mobile-accent);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
 .mobile-badge {
     font-size: 12px;
     background: rgba(0, 139, 139, 0.1);

@@ -409,6 +409,10 @@ def toggle_task(task_id):
     
     flash(f'タスクを{"完了" if task.completed else "未完了"}に変更しました', 'success')
     
+    next_url = request.form.get('next') or request.args.get('next')
+    if next_url and next_url.startswith('/'):
+        return redirect(next_url)
+
     # リファラーに基づいてリダイレクト先を決定
     referer = request.headers.get('Referer')
     if referer and 'dashboard' in referer:
@@ -462,6 +466,9 @@ def move_task(task_id):
         
         category_names = {'today': '本日のタスク', 'tomorrow': '明日のタスク', 'other': 'その他のタスク'}
         flash(f'タスクを{category_names[new_category]}に移動しました', 'success')
+        next_url = request.form.get('next') or request.args.get('next')
+        if next_url and next_url.startswith('/'):
+            return redirect(next_url)
         return redirect(url_for('tasks.list_tasks'))
         
     except Exception as e:
@@ -586,11 +593,17 @@ def add_to_mindmap(task_id):
     # 自分のタスクか確認
     if task.user_id != current_user.id:
         flash('このタスクを変更する権限がありません', 'error')
+        next_url = request.form.get('next') or request.args.get('next')
+        if next_url and next_url.startswith('/'):
+            return redirect(next_url)
         return redirect(url_for('tasks.list_tasks'))
     
     # 既にマインドマップに追加されている場合はスキップ
     if task.mindmap_node:
         flash('このタスクは既にマインドマップに追加されています', 'info')
+        next_url = request.form.get('next') or request.args.get('next')
+        if next_url and next_url.startswith('/'):
+            return redirect(next_url)
         return redirect(url_for('tasks.list_tasks'))
     
     # 個人マインドマップを取得または作成
@@ -621,6 +634,9 @@ def add_to_mindmap(task_id):
     db.session.commit()
     
     flash('タスクをマインドマップに追加しました', 'success')
+    next_url = request.form.get('next') or request.args.get('next')
+    if next_url and next_url.startswith('/'):
+        return redirect(next_url)
     return redirect(url_for('tasks.list_tasks'))
 
 @tasks.route('/tasks/bulk-delete', methods=['POST'])
