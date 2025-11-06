@@ -7,6 +7,7 @@ from routes import main
 from auth import auth
 from tasks import tasks
 import secrets
+from zoneinfo import ZoneInfo
 
 def create_app(config_class=Config):
     """アプリケーションファクトリー"""
@@ -44,7 +45,7 @@ def create_app(config_class=Config):
         from datetime import datetime
 
         context = {
-            'current_date_display': datetime.now().strftime('%Y/%m/%d')
+            'current_date_display': datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%Y/%m/%d')
         }
 
         if current_user.is_authenticated:
