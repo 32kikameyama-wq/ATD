@@ -2700,7 +2700,6 @@ def update_personal_mindmap_node(node_id):
 def create_task_from_personal_card(node_id):
     """タスクカードから個人タスクを作成"""
     from models import Mindmap, MindmapNode, Task, UserPerformance
-from datetime import date, datetime, timedelta
     from zoneinfo import ZoneInfo
     
     node = MindmapNode.query.get_or_404(node_id)
