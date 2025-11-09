@@ -354,7 +354,7 @@ class MindmapNode(db.Model):
     # リレーション
     children = db.relationship('MindmapNode', backref=db.backref('parent', remote_side=[id]), lazy=True, cascade='all, delete-orphan')
     subtasks = db.relationship('TeamTask', primaryjoin='TeamTask.parent_node_id==MindmapNode.id', backref=db.backref('parent_node'), lazy=True, cascade='all, delete-orphan')
-    linked_task = db.relationship('Task', backref=db.backref('mindmap_node', uselist=False))
+    linked_task = db.relationship('Task', foreign_keys=[task_id], backref=db.backref('mindmap_node', uselist=False))
     card_tasks = db.relationship('Task', foreign_keys='Task.task_card_node_id', backref=db.backref('task_card_node', lazy=True), lazy='dynamic')
     
     def __repr__(self):
