@@ -63,6 +63,7 @@ class Task(db.Model):
     # 外部キー
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     team_task_id = db.Column(db.Integer, db.ForeignKey('team_tasks.id'), nullable=True)  # チームタスクとの紐付け
+    task_card_node_id = db.Column(db.Integer, db.ForeignKey('mindmap_nodes.id'), nullable=True, index=True)  # 個人タスクカードとの紐付け
     
     def __repr__(self):
         return f'<Task {self.title}>'
@@ -354,6 +355,7 @@ class MindmapNode(db.Model):
     children = db.relationship('MindmapNode', backref=db.backref('parent', remote_side=[id]), lazy=True, cascade='all, delete-orphan')
     subtasks = db.relationship('TeamTask', primaryjoin='TeamTask.parent_node_id==MindmapNode.id', backref=db.backref('parent_node'), lazy=True, cascade='all, delete-orphan')
     linked_task = db.relationship('Task', backref=db.backref('mindmap_node', uselist=False))
+    card_tasks = db.relationship('Task', foreign_keys='Task.task_card_node_id', backref=db.backref('task_card_node', lazy=True), lazy='dynamic')
     
     def __repr__(self):
         return f'<MindmapNode {self.title}>'

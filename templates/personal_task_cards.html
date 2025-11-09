@@ -338,8 +338,8 @@
                 <input type="date" id="node-due-date" class="form-control">
             </div>
             <div class="form-group">
-                <label for="node-progress">進捗率 (0-100)</label>
-                <input type="number" id="node-progress" class="form-control" min="0" max="100" step="5">
+                <label for="node-progress">進捗率（カード内タスクから自動計算）</label>
+                <input type="number" id="node-progress" class="form-control" readonly>
             </div>
             <div class="form-group" style="display:flex; align-items:center; gap:8px;">
                 <label style="margin:0;">
@@ -583,6 +583,15 @@
             };
             actions.appendChild(addBtn);
 
+            const detailBtn = document.createElement('button');
+            detailBtn.textContent = '詳細';
+            detailBtn.title = 'カード詳細を開く';
+            detailBtn.onclick = (e) => {
+                e.stopPropagation();
+                window.location.href = `/personal/task-cards/${node.id}`;
+            };
+            actions.appendChild(detailBtn);
+
             const editBtn = document.createElement('button');
             editBtn.textContent = '編集';
             editBtn.onclick = (e) => {
@@ -633,9 +642,20 @@
             if (node.completed) {
                 meta.innerHTML += `<span>✅ 完了済み</span>`;
             }
+            if (node.task_count > 0) {
+                meta.innerHTML += `<span>📝 タスク ${node.completed_task_count}/${node.task_count}</span>`;
+            }
             card.appendChild(meta);
 
-            if (node.is_task) {
+            if (node.task_count > 0) {
+                const taskBadge = document.createElement('div');
+                const completedAll = node.completed_task_count === node.task_count;
+                taskBadge.className = 'task-badge' + (completedAll ? ' completed' : '');
+                taskBadge.textContent = completedAll
+                    ? 'カード内タスク完了'
+                    : `カード内タスク ${node.completed_task_count}/${node.task_count}`;
+                card.appendChild(taskBadge);
+            } else if (node.is_task) {
                 const taskBadge = document.createElement('div');
                 taskBadge.className = 'task-badge' + (node.task_completed ? ' completed' : '');
                 taskBadge.textContent = node.task_completed ? 'タスク完了済み' : 'タスクと連携中';
@@ -755,7 +775,6 @@
                 title,
                 description: document.getElementById('node-description').value,
                 due_date: document.getElementById('node-due-date').value || null,
-                progress: Number(document.getElementById('node-progress').value || 0),
                 completed: document.getElementById('node-completed').checked,
                 is_task: document.getElementById('node-is-task').checked
             };
@@ -814,9 +833,7 @@
                 return;
             }
 
-            let category = prompt('タスクの分類 (today / tomorrow / other)', suggestCategory(node));
-            if (category === null) return;
-            category = category.trim().toLowerCase();
+            const category = 'other';
 
             let priority = prompt('優先度 (high / medium / low)', 'medium');
             if (priority === null) return;
@@ -826,7 +843,7 @@
                 const response = await fetch(`/personal/mindmap/nodes/${nodeId}/create-task`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ category, priority })
+                        body: JSON.stringify({ category, priority })
                 });
                 const data = await response.json();
                 if (data.success) {

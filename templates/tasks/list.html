@@ -316,9 +316,9 @@
                                         </form>
                                     </div>
                                     <div class="task-main-actions">
-                                        {% if task.mindmap_node %}
-                                            <span style="color: var(--success-color); font-size: 0.9rem;">✓ カード連携済み</span>
-                                            <a href="{{ url_for('main.personal_task_cards') }}" class="btn btn-sm btn-outline">カードを見る</a>
+                                        {% if task.task_card_node %}
+                                            <span style="color: var(--success-color); font-size: 0.9rem;">📇 カード連携済み</span>
+                                            <a href="{{ url_for('main.personal_task_card_detail', node_id=task.task_card_node.id) }}" class="btn btn-sm btn-outline">カードを見る</a>
                                         {% else %}
                                             <button type="button" class="btn btn-sm btn-outline" onclick="createTaskCard({{ task.id }})">📇 カードを作成</button>
                                         {% endif %}
@@ -434,9 +434,9 @@
                                         </form>
                                     </div>
                                     <div class="task-main-actions">
-                                        {% if task.mindmap_node %}
-                                            <span style="color: var(--success-color); font-size: 0.9rem;">✓ カード連携済み</span>
-                                            <a href="{{ url_for('main.personal_task_cards') }}" class="btn btn-sm btn-outline">カードを見る</a>
+                                        {% if task.task_card_node %}
+                                            <span style="color: var(--success-color); font-size: 0.9rem;">📇 カード連携済み</span>
+                                            <a href="{{ url_for('main.personal_task_card_detail', node_id=task.task_card_node.id) }}" class="btn btn-sm btn-outline">カードを見る</a>
                                         {% else %}
                                             <button type="button" class="btn btn-sm btn-outline" onclick="createTaskCard({{ task.id }})">📇 カードを作成</button>
                                         {% endif %}
@@ -552,9 +552,9 @@
                                         </form>
                                     </div>
                                     <div class="task-main-actions">
-                                        {% if task.mindmap_node %}
-                                            <span style="color: var(--success-color); font-size: 0.9rem;">✓ カード連携済み</span>
-                                            <a href="{{ url_for('main.personal_task_cards') }}" class="btn btn-sm btn-outline">カードを見る</a>
+                                        {% if task.task_card_node %}
+                                            <span style="color: var(--success-color); font-size: 0.9rem;">📇 カード連携済み</span>
+                                            <a href="{{ url_for('main.personal_task_card_detail', node_id=task.task_card_node.id) }}" class="btn btn-sm btn-outline">カードを見る</a>
                                         {% else %}
                                             <button type="button" class="btn btn-sm btn-outline" onclick="createTaskCard({{ task.id }})">📇 カードを作成</button>
                                         {% endif %}
@@ -712,8 +712,8 @@
             });
             const data = await response.json();
             if (data.success) {
-                if (confirm(data.message ? `${data.message}\nカードページに移動しますか？` : 'タスクカードを作成しました。カードページに移動しますか？')) {
-                    window.location.href = '{{ url_for("main.personal_task_cards") }}';
+                if (confirm('タスクカードを作成しました。詳細ページを開きますか？')) {
+                    window.location.href = `/personal/task-cards/${data.node_id}`;
                 } else {
                     location.reload();
                 }

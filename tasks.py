@@ -541,10 +541,19 @@ def delete_task(task_id):
         flash('このタスクを削除する権限がありません', 'error')
         return redirect(url_for('tasks.list_tasks'))
     
+    card_node_id = task.task_card_node_id
     db.session.delete(task)
     db.session.commit()
     
+    if card_node_id:
+        from routes import _update_task_card_progress
+        _update_task_card_progress(card_node_id)
+        db.session.commit()
+    
     flash('タスクを削除しました', 'success')
+    next_url = request.form.get('next') or request.args.get('next')
+    if next_url and next_url.startswith('/'):
+        return redirect(next_url)
     return redirect(url_for('tasks.list_tasks'))
 
 @tasks.route('/tasks/<int:task_id>/toggle', methods=['POST'])
@@ -597,7 +606,11 @@ def toggle_task(task_id):
                 if parent_node:
                     parent_node.progress = parent_node.calculate_progress()
                     db.session.add(parent_node)
-    
+
+    if task.task_card_node_id:
+        from routes import _update_task_card_progress
+        _update_task_card_progress(task.task_card_node_id)
+
     db.session.commit()
     
     # パフォーマンスデータを更新
@@ -657,6 +670,11 @@ def create_task_card(task_id):
     )
     
     db.session.add(new_node)
+    db.session.flush()
+    task.task_card_node_id = new_node.id
+    
+    from routes import _update_task_card_progress
+    _update_task_card_progress(new_node.id)
     db.session.commit()
     
     UserPerformance.update_daily_performance(current_user.id)
@@ -664,7 +682,8 @@ def create_task_card(task_id):
     return jsonify({
         'success': True,
         'node_id': new_node.id,
-        'mindmap_id': mindmap_obj.id
+        'mindmap_id': mindmap_obj.id,
+        'message': 'タスクカードを作成しました'
     })
 
 

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タスクカード詳細 - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">
+    <span class="brand-title">ATD</span>
+    <span class="brand-date">{{ current_date_display }}</span>
+</div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                <a href="{{ url_for('main.personal_task_cards') }}" class="navbar-item active">タスクカード</a>
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+                {% endif %}
+                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
+            </div>
+            <div class="user-controls">
+                <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                    🔔
+                    {% if unread_notifications > 0 %}
+                        <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                <a href="#" class="user-control active personal-mode">個人</a>
+                <a href="#" class="user-control">チーム</a>
+                <a href="{{ url_for('main.profile') }}" class="user-control">
+                    {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <a href="{{ url_for('main.personal_task_cards') }}" class="btn btn-secondary btn-sm">← タスクカード一覧に戻る</a>
+
+        <div class="card" style="margin-top: 1rem;">
+            <div class="card-header" style="display:flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <h1 style="margin:0;">{{ card_node.title }}</h1>
+                    {% if card_node.description %}
+                        <p style="margin-top: 6px; color: #64748b;">{{ card_node.description }}</p>
+                    {% endif %}
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; font-size:0.9rem; color:#475569;">
+                        {% if card_node.due_date %}<span>🗓 予定日: {{ card_node.due_date.strftime('%Y/%m/%d') }}</span>{% endif %}
+                        <span>📝 タスク: {{ active_tasks|length + completed_tasks|length }}</span>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-weight:bold; color: var(--secondary-color);">達成度: {{ card_node.progress or 0 }}%</div>
+                    <div class="progress-bar" style="width:220px; margin-top:8px;">
+                        <div class="progress-fill" style="width: {{ card_node.progress or 0 }}%; height: 8px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 1.5rem;">
+            <div class="card-header">
+                <h2 style="margin:0;">タスクを追加</h2>
+            </div>
+            <form action="{{ url_for('main.add_personal_task_card_task', node_id=card_node.id) }}" method="post" style="display:grid; gap:12px; padding:20px;">
+                <div class="form-group">
+                    <label for="task-title">タイトル</label>
+                    <input type="text" id="task-title" name="title" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="task-description">説明 (任意)</label>
+                    <textarea id="task-description" name="description" class="form-control" rows="3"></textarea>
+                </div>
+                <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                    <div class="form-group" style="flex:1; min-width:200px;">
+                        <label for="task-due-date">完了予定日 (任意)</label>
+                        <input type="date" id="task-due-date" name="due_date" class="form-control">
+                    </div>
+                    <div class="form-group" style="flex:1; min-width:180px;">
+                        <label for="task-priority">優先度</label>
+                        <select id="task-priority" name="priority" class="form-control">
+                            <option value="high">高</option>
+                            <option value="medium" selected>中</option>
+                            <option value="low">低</option>
+                        </select>
+                    </div>
+                </div>
+                <p style="margin:0; font-size:0.85rem; color:#64748b;">※ 作成したタスクは自動的に「その他」へ追加されます。</p>
+                <div style="text-align:right;">
+                    <button type="submit" class="btn btn-primary">タスクを追加</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card" style="margin-top: 1.5rem;">
+            <div class="card-header">
+                <h2 style="margin:0;">未完了タスク ({{ active_tasks|length }}件)</h2>
+            </div>
+            {% if active_tasks %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>タイトル</th>
+                            <th>期限</th>
+                            <th>優先度</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in active_tasks %}
+                        <tr>
+                            <td>{{ task.title }}</td>
+                            <td>{{ task.end_date.strftime('%Y/%m/%d') if task.end_date else '—' }}</td>
+                            <td>{{ '高' if task.priority=='high' else '中' if task.priority=='medium' else '低' }}</td>
+                            <td>
+                                <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="post" style="display:inline;">
+                                    <input type="hidden" name="next" value="{{ url_for('main.personal_task_card_detail', node_id=card_node.id) }}">
+                                    <button type="submit" class="btn btn-sm btn-outline">完了にする</button>
+                                </form>
+                                <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-sm btn-secondary" target="_blank">編集</a>
+                                <form action="{{ url_for('tasks.delete_task', task_id=task.id) }}" method="post" style="display:inline;">
+                                    <input type="hidden" name="next" value="{{ url_for('main.personal_task_card_detail', node_id=card_node.id) }}">
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('このタスクを削除しますか？')">削除</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="padding: 20px; color:#94a3b8; margin:0;">未完了タスクはありません。</p>
+            {% endif %}
+        </div>
+
+        <div class="card" style="margin-top: 1.5rem; margin-bottom:2rem;">
+            <div class="card-header">
+                <h2 style="margin:0;">完了済みタスク ({{ completed_tasks|length }}件)</h2>
+            </div>
+            {% if completed_tasks %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>タイトル</th>
+                            <th>完了日</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in completed_tasks %}
+                        <tr class="completed">
+                            <td>{{ task.title }}</td>
+                            <td>{{ task.completed_at.strftime('%Y/%m/%d') if task.completed_at else '—' }}</td>
+                            <td>
+                                <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="post" style="display:inline;">
+                                    <input type="hidden" name="next" value="{{ url_for('main.personal_task_card_detail', node_id=card_node.id) }}">
+                                    <button type="submit" class="btn btn-sm btn-outline">未完了に戻す</button>
+                                </form>
+                                <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-sm btn-secondary" target="_blank">編集</a>
+                                <form action="{{ url_for('tasks.delete_task', task_id=task.id) }}" method="post" style="display:inline;">
+                                    <input type="hidden" name="next" value="{{ url_for('main.personal_task_card_detail', node_id=card_node.id) }}">
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('このタスクを削除しますか？')">削除</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="padding: 20px; color:#94a3b8; margin:0;">完了済みタスクはありません。</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
+

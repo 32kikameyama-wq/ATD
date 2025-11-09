@@ -69,7 +69,7 @@ def create_app(config_class=Config):
     with app.app_context():
         try:
             # データベースを作成（初回のみ、テーブルが存在しない場合）
-            from sqlalchemy import inspect
+from sqlalchemy import inspect, text
             inspector = inspect(db.engine)
             existing_tables = inspector.get_table_names()
             
@@ -77,6 +77,16 @@ def create_app(config_class=Config):
             if not existing_tables:
                 db.create_all()
                 print('✅ データベーステーブルを作成しました')
+            else:
+                # 新しいカラム task_card_node_id が無い場合は追加
+                if 'tasks' in existing_tables:
+                    columns = [column['name'] for column in inspector.get_columns('tasks')]
+                    if 'task_card_node_id' not in columns:
+                        try:
+                            db.engine.execute(text('ALTER TABLE tasks ADD COLUMN task_card_node_id INTEGER'))
+                            print('✅ tasks テーブルに task_card_node_id カラムを追加しました')
+                        except Exception as alter_error:
+                            print(f'⚠️ task_card_node_id カラムの追加に失敗しました: {alter_error}')
             
             # 初期管理者ユーザーを作成（存在しない場合のみ）
             admin_user = User.query.filter_by(username='亀山瑞喜').first()

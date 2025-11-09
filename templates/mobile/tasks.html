@@ -116,8 +116,8 @@ function createMobileTaskCard(taskId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            if (confirm((data.message || 'カードを作成しました。') + '\nカードページへ移動しますか？')) {
-                window.location.href = '{{ url_for('main.personal_task_cards') }}';
+            if (confirm('カードを作成しました。詳細ページに移動しますか？')) {
+                window.location.href = `/personal/task-cards/${data.node_id}`;
             } else {
                 window.location.href = '{{ url_for('main.mobile_tasks') }}';
             }
