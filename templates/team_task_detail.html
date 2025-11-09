@@ -185,7 +185,7 @@
             <!-- メインコンテンツ -->
             <div class="container">
                 <div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
-                    <a href="{{ url_for('main.team_mindmap') }}" class="btn btn-secondary btn-sm">← チーム目標に戻る</a>
+                    <a href="{{ url_for('main.team_mindmap', team_id=team.id) }}" class="btn btn-secondary btn-sm">← チーム目標に戻る</a>
                     <label for="csv-import" class="btn btn-primary" style="cursor: pointer; margin: 0;">📥 CSVインポート</label>
                     <input type="file" id="csv-import" accept=".csv" style="display: none;" onchange="handleCSVImport(event)">
                 </div>

@@ -408,21 +408,114 @@
         let nodes = [];
         let mindmapId = null;
         let expandedNodes = new Set();
-        const selector = document.getElementById('team-select');
- 
-        // チーム選択
-        selector.addEventListener('change', function(e) {
-            currentTeamId = e.target.value;
+        let selector = null;
+
+        function ensureSelector() {
+            if (!selector) {
+                selector = document.getElementById('team-select');
+            }
+            return selector;
+        }
+
+        function handleTeamSelectChange(event) {
+            const selectEl = ensureSelector();
+            if (!selectEl) {
+                return;
+            }
+
+            currentTeamId = event.target.value || null;
+
             if (currentTeamId) {
                 sessionStorage.setItem('team_mindmap_selected_team', currentTeamId);
-            } else {
-                sessionStorage.removeItem('team_mindmap_selected_team');
-            }
-            if (currentTeamId) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('team_id', currentTeamId);
+                window.history.replaceState({}, '', url.toString());
                 loadTeamMindmap(currentTeamId);
             } else {
+                sessionStorage.removeItem('team_mindmap_selected_team');
+                const url = new URL(window.location.href);
+                url.searchParams.delete('team_id');
+                window.history.replaceState({}, '', url.toString());
                 document.getElementById('mindmap-list').innerHTML = '';
+                document.getElementById('progress-value').textContent = '0';
             }
+        }
+
+        function getInitialTeamId() {
+            const selectEl = ensureSelector();
+            if (!selectEl) {
+                return null;
+            }
+
+            const optionValues = Array.from(selectEl.options).map(opt => opt.value);
+            const params = new URLSearchParams(window.location.search);
+            const queryTeamId = params.get('team_id');
+            const serverSelectedTeamId = '{{ selected_team_id or "" }}';
+            const savedTeamId = sessionStorage.getItem('team_mindmap_selected_team');
+
+            if (queryTeamId && optionValues.includes(queryTeamId)) {
+                return queryTeamId;
+            }
+            if (serverSelectedTeamId && optionValues.includes(serverSelectedTeamId)) {
+                return serverSelectedTeamId;
+            }
+            if (savedTeamId && optionValues.includes(savedTeamId)) {
+                return savedTeamId;
+            }
+            if (selectEl.options.length > 1) {
+                return selectEl.options[1].value;
+            }
+            return null;
+        }
+
+        function applyInitialTeamSelection() {
+            const selectEl = ensureSelector();
+            if (!selectEl) {
+                return;
+            }
+
+            const initialTeamId = getInitialTeamId();
+
+            if (!initialTeamId) {
+                selectEl.value = '';
+                currentTeamId = null;
+                document.getElementById('mindmap-list').innerHTML = '';
+                document.getElementById('progress-value').textContent = '0';
+                return;
+            }
+
+            if (selectEl.value !== initialTeamId) {
+                selectEl.value = initialTeamId;
+            }
+
+            if (currentTeamId !== initialTeamId) {
+                currentTeamId = initialTeamId;
+                loadTeamMindmap(initialTeamId);
+            } else {
+                loadTeamMindmap(initialTeamId);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const selectEl = ensureSelector();
+            if (!selectEl) {
+                return;
+            }
+
+            if (!selectEl.dataset.initialized) {
+                selectEl.addEventListener('change', handleTeamSelectChange);
+                selectEl.dataset.initialized = 'true';
+            }
+
+            applyInitialTeamSelection();
+        });
+
+        window.addEventListener('pageshow', () => {
+            const selectEl = ensureSelector();
+            if (!selectEl) {
+                return;
+            }
+            applyInitialTeamSelection();
         });
  
         // チームマインドマップの読み込み
@@ -434,9 +527,11 @@
                 mindmapId = data.mindmap_id || null;
                 renderMindmap();
                 updateProgress();
-                if (selector.value !== String(teamId)) {
-                    selector.value = String(teamId);
+                const selectEl = ensureSelector();
+                if (selectEl && selectEl.value !== String(teamId)) {
+                    selectEl.value = String(teamId);
                 }
+                sessionStorage.setItem('team_mindmap_selected_team', teamId);
             } catch (error) {
                 console.error('Error loading team mindmap:', error);
                 document.getElementById('mindmap-list').innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">マインドマップが見つかりません</p>';
@@ -562,7 +657,7 @@
             detailBtn.onclick = (e) => {
                 e.stopPropagation();
                 // チームタスク詳細ページに遷移
-                window.location.href = `/team-task-detail/${currentTeamId}/node/${node.id}`;
+                window.location.href = `/team-task-detail/${currentTeamId}/node/${node.id}?team_id=${currentTeamId}`;
             };
             
             // 削除ボタン
@@ -844,6 +939,8 @@
                 }
             });
         });
+
+        // DOMContentLoadedで初期化処理を行うため、ここでの初期化は不要
     </script>
 </body>
 </html>

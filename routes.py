@@ -1463,7 +1463,8 @@ def team_mindmap():
         TeamMember.user_id == current_user.id
     ).all()
     
-    return render_template('team_mindmap.html', teams=user_teams)
+    selected_team_id = request.args.get('team_id', type=int)
+    return render_template('team_mindmap.html', teams=user_teams, selected_team_id=selected_team_id)
 
 @main.route('/team-tasks')
 @login_required

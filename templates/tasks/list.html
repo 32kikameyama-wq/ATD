@@ -231,21 +231,27 @@
 
                 <!-- 本日のタスク -->
                 <div class="task-section" data-section="today">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-                        <h2 class="task-section-title">本日のタスク</h2>
-                        <div style="display: flex; gap: 10px; align-items: center;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <h2 class="task-section-title" style="margin: 0;">本日のタスク</h2>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                             <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
                                 <input type="checkbox" class="select-all-checkbox" data-section="today">
                                 <span>全て選択</span>
                             </label>
-                            <button class="btn btn-danger btn-sm" onclick="deleteSelectedTasks('today')" id="delete-selected-today" style="display: none;">選択したものを削除</button>
+                            <div class="bulk-action-group" id="bulk-actions-today" style="display: none; gap: 8px; flex-wrap: wrap;">
+                                <button class="btn btn-success btn-sm bulk-action" data-section="today" onclick="bulkToggleTasks('today', 'complete')">選択を完了</button>
+                                <button class="btn btn-secondary btn-sm bulk-action" data-section="today" onclick="bulkToggleTasks('today', 'uncomplete')">未完了に戻す</button>
+                                <button class="btn btn-sm btn-outline bulk-action" data-section="today" onclick="bulkMoveTasks('today', 'tomorrow')">明日へ移動</button>
+                                <button class="btn btn-sm btn-outline bulk-action" data-section="today" onclick="bulkMoveTasks('today', 'other')">その他へ移動</button>
+                                <button class="btn btn-danger btn-sm bulk-action" data-section="today" onclick="deleteSelectedTasks('today')" id="delete-selected-today">選択を削除</button>
+                            </div>
                         </div>
                     </div>
                     {% if today_tasks %}
                         {% for task in today_tasks %}
                             <div class="task-card {% if task.completed %}completed{% endif %} {% if task.title.startswith('【') %}team-task{% endif %}" data-task-id="{{ task.id }}" data-end-date="{{ task.end_date.isoformat() if task.end_date else '' }}">
                                 <div class="task-header" style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="checkbox" class="task-checkbox" data-task-id="{{ task.id }}" data-section="today" onchange="updateDeleteButton('today')">
+                                    <input type="checkbox" class="task-checkbox" data-task-id="{{ task.id }}" data-section="today" onchange="updateBulkControls('today')">
                                     <h3 class="task-title" style="flex: 1;">{{ task.title }}</h3>
                                     <div class="task-controls">
                                         <button class="btn btn-sm btn-outline" onclick="moveTaskUp({{ task.id }})">↑</button>
@@ -349,21 +355,26 @@
 
                 <!-- 明日のタスク -->
                 <div class="task-section" data-section="tomorrow">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-                        <h2 class="task-section-title">明日のタスク</h2>
-                        <div style="display: flex; gap: 10px; align-items: center;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <h2 class="task-section-title" style="margin: 0;">明日のタスク</h2>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                             <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
                                 <input type="checkbox" class="select-all-checkbox" data-section="tomorrow">
                                 <span>全て選択</span>
                             </label>
-                            <button class="btn btn-danger btn-sm" onclick="deleteSelectedTasks('tomorrow')" id="delete-selected-tomorrow" style="display: none;">選択したものを削除</button>
+                            <div class="bulk-action-group" id="bulk-actions-tomorrow" style="display: none; gap: 8px; flex-wrap: wrap;">
+                                <button class="btn btn-success btn-sm bulk-action" data-section="tomorrow" onclick="bulkToggleTasks('tomorrow', 'complete')">選択を完了</button>
+                                <button class="btn btn-sm btn-outline bulk-action" data-section="tomorrow" onclick="bulkMoveTasks('tomorrow', 'today')">今日へ移動</button>
+                                <button class="btn btn-sm btn-outline bulk-action" data-section="tomorrow" onclick="bulkMoveTasks('tomorrow', 'other')">その他へ移動</button>
+                                <button class="btn btn-danger btn-sm bulk-action" data-section="tomorrow" onclick="deleteSelectedTasks('tomorrow')" id="delete-selected-tomorrow">選択を削除</button>
+                            </div>
                         </div>
                     </div>
                     {% if tomorrow_tasks %}
                         {% for task in tomorrow_tasks %}
                             <div class="task-card {% if task.completed %}completed{% endif %} {% if task.title.startswith('【') %}team-task{% endif %}" data-task-id="{{ task.id }}" data-end-date="{{ task.end_date.isoformat() if task.end_date else '' }}">
                                 <div class="task-header" style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="checkbox" class="task-checkbox" data-task-id="{{ task.id }}" data-section="tomorrow" onchange="updateDeleteButton('tomorrow')">
+                                    <input type="checkbox" class="task-checkbox" data-task-id="{{ task.id }}" data-section="tomorrow" onchange="updateBulkControls('tomorrow')">
                                     <h3 class="task-title" style="flex: 1;">{{ task.title }}</h3>
                                     <div class="task-controls">
                                         <button class="btn btn-sm btn-outline" onclick="moveTaskUp({{ task.id }})">↑</button>
@@ -467,21 +478,26 @@
 
                 <!-- その他のタスク -->
                 <div class="task-section" data-section="other">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-                        <h2 class="task-section-title">その他のタスク</h2>
-                        <div style="display: flex; gap: 10px; align-items: center;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <h2 class="task-section-title" style="margin: 0;">その他のタスク</h2>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                             <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
                                 <input type="checkbox" class="select-all-checkbox" data-section="other">
                                 <span>全て選択</span>
                             </label>
-                            <button class="btn btn-danger btn-sm" onclick="deleteSelectedTasks('other')" id="delete-selected-other" style="display: none;">選択したものを削除</button>
+                            <div class="bulk-action-group" id="bulk-actions-other" style="display: none; gap: 8px; flex-wrap: wrap;">
+                                <button class="btn btn-success btn-sm bulk-action" data-section="other" onclick="bulkToggleTasks('other', 'complete')">選択を完了</button>
+                                <button class="btn btn-sm btn-outline bulk-action" data-section="other" onclick="bulkMoveTasks('other', 'today')">今日へ移動</button>
+                                <button class="btn btn-sm btn-outline bulk-action" data-section="other" onclick="bulkMoveTasks('other', 'tomorrow')">明日へ移動</button>
+                                <button class="btn btn-danger btn-sm bulk-action" data-section="other" onclick="deleteSelectedTasks('other')" id="delete-selected-other">選択を削除</button>
+                            </div>
                         </div>
                     </div>
                     {% if other_tasks %}
                         {% for task in other_tasks %}
                             <div class="task-card {% if task.completed %}completed{% endif %} {% if task.title.startswith('【') %}team-task{% endif %}" data-task-id="{{ task.id }}" data-end-date="{{ task.end_date.isoformat() if task.end_date else '' }}">
                                 <div class="task-header" style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="checkbox" class="task-checkbox" data-task-id="{{ task.id }}" data-section="other" onchange="updateDeleteButton('other')">
+                                    <input type="checkbox" class="task-checkbox" data-task-id="{{ task.id }}" data-section="other" onchange="updateBulkControls('other')">
                                     <h3 class="task-title" style="flex: 1;">{{ task.title }}</h3>
                                     <div class="task-controls">
                                         <button class="btn btn-sm btn-outline" onclick="moveTaskUp({{ task.id }})">↑</button>
@@ -1151,24 +1167,22 @@
             taskCheckboxes.forEach(cb => {
                 cb.checked = this.checked;
             });
-            updateDeleteButton(section);
+            updateBulkControls(section);
         });
     });
     
     // 削除ボタンの表示/非表示を更新
-    function updateDeleteButton(section) {
+    function updateBulkControls(section) {
         const taskCheckboxes = document.querySelectorAll(`.task-checkbox[data-section="${section}"]`);
         const checkedBoxes = document.querySelectorAll(`.task-checkbox[data-section="${section}"]:checked`);
         const deleteButton = document.getElementById(`delete-selected-${section}`);
         const selectAllCheckbox = document.querySelector(`.select-all-checkbox[data-section="${section}"]`);
-        
-        if (checkedBoxes.length > 0) {
-            deleteButton.style.display = 'inline-block';
-        } else {
-            deleteButton.style.display = 'none';
+        const actionGroup = document.getElementById(`bulk-actions-${section}`);
+
+        if (actionGroup) {
+            actionGroup.style.display = checkedBoxes.length > 0 ? 'flex' : 'none';
         }
-        
-        // 全て選択チェックボックスの状態を更新
+
         if (selectAllCheckbox) {
             selectAllCheckbox.checked = (checkedBoxes.length === taskCheckboxes.length && taskCheckboxes.length > 0);
         }
@@ -1176,13 +1190,12 @@
     
     // 選択したタスクを削除
     function deleteSelectedTasks(section) {
-        const checkedBoxes = document.querySelectorAll(`.task-checkbox[data-section="${section}"]:checked`);
-        if (checkedBoxes.length === 0) {
+        const taskIds = getSelectedTaskIds(section);
+        if (taskIds.length === 0) {
             alert('削除するタスクが選択されていません');
             return;
         }
         
-        const taskIds = Array.from(checkedBoxes).map(cb => parseInt(cb.getAttribute('data-task-id')));
         const count = taskIds.length;
         
         if (!confirm(`${count}件のタスクを削除しますか？\nこの操作は取り消せません。`)) {
@@ -1195,6 +1208,96 @@
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ task_ids: taskIds })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.message || 'エラーが発生しました');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました');
+        });
+    }
+
+    function getSelectedTaskIds(section) {
+        const checkedBoxes = document.querySelectorAll(`.task-checkbox[data-section="${section}"]:checked`);
+        return Array.from(checkedBoxes).map(cb => parseInt(cb.getAttribute('data-task-id'), 10));
+    }
+
+    function bulkToggleTasks(section, action) {
+        const taskIds = getSelectedTaskIds(section);
+        if (taskIds.length === 0) {
+            alert('操作するタスクが選択されていません');
+            return;
+        }
+
+        const actionMessages = {
+            'complete': '完了にしますか？',
+            'uncomplete': '未完了に戻しますか？'
+        };
+
+        const confirmMessage = `${taskIds.length}件のタスクを${actionMessages[action] || '変更しますか？'}`;
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        fetch('/tasks/bulk-complete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                task_ids: taskIds,
+                action: action
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.message || 'エラーが発生しました');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('エラーが発生しました');
+        });
+    }
+
+    function bulkMoveTasks(section, targetCategory) {
+        const taskIds = getSelectedTaskIds(section);
+        if (taskIds.length === 0) {
+            alert('移動するタスクが選択されていません');
+            return;
+        }
+
+        const categoryLabels = {
+            'today': '本日のタスク',
+            'tomorrow': '明日のタスク',
+            'other': 'その他のタスク'
+        };
+
+        const targetLabel = categoryLabels[targetCategory] || '指定の分類';
+        if (!confirm(`${taskIds.length}件のタスクを${targetLabel}に移動しますか？`)) {
+            return;
+        }
+
+        fetch('/tasks/bulk-move', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                task_ids: taskIds,
+                target_category: targetCategory
+            })
         })
         .then(response => response.json())
         .then(data => {
