@@ -408,17 +408,23 @@
         let nodes = [];
         let mindmapId = null;
         let expandedNodes = new Set();
-
+        const selector = document.getElementById('team-select');
+ 
         // チーム選択
-        document.getElementById('team-select').addEventListener('change', function(e) {
+        selector.addEventListener('change', function(e) {
             currentTeamId = e.target.value;
+            if (currentTeamId) {
+                sessionStorage.setItem('team_mindmap_selected_team', currentTeamId);
+            } else {
+                sessionStorage.removeItem('team_mindmap_selected_team');
+            }
             if (currentTeamId) {
                 loadTeamMindmap(currentTeamId);
             } else {
                 document.getElementById('mindmap-list').innerHTML = '';
             }
         });
-
+ 
         // チームマインドマップの読み込み
         async function loadTeamMindmap(teamId) {
             try {
@@ -428,6 +434,9 @@
                 mindmapId = data.mindmap_id || null;
                 renderMindmap();
                 updateProgress();
+                if (selector.value !== String(teamId)) {
+                    selector.value = String(teamId);
+                }
             } catch (error) {
                 console.error('Error loading team mindmap:', error);
                 document.getElementById('mindmap-list').innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">マインドマップが見つかりません</p>';
