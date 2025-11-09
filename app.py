@@ -69,7 +69,7 @@ def create_app(config_class=Config):
     with app.app_context():
         try:
             # データベースを作成（初回のみ、テーブルが存在しない場合）
-from sqlalchemy import inspect, text
+            from sqlalchemy import inspect, text
             inspector = inspect(db.engine)
             existing_tables = inspector.get_table_names()
             
