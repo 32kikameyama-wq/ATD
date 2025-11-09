@@ -179,26 +179,92 @@
                     return;
                 }
                 
-                // 日付判定関数（緩い判定）
+                const HEADER_KEYWORDS = ['日付', '曜日', '曜日名', 'タスク', 'タスク名', 'タイトル', '内容', '備考', 'メモ', 'date', 'day', 'task', 'tasks', 'title', 'description', 'note', 'notes', 'comment'];
+                const WEEKDAY_REGEX = /^(日|月|火|水|木|金|土)(曜日|曜)?$/i;
+                const WEEKDAY_EN_REGEX = /^(sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)$/i;
+                
+                const pad2 = num => num.toString().padStart(2, '0');
+                const formatDate = dateObj => `${dateObj.getFullYear()}-${pad2(dateObj.getMonth() + 1)}-${pad2(dateObj.getDate())}`;
+                const addDays = (dateObj, days) => {
+                    const copy = new Date(dateObj);
+                    copy.setDate(copy.getDate() + days);
+                    return copy;
+                };
+                
                 function isDate(str) {
                     if (!str) return false;
-                    str = str.trim();
-                    // パターン1: YYYY-MM-DD, YYYY/MM/DD
-                    if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(str)) return true;
-                    // パターン2: MM/DD, MM-DD（括弧付き対応: 11/4(火)など）
-                    if (/^\d{1,2}[-/]\d{1,2}(\([日月火水木金土]\))?$/.test(str)) return true;
-                    // パターン3: MM月DD日
-                    if (/^\d{1,2}月\d{1,2}日/.test(str)) return true;
-                    // パターン4: 今日、明日、明後日などのキーワード
-                    if (/^(今日|明日|明後日|あさって)$/.test(str)) return true;
+                    const cleaned = str.replace(/[()\（\）]/g, '').trim();
+                    if (/^\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}$/.test(cleaned)) return true;
+                    if (/^\d{1,2}[-/]\d{1,2}(\([日月火水木金土]\))?$/.test(cleaned)) return true;
+                    if (/^\d{1,2}月\d{1,2}日$/.test(cleaned)) return true;
+                    if (/^\d{4}年\d{1,2}月\d{1,2}日$/.test(cleaned)) return true;
+                    if (/^(今日|きょう|本日|明日|あす|明後日|あさって)$/.test(cleaned)) return true;
+                    if (/^\d+日間?分?$/.test(cleaned)) return true;
                     return false;
                 }
                 
-                // 日付文字列を正規化（括弧内の曜日を除去）
                 function normalizeDate(dateStr) {
                     if (!dateStr) return dateStr;
-                    // 括弧内の曜日を除去: 11/4(火) -> 11/4
-                    return dateStr.replace(/\([日月火水木金土]\)/g, '').trim();
+                    let normalized = dateStr.replace(/[()\（\）]/g, '').trim();
+                    const today = new Date();
+                    const KEYWORD_MAP = {
+                        '今日': 0,
+                        'きょう': 0,
+                        '本日': 0,
+                        '明日': 1,
+                        'あす': 1,
+                        '明後日': 2,
+                        'あさって': 2
+                    };
+                    
+                    if (KEYWORD_MAP.hasOwnProperty(normalized)) {
+                        return formatDate(addDays(today, KEYWORD_MAP[normalized]));
+                    }
+                    
+                    let match = normalized.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+                    if (match) {
+                        return `${match[1]}-${pad2(match[2])}-${pad2(match[3])}`;
+                    }
+                    
+                    match = normalized.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日$/);
+                    if (match) {
+                        return `${match[1]}-${pad2(match[2])}-${pad2(match[3])}`;
+                    }
+                    
+                    match = normalized.match(/^(\d{1,2})月(\d{1,2})日$/);
+                    if (match) {
+                        return `${pad2(match[1])}/${pad2(match[2])}`;
+                    }
+                    
+                    match = normalized.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+                    if (match) {
+                        return `${pad2(match[1])}/${pad2(match[2])}`;
+                    }
+                    
+                    if (/^\d+日間?分?$/.test(normalized)) {
+                        return normalized;
+                    }
+                    
+                    return normalized;
+                }
+                
+                function isHeaderValue(value) {
+                    if (!value) return false;
+                    const plain = value.trim().toLowerCase();
+                    return HEADER_KEYWORDS.some(keyword => plain === keyword.toLowerCase());
+                }
+                
+                function isWeekdayToken(value) {
+                    if (!value) return false;
+                    const trimmed = value.trim();
+                    if (WEEKDAY_REGEX.test(trimmed)) return true;
+                    if (WEEKDAY_EN_REGEX.test(trimmed.toLowerCase())) return true;
+                    return false;
+                }
+                
+                function shouldSkipToken(value) {
+                    if (!value) return true;
+                    return isHeaderValue(value) || isWeekdayToken(value);
                 }
                 
                 // CSVを解析（1行に複数タスク対応）
@@ -237,13 +303,12 @@
                         // 残りのフィールドをタスクとして処理
                         for (let j = 1; j < parts.length; j++) {
                             const taskName = parts[j].trim();
-                            if (taskName) {
-                                tasks.push({
-                                    date: currentDate,
-                                    title: taskName,
-                                    description: ''
-                                });
-                            }
+                            if (!taskName || shouldSkipToken(taskName)) continue;
+                            tasks.push({
+                                date: currentDate,
+                                title: taskName,
+                                description: ''
+                            });
                         }
                     } else {
                         // 日付がない行の場合
@@ -258,13 +323,12 @@
                         // すべてのフィールドをタスクとして処理
                         for (let j = 0; j < parts.length; j++) {
                             const taskName = parts[j].trim();
-                            if (taskName) {
-                                tasks.push({
-                                    date: currentDate,
-                                    title: taskName,
-                                    description: ''
-                                });
-                            }
+                            if (!taskName || shouldSkipToken(taskName)) continue;
+                            tasks.push({
+                                date: currentDate,
+                                title: taskName,
+                                description: ''
+                            });
                         }
                     }
                 }

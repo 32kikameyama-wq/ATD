@@ -284,8 +284,29 @@ def import_csv():
         if not tasks_data:
             return jsonify({'success': False, 'message': 'タスクデータがありません'}), 400
         
+        now_jst = datetime.now(ZoneInfo('Asia/Tokyo'))
+        today = now_jst.date()
         created_count = 0
         errors = []
+        
+        def determine_category(target_date):
+            if not target_date:
+                return 'today'
+            if target_date == today:
+                return 'today'
+            if target_date == today + timedelta(days=1):
+                return 'tomorrow'
+            return 'other'
+        
+        keyword_offset_map = {
+            '今日': 0,
+            'きょう': 0,
+            '本日': 0,
+            '明日': 1,
+            'あす': 1,
+            '明後日': 2,
+            'あさって': 2
+        }
         
         for i, task_data in enumerate(tasks_data):
             try:
@@ -299,20 +320,29 @@ def import_csv():
                 
                 # 日付を解析
                 task_date = None
+                normalized_date_str = re.sub(r'[()\（\）]', '', date_str).strip()
                 
                 # パターン1: "2025-11-04" 形式
                 try:
-                    task_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                    task_date = datetime.strptime(normalized_date_str, '%Y-%m-%d').date()
                 except ValueError:
                     pass
                 
+                # パターン1-2: "2025/11/04" や "2025.11.04" 形式
+                if not task_date:
+                    for fmt in ['%Y/%m/%d', '%Y.%m.%d', '%Y年%m月%d日']:
+                        try:
+                            task_date = datetime.strptime(normalized_date_str, fmt).date()
+                            break
+                        except ValueError:
+                            continue
+                
                 # パターン2: "11/4" または "11/04" 形式
                 if not task_date:
-                    match = re.search(r'(\d{1,2})/(\d{1,2})', date_str)
+                    match = re.search(r'(\d{1,2})[/-](\d{1,2})', normalized_date_str)
                     if match:
                         month = int(match.group(1))
                         day = int(match.group(2))
-                        today = date.today()
                         try:
                             task_date = date(today.year, month, day)
                             # 過去の日付の場合は来年
@@ -323,11 +353,10 @@ def import_csv():
                 
                 # パターン3: "11月4日" 形式
                 if not task_date:
-                    match = re.search(r'(\d{1,2})月(\d{1,2})日', date_str)
+                    match = re.search(r'(\d{1,2})月(\d{1,2})日', normalized_date_str)
                     if match:
                         month = int(match.group(1))
                         day = int(match.group(2))
-                        today = date.today()
                         try:
                             task_date = date(today.year, month, day)
                             if task_date < today - timedelta(days=180):
@@ -335,17 +364,34 @@ def import_csv():
                         except ValueError:
                             pass
                 
+                # パターン3-2: "2025年11月4日" 形式（上記で未処理の場合）
+                if not task_date:
+                    match = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日', normalized_date_str)
+                    if match:
+                        year = int(match.group(1))
+                        month = int(match.group(2))
+                        day = int(match.group(3))
+                        try:
+                            task_date = date(year, month, day)
+                        except ValueError:
+                            pass
+                
                 # パターン4: 日数指定（例: "10日間分"）
                 days_count = 0
                 if not task_date:
-                    days_match = re.search(r'(\d+)日間?分?', date_str)
+                    days_match = re.search(r'(\d+)日間?分?', normalized_date_str)
                     if days_match:
                         days_count = int(days_match.group(1))
-                        task_date = date.today()  # 今日から開始
+                        task_date = today  # 今日から開始
+                
+                # パターン5: キーワード（今日/明日など）
+                if not task_date and normalized_date_str in keyword_offset_map:
+                    offset = keyword_offset_map[normalized_date_str]
+                    task_date = today + timedelta(days=offset)
                 
                 # 日付が取得できなかった場合は今日の日付を使用
                 if not task_date:
-                    task_date = date.today()
+                    task_date = today
                 
                 # タスクを作成
                 if days_count > 0:
@@ -357,7 +403,7 @@ def import_csv():
                             title=f"{title} (Day {day_offset + 1})" if days_count > 1 else title,
                             description=description,
                             priority='medium',
-                            category='today' if current_date == date.today() else 'other',
+                            category=determine_category(current_date),
                             start_date=current_date,
                             end_date=current_date
                         )
@@ -370,7 +416,7 @@ def import_csv():
                         title=title,
                         description=description,
                         priority='medium',
-                        category='today' if task_date == date.today() else 'other',
+                        category=determine_category(task_date),
                         start_date=task_date,
                         end_date=task_date
                     )
