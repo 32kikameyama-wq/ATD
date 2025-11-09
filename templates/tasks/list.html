@@ -335,6 +335,7 @@
                                         {% else %}
                                             <span style="color: var(--success-color); font-size: 0.9rem;">✓ マインドマップに登録済み</span>
                                         {% endif %}
+                                        <button type="button" class="btn btn-sm btn-outline" onclick="copyTask({{ task.id }})">コピー</button>
                                         <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-secondary">編集</a>
                                         <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
                                             <button type="submit" class="btn btn-success">
@@ -458,6 +459,7 @@
                                         {% else %}
                                             <span style="color: var(--success-color); font-size: 0.9rem;">✓ マインドマップに登録済み</span>
                                         {% endif %}
+                                        <button type="button" class="btn btn-sm btn-outline" onclick="copyTask({{ task.id }})">コピー</button>
                                         <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-secondary">編集</a>
                                         <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
                                             <button type="submit" class="btn btn-success">
@@ -581,6 +583,7 @@
                                         {% else %}
                                             <span style="color: var(--success-color); font-size: 0.9rem;">✓ マインドマップに登録済み</span>
                                         {% endif %}
+                                        <button type="button" class="btn btn-sm btn-outline" onclick="copyTask({{ task.id }})">コピー</button>
                                         <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-secondary">編集</a>
                                         <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST" style="display:inline;">
                                             <button type="submit" class="btn btn-success">
@@ -1311,6 +1314,32 @@
         .catch(error => {
             console.error('Error:', error);
             alert('エラーが発生しました');
+        });
+    }
+
+    function copyTask(taskId) {
+        if (!confirm('このタスクをコピーしますか？')) {
+            return;
+        }
+
+        fetch(`/tasks/${taskId}/copy`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.message || 'コピーに失敗しました');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('コピーに失敗しました');
         });
     }
 

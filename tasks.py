@@ -1008,35 +1008,49 @@ def bulk_complete_tasks():
     """タスクの一括完了/未完了更新"""
     from models import UserPerformance, TaskAssignee, TeamTask, MindmapNode
     from datetime import datetime
-
+    
     payload = request.get_json() or {}
     task_ids = payload.get('task_ids', [])
     action = payload.get('action')
-
+    
+    try:
+        task_ids = [int(task_id) for task_id in task_ids]
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'message': 'タスクIDが不正です'}), 400
+    
     if not task_ids:
         return jsonify({'success': False, 'message': '操作するタスクが選択されていません'}), 400
-
+    
     if action not in ['complete', 'uncomplete']:
         return jsonify({'success': False, 'message': '無効な操作です'}), 400
-
+    
     target_completed = (action == 'complete')
     now_jst = datetime.now(ZoneInfo('Asia/Tokyo')).replace(tzinfo=None)
-
+    tasks_map = {
+        task.id: task for task in Task.query.filter(
+            Task.id.in_(task_ids),
+            Task.user_id == current_user.id
+        ).all()
+    }
+    
+    if not tasks_map:
+        return jsonify({'success': False, 'message': '対象のタスクが見つかりません'}), 404
+    
     updated_count = 0
     affected_card_ids = set()
-
+    
     try:
         for task_id in task_ids:
-            task = Task.query.get(task_id)
-            if not task or task.user_id != current_user.id:
+            task = tasks_map.get(task_id)
+            if not task:
                 continue
-
+    
             if target_completed:
                 if task.completed and task.completed_at:
                     continue
                 task.completed = True
                 task.completed_at = now_jst
-
+    
                 # 時間計測が動作中なら停止
                 if task.is_tracking:
                     if task.tracking_start_time:
@@ -1049,7 +1063,7 @@ def bulk_complete_tasks():
                     continue
                 task.completed = False
                 task.completed_at = None
-
+    
             # チームタスク連携の更新
             if task.team_task_id:
                 task_assignee = TaskAssignee.query.filter_by(
@@ -1059,44 +1073,44 @@ def bulk_complete_tasks():
                 if task_assignee:
                     task_assignee.completed = task.completed
                     task_assignee.completed_at = now_jst if task.completed else None
-
+    
                 team_task = TeamTask.query.get(task.team_task_id)
                 if team_task:
                     completion_rate = team_task.calculate_completion_rate()
                     team_task.completed = (completion_rate == 100)
                     team_task.updated_at = datetime.utcnow()
-
+    
                     if team_task.parent_node_id:
                         parent_node = MindmapNode.query.get(team_task.parent_node_id)
                         if parent_node:
                             parent_node.progress = parent_node.calculate_progress()
                             db.session.add(parent_node)
-
+    
             if task.task_card_node_id:
                 affected_card_ids.add(task.task_card_node_id)
-
+    
             updated_count += 1
-
+    
         db.session.commit()
-
+    
     except Exception as exc:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'更新に失敗しました: {str(exc)}'}), 500
-
+    
     if affected_card_ids:
         from routes import _update_task_card_progress
         for card_id in affected_card_ids:
             _update_task_card_progress(card_id)
-
+    
     if updated_count > 0:
         UserPerformance.update_daily_performance(current_user.id)
-
+    
     if updated_count == 0:
         return jsonify({'success': True, 'message': '指定したタスクは既に同じ状態です', 'updated_count': 0})
-
+    
     message = f'{updated_count}件のタスクを'
     message += '完了にしました' if target_completed else '未完了に戻しました'
-
+    
     return jsonify({'success': True, 'message': message, 'updated_count': updated_count})
 
 
@@ -1107,52 +1121,110 @@ def bulk_move_tasks():
     payload = request.get_json() or {}
     task_ids = payload.get('task_ids', [])
     target_category = payload.get('target_category')
-
+    
+    try:
+        task_ids = [int(task_id) for task_id in task_ids]
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'message': 'タスクIDが不正です'}), 400
+    
     valid_categories = ['today', 'tomorrow', 'other']
-
+    
     if not task_ids:
         return jsonify({'success': False, 'message': '移動するタスクが選択されていません'}), 400
-
+    
     if target_category not in valid_categories:
         return jsonify({'success': False, 'message': '無効な分類です'}), 400
-
+    
+    tasks_map = {
+        task.id: task for task in Task.query.filter(
+            Task.id.in_(task_ids),
+            Task.user_id == current_user.id
+        ).all()
+    }
+    
+    if not tasks_map:
+        return jsonify({'success': False, 'message': '対象のタスクが見つかりません'}), 404
+    
     moved_count = 0
     now_jst = datetime.now(ZoneInfo('Asia/Tokyo')).replace(tzinfo=None)
-
+    
     try:
         max_order = db.session.query(db.func.max(Task.order_index)).filter_by(
             user_id=current_user.id,
             category=target_category
         ).scalar() or 0
-
+    
         for task_id in task_ids:
-            task = Task.query.get(task_id)
-            if not task or task.user_id != current_user.id:
+            task = tasks_map.get(task_id)
+            if not task or task.category == target_category:
                 continue
-
-            if task.category == target_category:
-                continue
-
+    
             max_order += 1
             task.category = target_category
             task.order_index = max_order
             task.updated_at = now_jst
             moved_count += 1
-
+    
         db.session.commit()
-
+    
     except Exception as exc:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'移動に失敗しました: {str(exc)}'}), 500
-
+    
     category_names = {
         'today': '本日のタスク',
         'tomorrow': '明日のタスク',
         'other': 'その他のタスク'
     }
-
+    
     if moved_count == 0:
         return jsonify({'success': True, 'message': '指定したタスクは既に移動済みです', 'moved_count': 0})
-
+    
     message = f'{moved_count}件のタスクを{category_names[target_category]}に移動しました'
     return jsonify({'success': True, 'message': message, 'moved_count': moved_count})
+
+
+@tasks.route('/tasks/<int:task_id>/copy', methods=['POST'])
+@login_required
+def copy_task(task_id):
+    """タスクの複製"""
+    from models import UserPerformance
+
+    task = Task.query.get_or_404(task_id)
+
+    if task.user_id != current_user.id:
+        return jsonify({'success': False, 'message': 'このタスクをコピーする権限がありません'}), 403
+
+    max_order = db.session.query(db.func.max(Task.order_index)).filter_by(
+        user_id=current_user.id,
+        category=task.category
+    ).scalar() or 0
+
+    new_task = Task(
+        user_id=current_user.id,
+        title=task.title,
+        description=task.description,
+        category=task.category,
+        priority=task.priority,
+        start_date=task.start_date,
+        end_date=task.end_date,
+        order_index=max_order + 1,
+        total_seconds=0,
+        is_tracking=False,
+        tracking_start_time=None,
+        completed=False,
+        completed_at=None,
+        archived=False,
+        team_task_id=task.team_task_id
+    )
+
+    db.session.add(new_task)
+    db.session.commit()
+
+    UserPerformance.update_daily_performance(current_user.id)
+
+    return jsonify({
+        'success': True,
+        'message': 'タスクをコピーしました',
+        'task_id': new_task.id
+    })
