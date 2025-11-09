@@ -1430,6 +1430,14 @@ def mindmap():
                          all_mindmaps=all_mindmaps,
                          current_mindmap=current_mindmap)
 
+
+@main.route('/personal/task-cards')
+@login_required
+def personal_task_cards():
+    """個人向けタスクカードビュー"""
+    return render_template('personal_task_cards.html')
+
+
 @main.route('/team-mindmap')
 @login_required
 def team_mindmap():
@@ -2507,7 +2515,8 @@ def create_personal_mindmap():
 @login_required
 def personal_mindmap_nodes():
     """個人マインドマップノードの取得・作成"""
-    from models import Mindmap, MindmapNode, Task
+    from models import Mindmap, MindmapNode, Task, UserPerformance
+    from zoneinfo import ZoneInfo
     
     # URLパラメータからマインドマップIDを取得
     mindmap_id = request.args.get('mindmap_id', type=int)
@@ -2537,7 +2546,10 @@ def personal_mindmap_nodes():
                 'position_y': node.position_y,
                 'progress': node.progress,
                 'completed': node.completed,
-                'is_task': node.is_task
+                'is_task': node.is_task,
+                'due_date': node.due_date.isoformat() if node.due_date else None,
+                'task_id': node.task_id,
+                'task_completed': node.linked_task.completed if node.linked_task else False
             })
         
         return jsonify({'nodes': nodes_data, 'mindmap_id': mindmap_obj.id})
@@ -2556,27 +2568,38 @@ def personal_mindmap_nodes():
             is_task=data.get('is_task', False)
         )
         
+        # 期日を設定
+        due_date_str = data.get('due_date')
+        if due_date_str:
+            try:
+                new_node.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                new_node.due_date = None
+        
         # タスクとして設定されている場合、個人タスクを作成
-        if data.get('is_task', False) and not data.get('parent_id'):
-            # ルートノードのみタスクとして作成
+        if data.get('is_task', False):
             new_task = Task(
                 title=new_node.title,
                 description=new_node.description,
                 user_id=current_user.id,
                 category='other',
                 priority='medium',
-                completed=False
+                completed=False,
+                start_date=new_node.due_date,
+                end_date=new_node.due_date
             )
             db.session.add(new_task)
             db.session.flush()  # task_idを取得
             new_node.task_id = new_task.id
+            UserPerformance.update_daily_performance(current_user.id)
         
         db.session.add(new_node)
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'node_id': new_node.id
+            'node_id': new_node.id,
+            'task_id': new_node.task_id
         })
 
 @main.route('/personal/mindmap/nodes/<int:node_id>', methods=['PUT', 'DELETE'])
@@ -2584,6 +2607,7 @@ def personal_mindmap_nodes():
 def update_personal_mindmap_node(node_id):
     """個人マインドマップノードの更新・削除"""
     from models import Mindmap, MindmapNode, Task, UserPerformance
+    from zoneinfo import ZoneInfo
     
     node = MindmapNode.query.get_or_404(node_id)
     
@@ -2608,20 +2632,31 @@ def update_personal_mindmap_node(node_id):
             node.progress = data['progress']
         if 'completed' in data:
             node.completed = data['completed']
+        if 'due_date' in data:
+            due_date_str = data['due_date']
+            if due_date_str:
+                try:
+                    node.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    node.due_date = None
+            else:
+                node.due_date = None
         
         # is_taskが変更された場合の処理
         if 'is_task' in data:
             is_task = data['is_task']
             
-            # ルートノードでis_taskがTrueになった場合、個人タスクを作成
-            if is_task and not node.parent_id and not node.task_id:
+            # is_taskがTrueになった場合、個人タスクを作成
+            if is_task and not node.task_id:
                 new_task = Task(
                     title=node.title,
                     description=node.description or '',
                     user_id=current_user.id,
                     category='other',
                     priority='medium',
-                    completed=False
+                    completed=False,
+                    start_date=node.due_date,
+                    end_date=node.due_date
                 )
                 db.session.add(new_task)
                 db.session.flush()
@@ -2636,6 +2671,7 @@ def update_personal_mindmap_node(node_id):
                 if task:
                     db.session.delete(task)
                 node.task_id = None
+                UserPerformance.update_daily_performance(current_user.id)
             
             node.is_task = is_task
         
@@ -2647,9 +2683,12 @@ def update_personal_mindmap_node(node_id):
                     task.title = data['title']
                 if 'description' in data:
                     task.description = data.get('description', '')
+                if 'due_date' in data:
+                    task.start_date = node.due_date
+                    task.end_date = node.due_date
                 if 'completed' in data:
                     task.completed = data['completed']
-                    task.completed_at = datetime.utcnow() if task.completed else None
+                    task.completed_at = datetime.now(ZoneInfo('Asia/Tokyo')).replace(tzinfo=None) if task.completed else None
                 
                 # パフォーマンス更新
                 UserPerformance.update_daily_performance(current_user.id)
@@ -2657,7 +2696,7 @@ def update_personal_mindmap_node(node_id):
         node.updated_at = datetime.utcnow()
         db.session.commit()
         
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'task_id': node.task_id})
     
     elif request.method == 'DELETE':
         # ノード削除時、リンクされたタスクも削除
@@ -2668,6 +2707,7 @@ def update_personal_mindmap_node(node_id):
         
         db.session.delete(node)
         db.session.commit()
+        UserPerformance.update_daily_performance(current_user.id)
         
         return jsonify({'success': True})
 
