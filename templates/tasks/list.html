@@ -122,6 +122,15 @@
             gap: 16px;
             flex-wrap: wrap;
         }
+        .completed-task-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .completed-task-actions form {
+            display: inline;
+        }
     </style>
 </head>
 <body>
@@ -583,6 +592,11 @@
                                             カテゴリ:
                                             {% if task.category == 'today' %}本日{% elif task.category == 'tomorrow' %}明日{% elif task.category == 'other' %}その他{% else %}{{ task.category }}{% endif %}
                                         </span>
+                                    </div>
+                                    <div class="completed-task-actions">
+                                        <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="POST">
+                                            <button type="submit" class="btn btn-sm btn-outline">未完了に戻す</button>
+                                        </form>
                                     </div>
                                 </div>
                             {% endfor %}

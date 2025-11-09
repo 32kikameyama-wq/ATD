@@ -29,12 +29,17 @@ def list_tasks():
     # 分類別にタスクを取得（アーカイブ済みは除外）
     # データベースから最新の状態を取得（キャッシュを回避）
     db.session.expire_all()  # セッションのキャッシュをクリア
-    today_tasks = Task.query.filter(
+    today_tasks_all = Task.query.filter(
         Task.user_id == current_user.id,
         Task.category == 'today',
-        Task.archived == False,
-        Task.completed == False
+        Task.archived == False
     ).order_by(Task.order_index).all()
+    today_tasks = []
+    for task in today_tasks_all:
+        if task.completed and task.completed_at:
+            if task.completed_at.date() < today:
+                continue
+        today_tasks.append(task)
     tomorrow_tasks = Task.query.filter(
         Task.user_id == current_user.id,
         Task.category == 'tomorrow',
@@ -558,7 +563,7 @@ def toggle_task(task_id):
     
     # 完了状態を切り替え
     task.completed = not task.completed
-    task.completed_at = datetime.utcnow() if task.completed else None
+    task.completed_at = datetime.now(ZoneInfo('Asia/Tokyo')).replace(tzinfo=None) if task.completed else None
     
     # 完了にした場合、時間計測を停止
     if task.completed and task.is_tracking:
@@ -577,7 +582,7 @@ def toggle_task(task_id):
         ).first()
         if task_assignee:
             task_assignee.completed = task.completed
-            task_assignee.completed_at = datetime.utcnow() if task.completed else None
+            task_assignee.completed_at = datetime.now(ZoneInfo('Asia/Tokyo')).replace(tzinfo=None) if task.completed else None
         
         # チームタスクの完了率を計算して更新
         team_task = TeamTask.query.get(task.team_task_id)
