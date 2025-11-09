@@ -311,8 +311,8 @@
                     <span class="progress-indicator">達成度: <span id="progress-value">0</span>%</span>
                 </div>
                 <div class="toolbar-right">
-                    <button class="btn btn-secondary btn-sm" id="reload-btn">再読み込み</button>
                     <button class="btn btn-primary btn-sm" id="create-map-btn">新しいカードマップを作成</button>
+                    <button class="btn btn-secondary btn-sm" id="create-card-btn">カードを追加</button>
                 </div>
             </div>
         </div>
@@ -369,15 +369,47 @@
         const mindmapList = document.getElementById('mindmap-list');
         const progressValue = document.getElementById('progress-value');
 
-        document.getElementById('reload-btn').addEventListener('click', () => {
-            if (mindmapId) {
-                loadTaskCards(mindmapId);
-            } else {
-                loadMindmapList(true);
+        document.getElementById('create-map-btn').addEventListener('click', async () => {
+        document.getElementById('create-card-btn').addEventListener('click', async () => {
+            if (!mindmapId) {
+                alert('カードボードを先に作成してください');
+                return;
+            }
+            const title = prompt('カードのタイトルを入力してください', '新しいカード');
+            if (title === null || title.trim() === '') return;
+            const description = prompt('説明 (任意)', '') || '';
+            const due = prompt('完了予定日 (YYYY-MM-DD, 任意)', '') || null;
+
+            try {
+                const payload = {
+                    title: title.trim(),
+                    description: description.trim(),
+                    position_x: 0,
+                    position_y: 0,
+                    is_task: false,
+                    parent_id: null
+                };
+                if (due) {
+                    payload.due_date = due;
+                }
+
+                const url = `/personal/mindmap/nodes?mindmap_id=${mindmapId}`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    await loadTaskCards(mindmapId);
+                } else {
+                    alert('カードの作成に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error creating card:', error);
+                alert('カードの作成に失敗しました');
             }
         });
-
-        document.getElementById('create-map-btn').addEventListener('click', async () => {
             const name = prompt('カードボード名を入力してください', '新しいタスクカード');
             if (name === null) return;
             const suggestedDate = new Date().toISOString().slice(0, 10);
