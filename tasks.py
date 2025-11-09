@@ -29,9 +29,24 @@ def list_tasks():
     # 分類別にタスクを取得（アーカイブ済みは除外）
     # データベースから最新の状態を取得（キャッシュを回避）
     db.session.expire_all()  # セッションのキャッシュをクリア
-    today_tasks = Task.query.filter_by(user_id=current_user.id, category='today', archived=False).order_by(Task.order_index).all()
-    tomorrow_tasks = Task.query.filter_by(user_id=current_user.id, category='tomorrow', archived=False).order_by(Task.order_index).all()
-    other_tasks = Task.query.filter_by(user_id=current_user.id, category='other', archived=False).order_by(Task.order_index).all()
+    today_tasks = Task.query.filter(
+        Task.user_id == current_user.id,
+        Task.category == 'today',
+        Task.archived == False,
+        Task.completed == False
+    ).order_by(Task.order_index).all()
+    tomorrow_tasks = Task.query.filter(
+        Task.user_id == current_user.id,
+        Task.category == 'tomorrow',
+        Task.archived == False,
+        Task.completed == False
+    ).order_by(Task.order_index).all()
+    other_tasks = Task.query.filter(
+        Task.user_id == current_user.id,
+        Task.category == 'other',
+        Task.archived == False,
+        Task.completed == False
+    ).order_by(Task.order_index).all()
 
     completed_tasks = Task.query.filter(
         Task.user_id == current_user.id,

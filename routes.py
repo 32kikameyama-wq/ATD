@@ -93,11 +93,13 @@ def dashboard():
     
     # 本日のタスクを取得（優先順位順）
     # category='today'のタスクをすべて取得（昨日の未完了タスクも含む）
-    today_tasks = Task.query.filter_by(
-        user_id=current_user.id, 
+    today_tasks_all = Task.query.filter_by(
+        user_id=current_user.id,
         category='today',
         archived=False
     ).order_by(Task.order_index).all()
+    # 表示用は未完了のみ
+    today_tasks = [task for task in today_tasks_all if not task.completed]
     
     # 完了済みタスク数
     completed_tasks = Task.query.filter_by(
@@ -108,7 +110,7 @@ def dashboard():
     ).count()
     
     # 総タスク数
-    total_tasks = len(today_tasks)
+    total_tasks = len(today_tasks_all)
     
     # 進捗率（パーセンテージ）
     progress_percentage = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
@@ -173,11 +175,11 @@ def dashboard():
     }
     
     # 今日の総作業時間を計算（完了済みタスクのみ）
-    today_total_seconds = sum(task.total_seconds for task in today_tasks if task.completed and not task.archived)
+    today_total_seconds = sum(task.total_seconds for task in today_tasks_all if task.completed and not task.archived)
     
     # タスク別の作業時間データ（時間帯別ではなく完了タスク別）
     task_time_data = []
-    for task in today_tasks:
+    for task in today_tasks_all:
         if task.completed and not task.archived and task.total_seconds > 0:
             # タイトルが長すぎる場合は切り詰める（30文字まで）
             title = task.title[:30] + '...' if len(task.title) > 30 else task.title
@@ -241,14 +243,15 @@ def mobile_home():
 
     UserPerformance.update_daily_performance(current_user.id, date=today)
 
-    today_tasks = Task.query.filter_by(
+    today_tasks_all = Task.query.filter_by(
         user_id=current_user.id,
         category='today',
         archived=False
     ).order_by(Task.order_index).all()
+    today_tasks = [task for task in today_tasks_all if not task.completed]
 
-    completed_tasks = sum(1 for task in today_tasks if task.completed)
-    total_tasks = len(today_tasks)
+    completed_tasks = sum(1 for task in today_tasks_all if task.completed)
+    total_tasks = len(today_tasks_all)
     progress_percentage = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
 
     today_stats = UserPerformance.query.filter_by(
@@ -286,9 +289,21 @@ def mobile_home():
 def mobile_tasks():
     from models import Task
 
-    today_tasks = Task.query.filter_by(user_id=current_user.id, category='today', archived=False).order_by(Task.order_index).all()
-    tomorrow_tasks = Task.query.filter_by(user_id=current_user.id, category='tomorrow', archived=False).order_by(Task.order_index).all()
-    other_tasks = Task.query.filter_by(user_id=current_user.id, category='other', archived=False).order_by(Task.order_index).all()
+    today_tasks = Task.query.filter_by(
+        user_id=current_user.id,
+        category='today',
+        archived=False
+    ).filter(Task.completed == False).order_by(Task.order_index).all()
+    tomorrow_tasks = Task.query.filter_by(
+        user_id=current_user.id,
+        category='tomorrow',
+        archived=False
+    ).filter(Task.completed == False).order_by(Task.order_index).all()
+    other_tasks = Task.query.filter_by(
+        user_id=current_user.id,
+        category='other',
+        archived=False
+    ).filter(Task.completed == False).order_by(Task.order_index).all()
 
     return render_template('mobile/tasks.html',
                            today_tasks=today_tasks,
