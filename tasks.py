@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import login_required, current_user
-from models import db, Task
+from models import db, Task, Mindmap, MindmapNode
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -615,6 +615,58 @@ def toggle_task(task_id):
         return redirect(url_for('main.dashboard'))
     else:
         return redirect(url_for('tasks.list_tasks'))
+
+
+@tasks.route('/tasks/<int:task_id>/task-card', methods=['POST'])
+@login_required
+def create_task_card(task_id):
+    """既存のタスクからタスクカードを作成"""
+    from models import Mindmap, MindmapNode, UserPerformance
+    from datetime import date
+    
+    task = Task.query.get_or_404(task_id)
+    
+    if task.user_id != current_user.id:
+        return jsonify({'success': False, 'message': '権限がありません'}), 403
+    
+    existing_node = MindmapNode.query.filter_by(task_id=task.id).first()
+    if existing_node:
+        return jsonify({'success': True, 'message': '既にタスクカードが存在します', 'node_id': existing_node.id}), 200
+    
+    mindmap_obj = Mindmap.query.filter_by(user_id=current_user.id).order_by(Mindmap.date.desc(), Mindmap.created_at.desc()).first()
+    if not mindmap_obj:
+        mindmap_obj = Mindmap(
+            user_id=current_user.id,
+            name=f'タスクカード {date.today().strftime("%Y/%m/%d")}',
+            description='タスク管理から自動作成されたカードボード',
+            date=date.today(),
+            created_by=current_user.id
+        )
+        db.session.add(mindmap_obj)
+        db.session.flush()
+    
+    new_node = MindmapNode(
+        mindmap_id=mindmap_obj.id,
+        parent_id=None,
+        title=task.title,
+        description=task.description,
+        is_task=True,
+        task_id=task.id,
+        due_date=task.end_date,
+        progress=100 if task.completed else 0
+    )
+    
+    db.session.add(new_node)
+    db.session.commit()
+    
+    UserPerformance.update_daily_performance(current_user.id)
+    
+    return jsonify({
+        'success': True,
+        'node_id': new_node.id,
+        'mindmap_id': mindmap_obj.id
+    })
+
 
 @tasks.route('/tasks/<int:task_id>/move', methods=['POST'])
 @login_required

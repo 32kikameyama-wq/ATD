@@ -145,6 +145,7 @@
                         <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
                         <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item active">タスク管理</a>
                         <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                        <a href="{{ url_for('main.personal_task_cards') }}" class="navbar-item">タスクカード</a>
                 {% if current_user.is_admin %}
                     <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
                 {% endif %}
@@ -315,6 +316,12 @@
                                         </form>
                                     </div>
                                     <div class="task-main-actions">
+                                        {% if task.mindmap_node %}
+                                            <span style="color: var(--success-color); font-size: 0.9rem;">✓ カード連携済み</span>
+                                            <a href="{{ url_for('main.personal_task_cards') }}" class="btn btn-sm btn-outline">カードを見る</a>
+                                        {% else %}
+                                            <button type="button" class="btn btn-sm btn-outline" onclick="createTaskCard({{ task.id }})">📇 カードを作成</button>
+                                        {% endif %}
                                         {% if not task.mindmap_node %}
                                             <form action="{{ url_for('tasks.add_to_mindmap', task_id=task.id) }}" method="POST" style="display:inline;">
                                                 <button type="submit" class="btn btn-sm btn-outline">🧠 マインドマップに追加</button>
@@ -427,6 +434,12 @@
                                         </form>
                                     </div>
                                     <div class="task-main-actions">
+                                        {% if task.mindmap_node %}
+                                            <span style="color: var(--success-color); font-size: 0.9rem;">✓ カード連携済み</span>
+                                            <a href="{{ url_for('main.personal_task_cards') }}" class="btn btn-sm btn-outline">カードを見る</a>
+                                        {% else %}
+                                            <button type="button" class="btn btn-sm btn-outline" onclick="createTaskCard({{ task.id }})">📇 カードを作成</button>
+                                        {% endif %}
                                         {% if not task.mindmap_node %}
                                             <form action="{{ url_for('tasks.add_to_mindmap', task_id=task.id) }}" method="POST" style="display:inline;">
                                                 <button type="submit" class="btn btn-sm btn-outline">🧠 マインドマップに追加</button>
@@ -539,6 +552,12 @@
                                         </form>
                                     </div>
                                     <div class="task-main-actions">
+                                        {% if task.mindmap_node %}
+                                            <span style="color: var(--success-color); font-size: 0.9rem;">✓ カード連携済み</span>
+                                            <a href="{{ url_for('main.personal_task_cards') }}" class="btn btn-sm btn-outline">カードを見る</a>
+                                        {% else %}
+                                            <button type="button" class="btn btn-sm btn-outline" onclick="createTaskCard({{ task.id }})">📇 カードを作成</button>
+                                        {% endif %}
                                         {% if not task.mindmap_node %}
                                             <form action="{{ url_for('tasks.add_to_mindmap', task_id=task.id) }}" method="POST" style="display:inline;">
                                                 <button type="submit" class="btn btn-sm btn-outline">🧠 マインドマップに追加</button>
@@ -678,6 +697,33 @@
             console.error('Error:', error);
             alert('エラーが発生しました');
         });
+    }
+
+    async function createTaskCard(taskId) {
+        if (!confirm('このタスクからカードを作成しますか？')) {
+            return;
+        }
+        try {
+            const response = await fetch(`/tasks/${taskId}/task-card`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                if (confirm(data.message ? `${data.message}\nカードページに移動しますか？` : 'タスクカードを作成しました。カードページに移動しますか？')) {
+                    window.location.href = '{{ url_for("main.personal_task_cards") }}';
+                } else {
+                    location.reload();
+                }
+            } else {
+                alert(data.message || 'タスクカードの作成に失敗しました');
+            }
+        } catch (error) {
+            console.error('Error creating task card:', error);
+            alert('タスクカードの作成に失敗しました');
+        }
     }
 
     // 検索・フィルタ機能

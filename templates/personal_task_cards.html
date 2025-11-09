@@ -645,6 +645,7 @@
             const taskActions = document.createElement('div');
             taskActions.className = 'card-actions';
             taskActions.style.marginTop = '12px';
+            taskActions.style.flexWrap = 'wrap';
 
             if (node.is_task && node.task_id) {
                 const openBtn = document.createElement('button');
@@ -660,17 +661,20 @@
                 unlinkBtn.classList.add('danger');
                 unlinkBtn.onclick = async (e) => {
                     e.stopPropagation();
-                    await updateNode(node.id, { is_task: false });
+                    await detachTaskFromCard(node);
                 };
                 taskActions.appendChild(unlinkBtn);
             } else {
-                const createTaskBtn = document.createElement('button');
-                createTaskBtn.textContent = 'タスクを作成';
-                createTaskBtn.onclick = async (e) => {
+                const prepareBtn = document.createElement('button');
+                prepareBtn.textContent = node.is_task ? 'タスク未作成' : 'タスクカード化';
+                prepareBtn.onclick = async (e) => {
                     e.stopPropagation();
-                    await updateNode(node.id, { is_task: true });
+                    if (!node.is_task) {
+                        await updateNode(node.id, { is_task: true }, { silent: true });
+                    }
+                    await createTaskFromCard(node.id);
                 };
-                taskActions.appendChild(createTaskBtn);
+                taskActions.appendChild(prepareBtn);
             }
 
             if (taskActions.children.length > 0) {
@@ -791,7 +795,58 @@
             }
         });
 
-        async function updateNode(nodeId, payload) {
+        function suggestCategory(node) {
+            if (!node.due_date) return 'other';
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const due = new Date(node.due_date);
+            due.setHours(0, 0, 0, 0);
+            const diff = (due - today) / (1000 * 60 * 60 * 24);
+            if (diff <= 0) return 'today';
+            if (diff === 1) return 'tomorrow';
+            return 'other';
+        }
+
+        async function createTaskFromCard(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) {
+                alert('カード情報を取得できませんでした');
+                return;
+            }
+
+            let category = prompt('タスクの分類 (today / tomorrow / other)', suggestCategory(node));
+            if (category === null) return;
+            category = category.trim().toLowerCase();
+
+            let priority = prompt('優先度 (high / medium / low)', 'medium');
+            if (priority === null) return;
+            priority = priority.trim().toLowerCase();
+
+            try {
+                const response = await fetch(`/personal/mindmap/nodes/${nodeId}/create-task`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ category, priority })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('タスクを作成しました');
+                    await loadTaskCards(mindmapId);
+                } else {
+                    alert(data.error || data.message || 'タスクの作成に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error creating task from card:', error);
+                alert('タスクの作成に失敗しました');
+            }
+        }
+
+        async function detachTaskFromCard(node) {
+            if (!confirm('タスクとのリンクを解除しますか？タスクは削除されます。')) return;
+            await updateNode(node.id, { is_task: false });
+        }
+
+        async function updateNode(nodeId, payload, options = {}) {
             try {
                 const response = await fetch(`/personal/mindmap/nodes/${nodeId}`, {
                     method: 'PUT',
@@ -802,11 +857,15 @@
                 if (data.success) {
                     await loadTaskCards(mindmapId);
                 } else {
-                    alert('カードの更新に失敗しました');
+                    if (!options.silent) {
+                        alert('カードの更新に失敗しました');
+                    }
                 }
             } catch (error) {
                 console.error('Error updating node:', error);
-                alert('カードの更新に失敗しました');
+                if (!options.silent) {
+                    alert('カードの更新に失敗しました');
+                }
             }
         }
 

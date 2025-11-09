@@ -22,6 +22,7 @@
                         <a href="{{ url_for('main.dashboard') }}" class="navbar-item active">ダッシュボード</a>
                         <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
                         <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                        <a href="{{ url_for('main.personal_task_cards') }}" class="navbar-item">タスクカード</a>
                         {% if current_user.is_admin %}
                             <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
                         {% endif %}

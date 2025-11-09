@@ -54,6 +54,11 @@
                 </form>
                 <button type="button" class="mobile-task-button mobile-track-button" data-task-id="{{ task.id }}" data-action="start" {% if task.is_tracking %}disabled{% endif %}>計測オン</button>
                 <button type="button" class="mobile-task-button mobile-track-button" data-task-id="{{ task.id }}" data-action="stop" {% if not task.is_tracking %}disabled{% endif %}>計測オフ</button>
+                {% if task.mindmap_node %}
+                <button type="button" class="mobile-task-button" onclick="location.href='{{ url_for('main.personal_task_cards') }}'">カードを見る</button>
+                {% else %}
+                <button type="button" class="mobile-task-button" onclick="createMobileTaskCard({{ task.id }})">カード作成</button>
+                {% endif %}
                 <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="mobile-task-button mobile-task-button--link">編集</a>
             </div>
         </div>
@@ -99,6 +104,29 @@ document.querySelectorAll('.mobile-track-button').forEach(btn => {
         });
     });
 });
+
+function createMobileTaskCard(taskId) {
+    if (!confirm('このタスクからカードを作成しますか？')) return;
+    fetch(`/tasks/${taskId}/task-card`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (confirm((data.message || 'カードを作成しました。') + '\nカードページへ移動しますか？')) {
+                window.location.href = '{{ url_for('main.personal_task_cards') }}';
+            } else {
+                window.location.href = '{{ url_for('main.mobile_tasks') }}';
+            }
+        } else {
+            alert(data.message || 'カードの作成に失敗しました');
+        }
+    })
+    .catch(() => alert('カードの作成に失敗しました'));
+}
 </script>
 {% endblock %}
 

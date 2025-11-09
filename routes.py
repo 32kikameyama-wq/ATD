@@ -2576,23 +2576,6 @@ def personal_mindmap_nodes():
             except ValueError:
                 new_node.due_date = None
         
-        # タスクとして設定されている場合、個人タスクを作成
-        if data.get('is_task', False):
-            new_task = Task(
-                title=new_node.title,
-                description=new_node.description,
-                user_id=current_user.id,
-                category='other',
-                priority='medium',
-                completed=False,
-                start_date=new_node.due_date,
-                end_date=new_node.due_date
-            )
-            db.session.add(new_task)
-            db.session.flush()  # task_idを取得
-            new_node.task_id = new_task.id
-            UserPerformance.update_daily_performance(current_user.id)
-        
         db.session.add(new_node)
         db.session.commit()
         
@@ -2710,6 +2693,68 @@ def update_personal_mindmap_node(node_id):
         UserPerformance.update_daily_performance(current_user.id)
         
         return jsonify({'success': True})
+
+
+@main.route('/personal/mindmap/nodes/<int:node_id>/create-task', methods=['POST'])
+@login_required
+def create_task_from_personal_card(node_id):
+    """タスクカードから個人タスクを作成"""
+    from models import Mindmap, MindmapNode, Task, UserPerformance
+from datetime import date, datetime, timedelta
+    from zoneinfo import ZoneInfo
+    
+    node = MindmapNode.query.get_or_404(node_id)
+    mindmap_obj = Mindmap.query.filter_by(id=node.mindmap_id, user_id=current_user.id).first()
+    if not mindmap_obj:
+        return jsonify({'error': '権限がありません'}), 403
+    
+    if node.task_id:
+        return jsonify({'error': '既にリンクされたタスクがあります'}), 400
+    
+    data = request.get_json() or {}
+    category = data.get('category', '').strip().lower()
+    priority = data.get('priority', '').strip().lower()
+    
+    if category not in ['today', 'tomorrow', 'other']:
+        # 期日に応じて自動判定
+        today = date.today()
+        if node.due_date == today:
+            category = 'today'
+        elif node.due_date == today + timedelta(days=1):
+            category = 'tomorrow'
+        else:
+            category = 'other'
+    
+    if priority not in ['high', 'medium', 'low']:
+        priority = 'medium'
+    
+    start_date = node.due_date or date.today()
+    end_date = start_date
+    
+    new_task = Task(
+        title=node.title or '新しいタスク',
+        description=node.description or '',
+        user_id=current_user.id,
+        category=category,
+        priority=priority,
+        completed=False,
+        start_date=start_date,
+        end_date=end_date
+    )
+    
+    db.session.add(new_task)
+    db.session.flush()
+    
+    node.is_task = True
+    node.task_id = new_task.id
+    db.session.commit()
+    
+    UserPerformance.update_daily_performance(current_user.id)
+    
+    return jsonify({
+        'success': True,
+        'task_id': new_task.id
+    })
 
 @main.route('/personal/mindmap/progress')
 @login_required
