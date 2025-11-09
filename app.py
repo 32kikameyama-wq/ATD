@@ -83,7 +83,9 @@ def create_app(config_class=Config):
                     columns = [column['name'] for column in inspector.get_columns('tasks')]
                     if 'task_card_node_id' not in columns:
                         try:
-                            db.engine.execute(text('ALTER TABLE tasks ADD COLUMN task_card_node_id INTEGER'))
+                            with db.engine.connect() as conn:
+                                conn.execute(text('ALTER TABLE tasks ADD COLUMN task_card_node_id INTEGER'))
+                                conn.commit()
                             print('✅ tasks テーブルに task_card_node_id カラムを追加しました')
                         except Exception as alter_error:
                             print(f'⚠️ task_card_node_id カラムの追加に失敗しました: {alter_error}')
