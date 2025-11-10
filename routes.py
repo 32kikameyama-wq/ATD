@@ -4089,3 +4089,58 @@ def get_brainstorm_session(session_id):
         'messages': messages,
         'suggested_tasks': suggested_tasks
     })
+
+@main.route('/task-templates/<int:template_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_task_template(template_id):
+    """タスクテンプレート編集"""
+    from models import TaskTemplate, db
+
+    template = TaskTemplate.query.get_or_404(template_id)
+
+    if template.user_id != current_user.id:
+        flash('このテンプレートを編集する権限がありません', 'error')
+        return redirect(url_for('main.task_templates'))
+
+    if request.method == 'POST':
+        title = request.form.get('title')
+        description = request.form.get('description')
+        priority = request.form.get('priority', 'medium')
+        category = request.form.get('category', 'today')
+        repeat_type = request.form.get('repeat_type', 'none')
+
+        if not title:
+            flash('タイトルを入力してください', 'error')
+            return render_template('task_templates/edit.html', template=template)
+
+        template.title = title
+        template.description = description
+        template.priority = priority
+        template.category = category
+        template.repeat_type = repeat_type
+
+        db.session.commit()
+
+        flash('テンプレートを更新しました', 'success')
+        return redirect(url_for('main.task_templates'))
+
+    return render_template('task_templates/edit.html', template=template)
+
+
+@main.route('/task-templates/<int:template_id>/delete', methods=['POST'])
+@login_required
+def delete_task_template(template_id):
+    """タスクテンプレート削除"""
+    from models import TaskTemplate, db
+
+    template = TaskTemplate.query.get_or_404(template_id)
+
+    if template.user_id != current_user.id:
+        flash('このテンプレートを削除する権限がありません', 'error')
+        return redirect(url_for('main.task_templates'))
+
+    db.session.delete(template)
+    db.session.commit()
+
+    flash('テンプレートを削除しました', 'success')
+    return redirect(url_for('main.task_templates'))

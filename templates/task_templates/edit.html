@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>テンプレート編集 - ATD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- 上部ナビゲーションバー -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">
+    <span class="brand-title">ATD</span>
+    <span class="brand-date">{{ current_date_display }}</span>
+</div>
+            <div class="navbar-menu">
+                <a href="{{ url_for('main.dashboard') }}" class="navbar-item">ダッシュボード</a>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="navbar-item">タスク管理</a>
+                <a href="{{ url_for('main.mindmap') }}" class="navbar-item">マインドマップ</a>
+                <a href="{{ url_for('main.personal_task_cards') }}" class="navbar-item">タスクカード</a>
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('main.admin') }}" class="navbar-item">管理者</a>
+                {% endif %}
+                <a href="{{ url_for('main.profile') }}" class="navbar-item">プロフィール</a>
+            </div>
+            <div class="user-controls">
+                <a href="{{ url_for('main.notifications') }}" class="btn btn-sm" style="position: relative; margin-right: 5px;">
+                    🔔
+                    {% if unread_notifications > 0 %}
+                        <span style="position: absolute; top: -5px; right: -5px; background: #f44336; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">{{ unread_notifications }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline">ログアウト</a>
+                <a href="#" class="user-control active personal-mode">
+                    個人
+                </a>
+                <a href="#" class="user-control">
+                    チーム
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="user-control">
+                    {% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h1>テンプレートを編集</h1>
+                <a href="{{ url_for('main.task_templates') }}" class="btn btn-secondary">テンプレート一覧に戻る</a>
+            </div>
+            
+            <!-- フラッシュメッセージ -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" id="templateForm">
+                <div class="form-group">
+                    <label for="title">タイトル *</label>
+                    <input type="text" id="title" name="title" class="form-control" required value="{{ template.title }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">説明</label>
+                    <textarea id="description" name="description" class="form-control" rows="3">{{ template.description }}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="priority">優先度 *</label>
+                    <select id="priority" name="priority" class="form-control" required>
+                        <option value="high" {% if template.priority == 'high' %}selected{% endif %}>高</option>
+                        <option value="medium" {% if template.priority == 'medium' %}selected{% endif %}>中</option>
+                        <option value="low" {% if template.priority == 'low' %}selected{% endif %}>低</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="category">分類 *</label>
+                    <select id="category" name="category" class="form-control" required>
+                        <option value="today" {% if template.category == 'today' %}selected{% endif %}>今日のタスク</option>
+                        <option value="tomorrow" {% if template.category == 'tomorrow' %}selected{% endif %}>明日のタスク</option>
+                        <option value="other" {% if template.category == 'other' %}selected{% endif %}>その他のタスク</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="repeat_type">繰り返し</label>
+                    <select id="repeat_type" name="repeat_type" class="form-control">
+                        <option value="none" {% if template.repeat_type in [None, 'none'] %}selected{% endif %}>なし</option>
+                        <option value="daily" {% if template.repeat_type == 'daily' %}selected{% endif %}>毎日</option>
+                        <option value="weekly" {% if template.repeat_type == 'weekly' %}selected{% endif %}>毎週</option>
+                        <option value="monthly" {% if template.repeat_type == 'monthly' %}selected{% endif %}>毎月</option>
+                    </select>
+                    <small style="color: #666; font-size: 0.85rem;">繰り返しを設定すると、日次処理で自動的にタスクが作成されます</small>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">更新</button>
+                    <a href="{{ url_for('main.task_templates') }}" class="btn btn-secondary">キャンセル</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 重複送信防止
+        document.getElementById('templateForm').addEventListener('submit', function(e) {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '更新中...';
+        });
+
+        // 個人/チーム切り替え
+        document.querySelectorAll('.user-control').forEach(control => {
+            control.addEventListener('click', function(e) {
+                if (this.textContent.trim() === '{% if current_user.display_name %}{{ current_user.display_name }}{% else %}{{ current_user.username }}{% endif %}') {
+                    return;
+                }
+                e.preventDefault();
+                document.querySelectorAll('.user-control').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                
+                const mode = this.textContent.trim();
+                if (mode === 'チーム') {
+                    window.location.href = '/team-management';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

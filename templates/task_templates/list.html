@@ -101,6 +101,13 @@
                                 <form action="{{ url_for('main.generate_task_from_template', template_id=template.id) }}" method="POST" style="flex: 1;">
                                     <button type="submit" class="btn btn-primary" style="width: 100%;">今日のタスクを作成</button>
                                 </form>
+                                <a href="{{ url_for('main.edit_task_template', template_id=template.id) }}" class="btn btn-secondary" style="flex: 1;">編集</a>
+                            </div>
+
+                            <div style="margin-top: 0.5rem;">
+                                <form action="{{ url_for('main.delete_task_template', template_id=template.id) }}" method="POST" onsubmit="return confirm('このテンプレートを削除しますか？');">
+                                    <button type="submit" class="btn btn-danger" style="width: 100%;">削除</button>
+                                </form>
                             </div>
                         </div>
                     {% endfor %}
