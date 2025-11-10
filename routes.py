@@ -2473,33 +2473,11 @@ def create_task_from_node(team_id, node_id):
 @login_required
 def personal_task_card_detail(node_id):
     """タスクカード詳細"""
-    from models import Mindmap, MindmapNode, Task
-    
-    node = MindmapNode.query.get_or_404(node_id)
-    mindmap_obj = Mindmap.query.get_or_404(node.mindmap_id)
-    if mindmap_obj.user_id != current_user.id:
-        flash('アクセス権限がありません', 'error')
+    context = _get_personal_task_card_context(node_id)
+    if context is None:
         return redirect(url_for('main.personal_task_cards'))
-    
-    tasks = Task.query.filter_by(
-        user_id=current_user.id,
-        task_card_node_id=node.id,
-        archived=False
-    ).order_by(Task.completed, Task.category, Task.priority, Task.created_at.desc()).all()
-    
-    active_tasks = [task for task in tasks if not task.completed]
-    completed_tasks = [task for task in tasks if task.completed]
-    
-    _update_task_card_progress(node.id)
-    db.session.commit()
-    
-    return render_template(
-        'personal_task_card_detail.html',
-        card_node=node,
-        mindmap=mindmap_obj,
-        active_tasks=active_tasks,
-        completed_tasks=completed_tasks
-    )
+
+    return render_template('personal_task_card_detail.html', **context)
 
 
 @main.route('/personal/task-cards/<int:node_id>/tasks', methods=['POST'])
@@ -4184,16 +4162,6 @@ def _get_personal_task_card_context(node_id):
         'active_tasks': active_tasks,
         'completed_tasks': completed_tasks
     }
-
-@main.route('/personal/task-cards/<int:node_id>')
-@login_required
-def personal_task_card_detail(node_id):
-    """タスクカード詳細"""
-    context = _get_personal_task_card_context(node_id)
-    if context is None:
-        return redirect(url_for('main.personal_task_cards'))
-
-    return render_template('personal_task_card_detail.html', **context)
 
 @main.route('/mobile/mindmap')
 @login_required
