@@ -4199,11 +4199,11 @@ def personal_task_card_detail(node_id):
 @login_required
 def mobile_mindmap():
     from models import Mindmap
- 
+
     mindmap_objs = Mindmap.query.filter_by(user_id=current_user.id).order_by(
         Mindmap.date.desc().nullslast(), Mindmap.created_at.desc()
     ).all()
- 
+
     mindmaps = [
         {
             'id': mindmap.id,
@@ -4213,27 +4213,37 @@ def mobile_mindmap():
         }
         for mindmap in mindmap_objs
     ]
- 
+
     return render_template('mobile/mindmap.html', mindmaps=mindmaps)
- 
- 
- @main.route('/mobile/task-cards')
- @login_required
- def mobile_task_cards():
-     from models import Mindmap
- 
-     mindmap_objs = Mindmap.query.filter_by(user_id=current_user.id).order_by(
-         Mindmap.date.desc().nullslast(), Mindmap.created_at.desc()
-     ).all()
- 
-     mindmaps = [
-         {
-             'id': mindmap.id,
-             'name': mindmap.name,
-             'description': mindmap.description,
-             'date': mindmap.date.isoformat() if mindmap.date else None
-         }
-         for mindmap in mindmap_objs
-     ]
- 
-     return render_template('mobile/task_cards.html', mindmaps=mindmaps)
+
+
+@main.route('/mobile/task-cards')
+@login_required
+def mobile_task_cards():
+    from models import Mindmap
+
+    mindmap_objs = Mindmap.query.filter_by(user_id=current_user.id).order_by(
+        Mindmap.date.desc().nullslast(), Mindmap.created_at.desc()
+    ).all()
+
+    mindmaps = [
+        {
+            'id': mindmap.id,
+            'name': mindmap.name,
+            'description': mindmap.description,
+            'date': mindmap.date.isoformat() if mindmap.date else None
+        }
+        for mindmap in mindmap_objs
+    ]
+
+    return render_template('mobile/task_cards.html', mindmaps=mindmaps)
+
+
+@main.route('/mobile/task-cards/<int:node_id>')
+@login_required
+def mobile_task_card_detail(node_id):
+    context = _get_personal_task_card_context(node_id)
+    if context is None:
+        return redirect(url_for('main.mobile_task_cards'))
+
+    return render_template('mobile/task_card_detail.html', **context)
