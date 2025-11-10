@@ -1,0 +1,488 @@
+{% extends 'mobile/base.html' %}
+{% block head_title %}タスクカード - ATD Mobile{% endblock %}
+{% set active_tab = 'tasks' %}
+
+{% block header_profile %}
+<div class="mobile-profile-card">
+    <div class="mobile-profile-avatar">📇</div>
+    <div class="mobile-profile-info">
+        <div class="mobile-profile-name">タスクカード</div>
+        <div class="mobile-status-input">カード単位でタスクを整理・管理</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="mobile-section">
+    <div class="mobile-section-title">カードボードを選択</div>
+    <div class="mobile-form-card">
+        <div class="mobile-form-group">
+            <label for="card-mindmap-select" class="mobile-form-label">マップ</label>
+            <select id="card-mindmap-select" class="mobile-form-input"></select>
+        </div>
+        <div class="mobile-form-actions">
+            <button type="button" class="mobile-secondary-button" id="card-toggle-mindmap-form">＋ マップを作成</button>
+            <button type="button" class="mobile-secondary-button" id="card-reload-mindmaps">再読み込み</button>
+            <a href="{{ url_for('main.mobile_mindmap') }}" class="mobile-secondary-button">マップを見る</a>
+        </div>
+    </div>
+    <div id="card-mindmap-form-container" class="mobile-form-card mobile-hidden">
+        <form id="card-mindmap-form" class="mobile-form">
+            <div class="mobile-form-group">
+                <label for="card-mindmap-name" class="mobile-form-label">タイトル *</label>
+                <input type="text" id="card-mindmap-name" class="mobile-form-input" placeholder="例: 個人タスクカード" required>
+            </div>
+            <div class="mobile-form-group">
+                <label for="card-mindmap-description" class="mobile-form-label">説明</label>
+                <textarea id="card-mindmap-description" class="mobile-form-textarea" rows="3" placeholder="ボードの目的やメモ"></textarea>
+            </div>
+            <div class="mobile-form-group">
+                <label for="card-mindmap-date" class="mobile-form-label">管理日</label>
+                <input type="date" id="card-mindmap-date" class="mobile-form-input">
+            </div>
+            <div class="mobile-form-actions">
+                <button type="submit" class="mobile-primary-button" id="card-mindmap-submit">保存する</button>
+                <button type="button" class="mobile-secondary-button" id="card-mindmap-cancel">キャンセル</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<section class="mobile-section" id="card-section">
+    <div class="mobile-section-actions">
+        <button type="button" class="mobile-action-chip highlight" id="card-open-form">＋ カードを作成</button>
+    </div>
+
+    <div id="card-form-container" class="mobile-form-card mobile-hidden">
+        <form id="card-form" class="mobile-form">
+            <input type="hidden" id="card-form-mode" value="create">
+            <input type="hidden" id="card-node-id" value="">
+            <div class="mobile-form-group" id="card-parent-group">
+                <label for="card-parent" class="mobile-form-label">親カード</label>
+                <select id="card-parent" class="mobile-form-input">
+                    <option value="">親なし（ルート）</option>
+                </select>
+            </div>
+            <div class="mobile-form-group">
+                <label for="card-title" class="mobile-form-label">タイトル *</label>
+                <input type="text" id="card-title" class="mobile-form-input" placeholder="カード名" required>
+            </div>
+            <div class="mobile-form-group">
+                <label for="card-description" class="mobile-form-label">説明</label>
+                <textarea id="card-description" class="mobile-form-textarea" rows="3" placeholder="カードの詳細"></textarea>
+            </div>
+            <div class="mobile-form-row">
+                <div class="mobile-form-group">
+                    <label for="card-due" class="mobile-form-label">完了予定日</label>
+                    <input type="date" id="card-due" class="mobile-form-input">
+                </div>
+                <div class="mobile-form-group">
+                    <label class="mobile-form-label">カードとして扱う</label>
+                    <label class="mobile-switch">
+                        <input type="checkbox" id="card-is-task" checked>
+                        <span>ON/OFF</span>
+                    </label>
+                </div>
+            </div>
+            <div class="mobile-form-actions">
+                <button type="submit" class="mobile-primary-button" id="card-submit">保存する</button>
+                <button type="button" class="mobile-secondary-button" id="card-cancel">キャンセル</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="card-empty" class="mobile-empty">カードがありません。新しいカードを作成してください。</div>
+    <div id="card-list" class="mobile-card-list"></div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const taskCardInitialMindmaps = {{ mindmaps | tojson }};
+let cardMindmaps = Array.isArray(taskCardInitialMindmaps) ? [...taskCardInitialMindmaps] : [];
+let cardCurrentMindmapId = cardMindmaps.length > 0 ? cardMindmaps[0].id : null;
+let cardNodes = [];
+
+const cardSelectEl = document.getElementById('card-mindmap-select');
+const cardEmptyEl = document.getElementById('card-empty');
+const cardListEl = document.getElementById('card-list');
+const cardFormContainer = document.getElementById('card-form-container');
+const cardForm = document.getElementById('card-form');
+const cardFormMode = document.getElementById('card-form-mode');
+const cardNodeIdInput = document.getElementById('card-node-id');
+const cardParentGroup = document.getElementById('card-parent-group');
+const cardParentSelect = document.getElementById('card-parent');
+const cardTitleInput = document.getElementById('card-title');
+const cardDescriptionInput = document.getElementById('card-description');
+const cardDueInput = document.getElementById('card-due');
+const cardIsTaskInput = document.getElementById('card-is-task');
+const cardSubmitButton = document.getElementById('card-submit');
+const cardCancelButton = document.getElementById('card-cancel');
+
+const cardToggleMindmapFormButton = document.getElementById('card-toggle-mindmap-form');
+const cardReloadMindmapsButton = document.getElementById('card-reload-mindmaps');
+const cardMindmapFormContainer = document.getElementById('card-mindmap-form-container');
+const cardMindmapForm = document.getElementById('card-mindmap-form');
+const cardMindmapSubmitButton = document.getElementById('card-mindmap-submit');
+const cardMindmapCancelButton = document.getElementById('card-mindmap-cancel');
+const cardOpenFormButton = document.getElementById('card-open-form');
+
+function escapeHTML(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function toggleElement(el, show, className = 'mobile-hidden') {
+    if (!el) return;
+    if (show) {
+        el.classList.remove(className);
+    } else {
+        el.classList.add(className);
+    }
+}
+
+function renderCardMindmapOptions() {
+    cardSelectEl.innerHTML = '';
+    if (cardMindmaps.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'マップがありません';
+        cardSelectEl.appendChild(option);
+        cardCurrentMindmapId = null;
+        return;
+    }
+    cardMindmaps.forEach(map => {
+        const option = document.createElement('option');
+        option.value = map.id;
+        const dateLabel = map.date ? ` (${map.date.replace(/-/g, '/')})` : '';
+        option.textContent = `${map.name}${dateLabel}`;
+        cardSelectEl.appendChild(option);
+    });
+    if (!cardCurrentMindmapId && cardMindmaps.length > 0) {
+        cardCurrentMindmapId = cardMindmaps[0].id;
+    }
+    cardSelectEl.value = cardCurrentMindmapId ?? '';
+}
+
+async function loadCardMindmaps(force = false) {
+    if (!force && cardMindmaps.length > 0) {
+        renderCardMindmapOptions();
+        await updateCardView();
+        return;
+    }
+    try {
+        const response = await fetch('/personal/mindmaps');
+        const data = await response.json();
+        cardMindmaps = data.mindmaps || [];
+        if (cardMindmaps.length === 0) {
+            cardCurrentMindmapId = null;
+        } else if (!cardMindmaps.some(map => map.id === cardCurrentMindmapId)) {
+            cardCurrentMindmapId = cardMindmaps[0].id;
+        }
+        renderCardMindmapOptions();
+        await updateCardView();
+    } catch (error) {
+        console.error('Error loading mindmaps:', error);
+        alert('マップ一覧の取得に失敗しました');
+    }
+}
+
+async function updateCardView() {
+    const hasMindmap = Boolean(cardCurrentMindmapId);
+    cardEmptyEl.classList.toggle('mobile-hidden', !hasMindmap);
+    cardOpenFormButton.disabled = !hasMindmap;
+    cardOpenFormButton.classList.toggle('mobile-button-disabled', !hasMindmap);
+    if (!hasMindmap) {
+        cardListEl.innerHTML = '';
+        return;
+    }
+    await loadCardNodes();
+}
+
+function populateCardParentOptions() {
+    cardParentSelect.innerHTML = '<option value="">親なし（ルート）</option>';
+    cardNodes.forEach(node => {
+        const option = document.createElement('option');
+        option.value = node.id;
+        option.textContent = node.title;
+        cardParentSelect.appendChild(option);
+    });
+}
+
+async function loadCardNodes() {
+    if (!cardCurrentMindmapId) {
+        cardNodes = [];
+        renderCardList();
+        return;
+    }
+    try {
+        const response = await fetch(`/personal/mindmap/nodes?mindmap_id=${cardCurrentMindmapId}`);
+        const data = await response.json();
+        cardNodes = (data.nodes || []).filter(node => node.is_task);
+        renderCardMindmapOptions();
+        renderCardList();
+    } catch (error) {
+        console.error('Error loading card nodes:', error);
+        alert('カードの取得に失敗しました');
+    }
+}
+
+function renderCardList() {
+    cardListEl.innerHTML = '';
+    if (!cardCurrentMindmapId) {
+        cardListEl.innerHTML = '<div class="mobile-empty">マップが選択されていません。</div>';
+        return;
+    }
+    if (!cardNodes || cardNodes.length === 0) {
+        cardEmptyEl.classList.remove('mobile-hidden');
+        return;
+    }
+    cardEmptyEl.classList.add('mobile-hidden');
+
+    const nodeMap = new Map(cardNodes.map(node => [node.id, node]));
+
+    cardNodes.forEach(node => {
+        const parent = node.parent_id ? nodeMap.get(node.parent_id) : null;
+        const card = document.createElement('div');
+        card.className = 'mobile-card';
+        card.dataset.nodeId = node.id;
+
+        card.innerHTML = `
+            <div class="mobile-card-header">
+                <div>
+                    <div class="mobile-card-title">${escapeHTML(node.title)}</div>
+                    ${parent ? `<div class="mobile-card-subtitle">親カード: ${escapeHTML(parent.title)}</div>` : ''}
+                    ${node.description ? `<div class="mobile-card-description">${escapeHTML(node.description)}</div>` : ''}
+                </div>
+                <div class="mobile-progress">
+                    <span>${node.progress || 0}%</span>
+                    <div class="mobile-progress-bar">
+                        <div class="mobile-progress-fill" style="width:${node.progress || 0}%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="mobile-card-meta">
+                ${node.due_date ? `<span>🗓 ${node.due_date.replace(/-/g, '/')}</span>` : ''}
+                <span>タスク ${node.completed_task_count || 0}/${node.task_count || 0}</span>
+            </div>
+            <div class="mobile-card-actions">
+                <a href="/mobile/task-cards/${node.id}" class="mobile-action-chip highlight">詳細を見る</a>
+                <button type="button" class="mobile-action-chip" data-action="edit" data-node-id="${node.id}">編集</button>
+                <button type="button" class="mobile-action-chip" data-action="detach" data-node-id="${node.id}">カード解除</button>
+                <button type="button" class="mobile-action-chip danger" data-action="delete" data-node-id="${node.id}">削除</button>
+            </div>
+        `;
+
+        cardListEl.appendChild(card);
+    });
+
+    populateCardParentOptions();
+}
+
+function resetCardForm() {
+    cardForm.reset();
+    cardFormMode.value = 'create';
+    cardNodeIdInput.value = '';
+    cardIsTaskInput.checked = true;
+    toggleElement(cardParentGroup, true);
+    cardSubmitButton.textContent = '保存する';
+}
+
+function openCardForm(mode = 'create', nodeId = null) {
+    if (!cardCurrentMindmapId) {
+        alert('マップを選択してください');
+        return;
+    }
+    resetCardForm();
+    if (mode === 'edit') {
+        const node = cardNodes.find(n => n.id === nodeId);
+        if (!node) return;
+        cardFormMode.value = 'edit';
+        cardNodeIdInput.value = node.id;
+        cardTitleInput.value = node.title || '';
+        cardDescriptionInput.value = node.description || '';
+        cardDueInput.value = node.due_date || '';
+        cardIsTaskInput.checked = Boolean(node.is_task);
+        toggleElement(cardParentGroup, false);
+        cardSubmitButton.textContent = '更新する';
+    }
+    toggleElement(cardFormContainer, true);
+}
+
+async function submitCardMindmapForm(event) {
+    event.preventDefault();
+    cardMindmapSubmitButton.disabled = true;
+    cardMindmapSubmitButton.textContent = '保存中…';
+    try {
+        const payload = {
+            name: cardMindmapForm.querySelector('#card-mindmap-name').value.trim(),
+            description: cardMindmapForm.querySelector('#card-mindmap-description').value.trim(),
+            date: cardMindmapForm.querySelector('#card-mindmap-date').value || null
+        };
+        const response = await fetch('/personal/mindmap/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('マップを作成しました');
+            cardMindmapForm.reset();
+            toggleElement(cardMindmapFormContainer, false);
+            cardCurrentMindmapId = data.mindmap_id;
+            await loadCardMindmaps(true);
+        } else {
+            alert(data.message || 'マップの作成に失敗しました');
+        }
+    } catch (error) {
+        console.error('Error creating mindmap:', error);
+        alert('マップの作成に失敗しました');
+    } finally {
+        cardMindmapSubmitButton.disabled = false;
+        cardMindmapSubmitButton.textContent = '保存する';
+    }
+}
+
+async function submitCardForm(event) {
+    event.preventDefault();
+    if (!cardCurrentMindmapId) {
+        alert('マップを選択してください');
+        return;
+    }
+    cardSubmitButton.disabled = true;
+    cardSubmitButton.textContent = cardFormMode.value === 'create' ? '保存中…' : '更新中…';
+    const payload = {
+        title: cardTitleInput.value.trim(),
+        description: cardDescriptionInput.value.trim(),
+        due_date: cardDueInput.value || null,
+        is_task: cardIsTaskInput.checked
+    };
+
+    try {
+        if (cardFormMode.value === 'create') {
+            payload.parent_id = cardParentSelect.value ? Number(cardParentSelect.value) : null;
+            const response = await fetch(`/personal/mindmap/nodes?mindmap_id=${cardCurrentMindmapId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('カードを作成しました');
+                toggleElement(cardFormContainer, false);
+                await loadCardNodes();
+            } else {
+                alert(data.message || 'カードの作成に失敗しました');
+            }
+        } else {
+            const nodeId = Number(cardNodeIdInput.value);
+            const response = await fetch(`/personal/mindmap/nodes/${nodeId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('カードを更新しました');
+                toggleElement(cardFormContainer, false);
+                await loadCardNodes();
+            } else {
+                alert(data.message || 'カードの更新に失敗しました');
+            }
+        }
+    } catch (error) {
+        console.error('Error saving card:', error);
+        alert('カードの保存に失敗しました');
+    } finally {
+        cardSubmitButton.disabled = false;
+        cardSubmitButton.textContent = '保存する';
+    }
+}
+
+async function handleCardAction(event) {
+    const action = event.target.dataset.action;
+    if (!action) return;
+    const nodeId = Number(event.target.dataset.nodeId);
+    if (!nodeId) return;
+
+    if (action === 'edit') {
+        openCardForm('edit', nodeId);
+        return;
+    }
+
+    if (action === 'detach') {
+        if (!confirm('カード連携を解除しますか？紐付くタスクは削除されます。')) return;
+        try {
+            const response = await fetch(`/personal/mindmap/nodes/${nodeId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_task: false })
+            });
+            const data = await response.json();
+            if (data.success) {
+                await loadCardNodes();
+            } else {
+                alert(data.message || 'カード解除に失敗しました');
+            }
+        } catch (error) {
+            console.error('Error detaching card:', error);
+            alert('カード解除に失敗しました');
+        }
+        return;
+    }
+
+    if (action === 'delete') {
+        if (!confirm('このカードと紐付くタスクを削除しますか？')) return;
+        try {
+            const response = await fetch(`/personal/mindmap/nodes/${nodeId}`, { method: 'DELETE' });
+            const data = await response.json();
+            if (data.success) {
+                await loadCardNodes();
+            } else {
+                alert(data.message || 'カードの削除に失敗しました');
+            }
+        } catch (error) {
+            console.error('Error deleting card:', error);
+            alert('カードの削除に失敗しました');
+        }
+        return;
+    }
+}
+
+cardSelectEl.addEventListener('change', async (event) => {
+    cardCurrentMindmapId = event.target.value ? Number(event.target.value) : null;
+    await updateCardView();
+});
+
+cardToggleMindmapFormButton.addEventListener('click', () => {
+    const shouldOpen = cardMindmapFormContainer.classList.contains('mobile-hidden');
+    toggleElement(cardMindmapFormContainer, shouldOpen);
+});
+
+cardMindmapCancelButton.addEventListener('click', () => {
+    cardMindmapForm.reset();
+    toggleElement(cardMindmapFormContainer, false);
+});
+
+cardMindmapForm.addEventListener('submit', submitCardMindmapForm);
+
+cardReloadMindmapsButton.addEventListener('click', async () => {
+    await loadCardMindmaps(true);
+});
+
+cardOpenFormButton.addEventListener('click', () => openCardForm('create'));
+
+cardCancelButton.addEventListener('click', () => toggleElement(cardFormContainer, false));
+
+cardForm.addEventListener('submit', submitCardForm);
+
+cardListEl.addEventListener('click', handleCardAction);
+
+loadCardMindmaps();
+</script>
+{% endblock %}

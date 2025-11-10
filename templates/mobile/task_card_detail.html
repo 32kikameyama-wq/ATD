@@ -1,0 +1,161 @@
+{% extends 'mobile/base.html' %}
+{% block head_title %}タスクカード詳細 - ATD Mobile{% endblock %}
+{% set active_tab = 'tasks' %}
+
+{% block header_profile %}
+<div class="mobile-profile-card">
+    <div class="mobile-profile-avatar">🗒️</div>
+    <div class="mobile-profile-info">
+        <div class="mobile-profile-name">{{ card_node.title }}</div>
+        <div class="mobile-status-input">カード内のタスクをモバイルで管理</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="mobile-section">
+    <div class="mobile-section-actions">
+        <a href="{{ url_for('main.mobile_task_cards') }}" class="mobile-action-chip">一覧へ戻る</a>
+        <a href="{{ url_for('main.mobile_mindmap') }}" class="mobile-action-chip">マップを見る</a>
+    </div>
+
+    <div class="mobile-card">
+        <div class="mobile-card-header">
+            <div>
+                <div class="mobile-card-title">{{ card_node.title }}</div>
+                {% if card_node.description %}
+                <div class="mobile-card-description">{{ card_node.description }}</div>
+                {% endif %}
+            </div>
+            <div class="mobile-progress">
+                <span>{{ card_node.progress or 0 }}%</span>
+                <div class="mobile-progress-bar">
+                    <div class="mobile-progress-fill" style="width: {{ card_node.progress or 0 }}%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="mobile-card-meta">
+            {% if card_node.due_date %}
+            <span>🗓 {{ card_node.due_date.strftime('%Y/%m/%d') }}</span>
+            {% endif %}
+            <span>タスク {{ active_tasks|length + completed_tasks|length }} 件</span>
+            <span>進捗 {{ card_node.completed_task_count or 0 }}/{{ card_node.task_count or 0 }}</span>
+        </div>
+    </div>
+</section>
+
+<section class="mobile-section">
+    <div class="mobile-section-title">タスクを追加</div>
+    <div class="mobile-form-card">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="mobile-alert-group">
+                {% for category, message in messages %}
+                <div class="mobile-alert mobile-alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('main.add_personal_task_card_task', node_id=card_node.id) }}" method="post" class="mobile-form">
+            <input type="hidden" name="next" value="{{ url_for('main.mobile_task_card_detail', node_id=card_node.id) }}">
+            <div class="mobile-form-group">
+                <label for="card-task-title" class="mobile-form-label">タイトル *</label>
+                <input type="text" id="card-task-title" name="title" class="mobile-form-input" placeholder="タスク名" required>
+            </div>
+            <div class="mobile-form-group">
+                <label for="card-task-description" class="mobile-form-label">説明</label>
+                <textarea id="card-task-description" name="description" class="mobile-form-textarea" rows="3" placeholder="詳細やメモ"></textarea>
+            </div>
+            <div class="mobile-form-row">
+                <div class="mobile-form-group">
+                    <label for="card-task-due" class="mobile-form-label">完了予定日</label>
+                    <input type="date" id="card-task-due" name="due_date" class="mobile-form-input">
+                </div>
+                <div class="mobile-form-group">
+                    <label for="card-task-priority" class="mobile-form-label">優先度</label>
+                    <select id="card-task-priority" name="priority" class="mobile-form-input">
+                        <option value="high">高</option>
+                        <option value="medium" selected>中</option>
+                        <option value="low">低</option>
+                    </select>
+                </div>
+            </div>
+            <p class="mobile-form-note">作成したタスクは自動的に「その他」に分類されます。</p>
+            <div class="mobile-form-actions">
+                <button type="submit" class="mobile-primary-button">追加する</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<section class="mobile-section">
+    <div class="mobile-section-title">未完了タスク ({{ active_tasks|length }}件)</div>
+    {% if active_tasks %}
+    <div class="mobile-task-list">
+        {% for task in active_tasks %}
+        <div class="mobile-task-card">
+            <div class="mobile-task-head">
+                <div>
+                    <div class="mobile-task-title">{{ task.title }}</div>
+                    <div class="mobile-task-meta">
+                        {% if task.end_date %}期限 {{ task.end_date.strftime('%m/%d') }} ・{% endif %} 優先度 {{ '高' if task.priority=='high' else '中' if task.priority=='medium' else '低' }}
+                    </div>
+                    {% if task.description %}
+                    <div class="mobile-task-desc">{{ task.description }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="mobile-task-buttons">
+                <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="post">
+                    <input type="hidden" name="next" value="{{ url_for('main.mobile_task_card_detail', node_id=card_node.id) }}">
+                    <button type="submit" class="mobile-task-button">完了にする</button>
+                </form>
+                <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="mobile-task-button mobile-task-button--link">編集</a>
+                <form action="{{ url_for('tasks.delete_task', task_id=task.id) }}" method="post" onsubmit="return confirm('このタスクを削除しますか？')">
+                    <input type="hidden" name="next" value="{{ url_for('main.mobile_task_card_detail', node_id=card_node.id) }}">
+                    <button type="submit" class="mobile-task-button danger">削除</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="mobile-empty">未完了タスクはありません</div>
+    {% endif %}
+</section>
+
+<section class="mobile-section">
+    <div class="mobile-section-title">完了済みタスク ({{ completed_tasks|length }}件)</div>
+    {% if completed_tasks %}
+    <div class="mobile-task-list">
+        {% for task in completed_tasks %}
+        <div class="mobile-task-card completed">
+            <div class="mobile-task-head">
+                <div>
+                    <div class="mobile-task-title">{{ task.title }}</div>
+                    <div class="mobile-task-meta">
+                        完了日 {{ task.completed_at.strftime('%Y/%m/%d') if task.completed_at else '—' }}
+                    </div>
+                </div>
+                <span class="mobile-task-status">完了</span>
+            </div>
+            <div class="mobile-task-buttons">
+                <form action="{{ url_for('tasks.toggle_task', task_id=task.id) }}" method="post">
+                    <input type="hidden" name="next" value="{{ url_for('main.mobile_task_card_detail', node_id=card_node.id) }}">
+                    <button type="submit" class="mobile-task-button">未完了に戻す</button>
+                </form>
+                <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="mobile-task-button mobile-task-button--link">編集</a>
+                <form action="{{ url_for('tasks.delete_task', task_id=task.id) }}" method="post" onsubmit="return confirm('このタスクを削除しますか？')">
+                    <input type="hidden" name="next" value="{{ url_for('main.mobile_task_card_detail', node_id=card_node.id) }}">
+                    <button type="submit" class="mobile-task-button danger">削除</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="mobile-empty">完了済みタスクはありません</div>
+    {% endif %}
+</section>
+{% endblock %}

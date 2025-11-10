@@ -53,11 +53,19 @@ def redirect_mobile_users():
         '/team-mindmap': 'main.mobile_team_mindmap',
         '/notifications': 'main.mobile_notifications',
         '/profile': 'main.mobile_settings',
+        '/mindmap': 'main.mobile_mindmap',
+        '/personal/task-cards': 'main.mobile_task_cards',
     }
 
     endpoint = mobile_route_map.get(normalized_path)
     if endpoint:
         return redirect(url_for(endpoint))
+
+    # 動的パスのルーティング（タスクカード詳細など）
+    if normalized_path.startswith('/personal/task-cards/'):
+        node_id_str = normalized_path.split('/')[-1]
+        if node_id_str.isdigit():
+            return redirect(url_for('main.mobile_task_card_detail', node_id=int(node_id_str)))
 
 
 @main.route('/')
@@ -2499,29 +2507,32 @@ def personal_task_card_detail(node_id):
 def add_personal_task_card_task(node_id):
     """カード詳細からタスクを追加"""
     from models import Mindmap, MindmapNode, Task, UserPerformance
+    from urllib.parse import urlparse
+ 
     mindmap_node = MindmapNode.query.get_or_404(node_id)
     mindmap_obj = Mindmap.query.get_or_404(mindmap_node.mindmap_id)
     if mindmap_obj.user_id != current_user.id:
         flash('アクセス権限がありません', 'error')
         return redirect(url_for('main.personal_task_cards'))
-    
+ 
     title = (request.form.get('title') or '').strip()
     description = (request.form.get('description') or '').strip()
     due_date_str = request.form.get('due_date')
     priority = request.form.get('priority', 'medium')
-    
+    next_param = request.form.get('next') or request.args.get('next')
+ 
     if not title:
         flash('タイトルを入力してください', 'error')
         return redirect(url_for('main.personal_task_card_detail', node_id=node_id))
-    
+ 
     try:
         due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date() if due_date_str else None
     except ValueError:
         flash('完了予定日は YYYY-MM-DD 形式で入力してください', 'error')
         return redirect(url_for('main.personal_task_card_detail', node_id=node_id))
-    
+ 
     start_date = due_date or datetime.now(ZoneInfo('Asia/Tokyo')).date()
-    
+ 
     new_task = Task(
         title=title,
         description=description,
@@ -2533,19 +2544,19 @@ def add_personal_task_card_task(node_id):
         due_date=due_date,
         task_card_node_id=node_id
     )
-    
+ 
     db.session.add(new_task)
     db.session.flush()
-    
+ 
     mindmap_node.is_task = True
     if not mindmap_node.task_id:
         mindmap_node.task_id = new_task.id
-    
+ 
     _update_task_card_progress(node_id)
     db.session.commit()
-    
+ 
     UserPerformance.update_daily_performance(current_user.id)
-    
+ 
     flash('タスクを追加しました', 'success')
     return redirect(url_for('main.personal_task_card_detail', node_id=node_id))
 
@@ -4144,3 +4155,85 @@ def delete_task_template(template_id):
 
     flash('テンプレートを削除しました', 'success')
     return redirect(url_for('main.task_templates'))
+
+def _get_personal_task_card_context(node_id):
+    """タスクカード詳細画面で共通利用するコンテキストを生成"""
+    from models import Mindmap, MindmapNode, Task
+
+    node = MindmapNode.query.get_or_404(node_id)
+    mindmap_obj = Mindmap.query.get_or_404(node.mindmap_id)
+    if mindmap_obj.user_id != current_user.id:
+        flash('アクセス権限がありません', 'error')
+        return None
+
+    tasks = Task.query.filter_by(
+        user_id=current_user.id,
+        task_card_node_id=node.id,
+        archived=False
+    ).order_by(Task.completed, Task.category, Task.priority, Task.created_at.desc()).all()
+
+    active_tasks = [task for task in tasks if not task.completed]
+    completed_tasks = [task for task in tasks if task.completed]
+
+    _update_task_card_progress(node.id)
+    db.session.commit()
+
+    return {
+        'card_node': node,
+        'mindmap': mindmap_obj,
+        'active_tasks': active_tasks,
+        'completed_tasks': completed_tasks
+    }
+
+@main.route('/personal/task-cards/<int:node_id>')
+@login_required
+def personal_task_card_detail(node_id):
+    """タスクカード詳細"""
+    context = _get_personal_task_card_context(node_id)
+    if context is None:
+        return redirect(url_for('main.personal_task_cards'))
+
+    return render_template('personal_task_card_detail.html', **context)
+
+@main.route('/mobile/mindmap')
+@login_required
+def mobile_mindmap():
+    from models import Mindmap
+ 
+    mindmap_objs = Mindmap.query.filter_by(user_id=current_user.id).order_by(
+        Mindmap.date.desc().nullslast(), Mindmap.created_at.desc()
+    ).all()
+ 
+    mindmaps = [
+        {
+            'id': mindmap.id,
+            'name': mindmap.name,
+            'description': mindmap.description,
+            'date': mindmap.date.isoformat() if mindmap.date else None
+        }
+        for mindmap in mindmap_objs
+    ]
+ 
+    return render_template('mobile/mindmap.html', mindmaps=mindmaps)
+ 
+ 
+ @main.route('/mobile/task-cards')
+ @login_required
+ def mobile_task_cards():
+     from models import Mindmap
+ 
+     mindmap_objs = Mindmap.query.filter_by(user_id=current_user.id).order_by(
+         Mindmap.date.desc().nullslast(), Mindmap.created_at.desc()
+     ).all()
+ 
+     mindmaps = [
+         {
+             'id': mindmap.id,
+             'name': mindmap.name,
+             'description': mindmap.description,
+             'date': mindmap.date.isoformat() if mindmap.date else None
+         }
+         for mindmap in mindmap_objs
+     ]
+ 
+     return render_template('mobile/task_cards.html', mindmaps=mindmaps)

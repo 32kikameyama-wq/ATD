@@ -55,7 +55,7 @@
                 <button type="button" class="mobile-task-button mobile-track-button" data-task-id="{{ task.id }}" data-action="start" {% if task.is_tracking %}disabled{% endif %}>計測オン</button>
                 <button type="button" class="mobile-task-button mobile-track-button" data-task-id="{{ task.id }}" data-action="stop" {% if not task.is_tracking %}disabled{% endif %}>計測オフ</button>
                 {% if task.mindmap_node %}
-                <button type="button" class="mobile-task-button" onclick="location.href='{{ url_for('main.personal_task_cards') }}'">カードを見る</button>
+                <button type="button" class="mobile-task-button" onclick="location.href='{{ url_for('main.mobile_task_cards') }}'">カードを見る</button>
                 {% else %}
                 <button type="button" class="mobile-task-button" onclick="createMobileTaskCard({{ task.id }})">カード作成</button>
                 {% endif %}
@@ -117,7 +117,7 @@ function createMobileTaskCard(taskId) {
     .then(data => {
         if (data.success) {
             if (confirm('カードを作成しました。詳細ページに移動しますか？')) {
-                window.location.href = `/personal/task-cards/${data.node_id}`;
+                window.location.href = `/mobile/task-cards/${data.node_id}`;
             } else {
                 window.location.href = '{{ url_for('main.mobile_tasks') }}';
             }

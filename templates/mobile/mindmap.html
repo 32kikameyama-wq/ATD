@@ -1,0 +1,630 @@
+{% extends 'mobile/base.html' %}
+{% block head_title %}マインドマップ - ATD Mobile{% endblock %}
+{% set active_tab = 'tasks' %}
+
+{% block header_profile %}
+<div class="mobile-profile-card">
+    <div class="mobile-profile-avatar">🗂️</div>
+    <div class="mobile-profile-info">
+        <div class="mobile-profile-name">マインドマップ</div>
+        <div class="mobile-status-input">カードを整理して進捗を管理</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="mobile-section">
+    <div class="mobile-section-title">マップ選択</div>
+    <div class="mobile-form-card">
+        <div class="mobile-form-group">
+            <label for="mindmap-select" class="mobile-form-label">マップ</label>
+            <select id="mindmap-select" class="mobile-form-input"></select>
+        </div>
+        <div class="mobile-form-actions">
+            <button type="button" class="mobile-secondary-button" id="toggle-mindmap-form">＋ マップを作成</button>
+            <button type="button" class="mobile-secondary-button" id="reload-mindmaps">再読み込み</button>
+        </div>
+    </div>
+    <div id="mindmap-form-container" class="mobile-form-card mobile-hidden">
+        <form id="mindmap-form" class="mobile-form">
+            <div class="mobile-form-group">
+                <label for="mindmap-name" class="mobile-form-label">タイトル *</label>
+                <input type="text" id="mindmap-name" name="name" class="mobile-form-input" placeholder="例: 2025年 個人計画" required>
+            </div>
+            <div class="mobile-form-group">
+                <label for="mindmap-description" class="mobile-form-label">説明</label>
+                <textarea id="mindmap-description" name="description" class="mobile-form-textarea" rows="3" placeholder="マップの目的やメモ"></textarea>
+            </div>
+            <div class="mobile-form-group">
+                <label for="mindmap-date" class="mobile-form-label">管理日</label>
+                <input type="date" id="mindmap-date" name="date" class="mobile-form-input">
+            </div>
+            <div class="mobile-form-actions">
+                <button type="submit" class="mobile-primary-button" id="mindmap-submit">保存する</button>
+                <button type="button" class="mobile-secondary-button" id="mindmap-cancel">キャンセル</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<section class="mobile-section" id="mindmap-overview-section">
+    <div id="mindmap-empty" class="mobile-empty">マップがありません。まずは「マップを作成」から始めましょう。</div>
+
+    <div id="mindmap-overview" class="mobile-card mobile-hidden">
+        <div class="mobile-card-header">
+            <div>
+                <div class="mobile-card-title" id="mindmap-title">--</div>
+                <div class="mobile-card-subtitle" id="mindmap-description-text"></div>
+            </div>
+            <div class="mobile-progress">
+                <span id="mindmap-progress-value">0%</span>
+                <div class="mobile-progress-bar">
+                    <div class="mobile-progress-fill" id="mindmap-progress-bar" style="width:0%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="mobile-card-meta" id="mindmap-meta"></div>
+    </div>
+
+    <div id="node-actions" class="mobile-section-actions mobile-hidden">
+        <button type="button" class="mobile-action-chip highlight" id="open-node-form">＋ カード / ノードを追加</button>
+        <button type="button" class="mobile-action-chip" id="collapse-all">全て閉じる</button>
+        <button type="button" class="mobile-action-chip" id="expand-all">全て開く</button>
+    </div>
+
+    <div id="node-form-container" class="mobile-form-card mobile-hidden">
+        <form id="node-form" class="mobile-form">
+            <input type="hidden" id="node-mode" value="create">
+            <input type="hidden" id="node-id" value="">
+            <div class="mobile-form-group" id="node-parent-group">
+                <label for="node-parent" class="mobile-form-label">親ノード</label>
+                <select id="node-parent" class="mobile-form-input">
+                    <option value="">ルートに追加</option>
+                </select>
+            </div>
+            <div class="mobile-form-group">
+                <label for="node-title" class="mobile-form-label">タイトル *</label>
+                <input type="text" id="node-title" class="mobile-form-input" placeholder="カード名や目標名" required>
+            </div>
+            <div class="mobile-form-group">
+                <label for="node-description" class="mobile-form-label">説明</label>
+                <textarea id="node-description" class="mobile-form-textarea" rows="3" placeholder="詳しい内容やメモ"></textarea>
+            </div>
+            <div class="mobile-form-row">
+                <div class="mobile-form-group">
+                    <label for="node-due" class="mobile-form-label">完了予定日</label>
+                    <input type="date" id="node-due" class="mobile-form-input">
+                </div>
+                <div class="mobile-form-group">
+                    <label class="mobile-form-label">タスクカード</label>
+                    <label class="mobile-switch">
+                        <input type="checkbox" id="node-is-task">
+                        <span>ON/OFF</span>
+                    </label>
+                </div>
+            </div>
+            <div class="mobile-form-actions">
+                <button type="submit" class="mobile-primary-button" id="node-submit">保存する</button>
+                <button type="button" class="mobile-secondary-button" id="node-cancel">キャンセル</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="node-list" class="mobile-node-list"></div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const initialMindmaps = {{ mindmaps | tojson }};
+let mindmaps = Array.isArray(initialMindmaps) ? [...initialMindmaps] : [];
+let currentMindmapId = mindmaps.length > 0 ? mindmaps[0].id : null;
+let nodes = [];
+let expandedNodeIds = new Set();
+
+const selectEl = document.getElementById('mindmap-select');
+const mindmapEmptyEl = document.getElementById('mindmap-empty');
+const mindmapOverviewEl = document.getElementById('mindmap-overview');
+const mindmapTitleEl = document.getElementById('mindmap-title');
+const mindmapDescriptionEl = document.getElementById('mindmap-description-text');
+const mindmapMetaEl = document.getElementById('mindmap-meta');
+const mindmapProgressValueEl = document.getElementById('mindmap-progress-value');
+const mindmapProgressBarEl = document.getElementById('mindmap-progress-bar');
+const nodeActionsEl = document.getElementById('node-actions');
+const nodeListEl = document.getElementById('node-list');
+
+const mindmapFormContainer = document.getElementById('mindmap-form-container');
+const mindmapForm = document.getElementById('mindmap-form');
+const mindmapSubmitButton = document.getElementById('mindmap-submit');
+const mindmapCancelButton = document.getElementById('mindmap-cancel');
+
+const nodeFormContainer = document.getElementById('node-form-container');
+const nodeForm = document.getElementById('node-form');
+const nodeModeInput = document.getElementById('node-mode');
+const nodeIdInput = document.getElementById('node-id');
+const nodeParentGroup = document.getElementById('node-parent-group');
+const nodeParentSelect = document.getElementById('node-parent');
+const nodeTitleInput = document.getElementById('node-title');
+const nodeDescriptionInput = document.getElementById('node-description');
+const nodeDueInput = document.getElementById('node-due');
+const nodeIsTaskInput = document.getElementById('node-is-task');
+const nodeSubmitButton = document.getElementById('node-submit');
+const nodeCancelButton = document.getElementById('node-cancel');
+
+const toggleMindmapFormButton = document.getElementById('toggle-mindmap-form');
+const reloadMindmapsButton = document.getElementById('reload-mindmaps');
+const openNodeFormButton = document.getElementById('open-node-form');
+const collapseAllButton = document.getElementById('collapse-all');
+const expandAllButton = document.getElementById('expand-all');
+
+function escapeHTML(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function toggleClass(el, condition, className = 'mobile-hidden') {
+    if (!el) return;
+    if (condition) {
+        el.classList.remove(className);
+    } else {
+        el.classList.add(className);
+    }
+}
+
+function renderMindmapOptions() {
+    selectEl.innerHTML = '';
+    if (mindmaps.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'マップがありません';
+        selectEl.appendChild(option);
+        currentMindmapId = null;
+        return;
+    }
+    mindmaps.forEach(map => {
+        const option = document.createElement('option');
+        option.value = map.id;
+        const dateLabel = map.date ? ` (${map.date.replace(/-/g, '/')})` : '';
+        option.textContent = `${map.name}${dateLabel}`;
+        selectEl.appendChild(option);
+    });
+    if (!currentMindmapId && mindmaps.length > 0) {
+        currentMindmapId = mindmaps[0].id;
+    }
+    selectEl.value = currentMindmapId ?? '';
+}
+
+async function loadMindmaps(force = false) {
+    if (!force && mindmaps.length > 0) {
+        renderMindmapOptions();
+        updateMindmapView();
+        return;
+    }
+    try {
+        const response = await fetch('/personal/mindmaps');
+        const data = await response.json();
+        mindmaps = data.mindmaps || [];
+        if (mindmaps.length === 0) {
+            currentMindmapId = null;
+        } else if (!mindmaps.some(map => map.id === currentMindmapId)) {
+            currentMindmapId = mindmaps[0].id;
+        }
+        renderMindmapOptions();
+        updateMindmapView();
+    } catch (error) {
+        console.error('Error loading mindmaps:', error);
+        alert('マップ一覧の取得に失敗しました');
+    }
+}
+
+async function updateMindmapView() {
+    const hasMindmap = Boolean(currentMindmapId);
+    mindmapEmptyEl.classList.toggle('mobile-hidden', hasMindmap);
+    toggleClass(mindmapOverviewEl, hasMindmap);
+    toggleClass(nodeActionsEl, hasMindmap);
+    toggleClass(nodeFormContainer, false);
+    if (!hasMindmap) {
+        nodeListEl.innerHTML = '';
+        return;
+    }
+
+    const current = mindmaps.find(map => map.id === currentMindmapId);
+    mindmapTitleEl.textContent = current ? current.name : '--';
+    mindmapDescriptionEl.textContent = current && current.description ? current.description : '';
+    mindmapDescriptionEl.style.display = current && current.description ? 'block' : 'none';
+    const metaItems = [];
+    if (current && current.date) {
+        metaItems.push(`📅 ${current.date.replace(/-/g, '/')}`);
+    }
+    mindmapMetaEl.textContent = metaItems.join(' ・ ');
+
+    await Promise.all([updateMindmapProgress(), loadMindmapNodes()]);
+}
+
+async function updateMindmapProgress() {
+    if (!currentMindmapId) return;
+    try {
+        const response = await fetch(`/personal/mindmap/progress?mindmap_id=${currentMindmapId}`);
+        const data = await response.json();
+        const progress = data.progress ?? 0;
+        mindmapProgressValueEl.textContent = `${progress}%`;
+        mindmapProgressBarEl.style.width = `${progress}%`;
+    } catch (error) {
+        console.error('Error loading progress:', error);
+    }
+}
+
+async function loadMindmapNodes() {
+    if (!currentMindmapId) {
+        nodes = [];
+        renderNodeList();
+        return;
+    }
+    try {
+        const response = await fetch(`/personal/mindmap/nodes?mindmap_id=${currentMindmapId}`);
+        const data = await response.json();
+        nodes = data.nodes || [];
+        currentMindmapId = data.mindmap_id || currentMindmapId;
+        renderMindmapOptions();
+        renderNodeList();
+    } catch (error) {
+        console.error('Error loading nodes:', error);
+        alert('ノード情報の取得に失敗しました');
+    }
+}
+
+function renderNodeList() {
+    nodeListEl.innerHTML = '';
+    if (!currentMindmapId) {
+        nodeListEl.innerHTML = '<div class="mobile-empty">マップが選択されていません。</div>';
+        return;
+    }
+    if (!nodes || nodes.length === 0) {
+        nodeListEl.innerHTML = '<div class="mobile-empty">カードやノードがありません。追加してください。</div>';
+        return;
+    }
+
+    const tree = new Map();
+    nodes.forEach(node => {
+        const parentKey = node.parent_id || 0;
+        if (!tree.has(parentKey)) tree.set(parentKey, []);
+        tree.get(parentKey).push(node);
+    });
+    tree.forEach(list => list.sort((a, b) => a.id - b.id));
+
+    const fragment = document.createDocumentFragment();
+    renderNodeChildren(fragment, tree, 0, 0);
+    nodeListEl.appendChild(fragment);
+    populateParentOptions();
+}
+
+function renderNodeChildren(container, tree, parentId, depth) {
+    const children = tree.get(parentId);
+    if (!children) return;
+    children.forEach(child => {
+        const card = document.createElement('div');
+        card.className = 'mobile-node-card';
+        card.dataset.nodeId = child.id;
+        card.style.setProperty('--mobile-node-depth', depth);
+
+        const hasChildren = tree.has(child.id);
+        const isExpanded = expandedNodeIds.has(child.id) || depth === 0;
+        if (hasChildren && isExpanded) {
+            expandedNodeIds.add(child.id);
+        }
+
+        card.innerHTML = `
+            <div class="mobile-node-header">
+                <div>
+                    <div class="mobile-node-title">${escapeHTML(child.title)}</div>
+                    ${child.description ? `<div class="mobile-node-description">${escapeHTML(child.description)}</div>` : ''}
+                </div>
+                ${hasChildren ? `<button type="button" class="mobile-node-toggle" data-action="toggle" data-node-id="${child.id}">${isExpanded ? '－' : '＋'}</button>` : ''}
+            </div>
+            <div class="mobile-node-meta">
+                ${child.due_date ? `<span>🗓 ${child.due_date.replace(/-/g, '/')}</span>` : ''}
+                <span>📌 ${child.is_task ? 'カード' : 'ノード'}</span>
+                <span>✅ ${child.completed_task_count || 0} / ${child.task_count || 0}</span>
+            </div>
+            <div class="mobile-progress sm">
+                <div class="mobile-progress-bar">
+                    <div class="mobile-progress-fill" style="width:${child.progress || 0}%"></div>
+                </div>
+                <span>${child.progress || 0}%</span>
+            </div>
+            <div class="mobile-node-actions">
+                <button type="button" class="mobile-action-chip" data-action="add-child" data-node-id="${child.id}">子ノード</button>
+                <button type="button" class="mobile-action-chip" data-action="edit" data-node-id="${child.id}">編集</button>
+                <button type="button" class="mobile-action-chip" data-action="toggle-task" data-node-id="${child.id}">
+                    ${child.is_task ? 'カード解除' : 'カード化'}
+                </button>
+                ${child.is_task ? `<a class="mobile-action-chip" data-action="goto-card" data-node-id="${child.id}" href="/mobile/task-cards/${child.id}">カード詳細</a>` : ''}
+                <button type="button" class="mobile-action-chip danger" data-action="delete" data-node-id="${child.id}">削除</button>
+            </div>
+        `;
+
+        container.appendChild(card);
+
+        if (hasChildren) {
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = `mobile-node-children ${isExpanded ? 'expanded' : ''}`;
+            childrenContainer.dataset.parentId = child.id;
+            if (isExpanded) {
+                renderNodeChildren(childrenContainer, tree, child.id, depth + 1);
+            }
+            container.appendChild(childrenContainer);
+        }
+    });
+}
+
+function populateParentOptions() {
+    nodeParentSelect.innerHTML = '<option value="">ルートに追加</option>';
+    nodes.forEach(node => {
+        const option = document.createElement('option');
+        option.value = node.id;
+        option.textContent = node.title;
+        nodeParentSelect.appendChild(option);
+    });
+}
+
+function resetNodeForm() {
+    nodeForm.reset();
+    nodeModeInput.value = 'create';
+    nodeIdInput.value = '';
+    toggleClass(nodeParentGroup, true);
+    nodeSubmitButton.textContent = '保存する';
+}
+
+function openNodeForm(mode = 'create', nodeId = null, parentId = null) {
+    resetNodeForm();
+    nodeModeInput.value = mode;
+    if (mode === 'create') {
+        if (parentId) {
+            nodeParentSelect.value = parentId;
+        }
+        toggleClass(nodeParentGroup, true);
+    } else if (mode === 'edit') {
+        nodeIdInput.value = nodeId;
+        toggleClass(nodeParentGroup, false);
+        const node = nodes.find(n => n.id === nodeId);
+        if (node) {
+            nodeTitleInput.value = node.title || '';
+            nodeDescriptionInput.value = node.description || '';
+            nodeDueInput.value = node.due_date || '';
+            nodeIsTaskInput.checked = Boolean(node.is_task);
+        }
+        nodeSubmitButton.textContent = '更新する';
+    }
+    toggleClass(nodeFormContainer, true);
+}
+
+async function handleMindmapSubmit(event) {
+    event.preventDefault();
+    mindmapSubmitButton.disabled = true;
+    mindmapSubmitButton.textContent = '保存中…';
+    try {
+        const payload = {
+            name: mindmapForm.name.value.trim(),
+            description: mindmapForm.description.value.trim(),
+            date: mindmapForm.date.value || null
+        };
+        const response = await fetch('/personal/mindmap/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('マップを作成しました');
+            mindmapForm.reset();
+            toggleClass(mindmapFormContainer, false);
+            await loadMindmaps(true);
+            selectEl.value = data.mindmap_id;
+            currentMindmapId = data.mindmap_id;
+            await updateMindmapView();
+        } else {
+            alert(data.message || 'マップの作成に失敗しました');
+        }
+    } catch (error) {
+        console.error('Error creating mindmap:', error);
+        alert('マップの作成に失敗しました');
+    } finally {
+        mindmapSubmitButton.disabled = false;
+        mindmapSubmitButton.textContent = '保存する';
+    }
+}
+
+async function handleNodeSubmit(event) {
+    event.preventDefault();
+    if (!currentMindmapId) {
+        alert('マップを選択してください');
+        return;
+    }
+    nodeSubmitButton.disabled = true;
+    nodeSubmitButton.textContent = nodeModeInput.value === 'create' ? '保存中…' : '更新中…';
+
+    const payload = {
+        title: nodeTitleInput.value.trim(),
+        description: nodeDescriptionInput.value.trim(),
+        due_date: nodeDueInput.value || null,
+        is_task: nodeIsTaskInput.checked
+    };
+
+    try {
+        if (nodeModeInput.value === 'create') {
+            payload.parent_id = nodeParentSelect.value ? Number(nodeParentSelect.value) : null;
+            const response = await fetch(`/personal/mindmap/nodes?mindmap_id=${currentMindmapId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('ノードを追加しました');
+                toggleClass(nodeFormContainer, false);
+                await loadMindmapNodes();
+            } else {
+                alert(data.message || 'ノードの追加に失敗しました');
+            }
+        } else {
+            const nodeId = Number(nodeIdInput.value);
+            const response = await fetch(`/personal/mindmap/nodes/${nodeId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('ノードを更新しました');
+                toggleClass(nodeFormContainer, false);
+                await loadMindmapNodes();
+            } else {
+                alert(data.message || 'ノードの更新に失敗しました');
+            }
+        }
+    } catch (error) {
+        console.error('Error saving node:', error);
+        alert('ノードの保存に失敗しました');
+    } finally {
+        nodeSubmitButton.disabled = false;
+        nodeSubmitButton.textContent = '保存する';
+    }
+}
+
+async function handleNodeAction(event) {
+    const action = event.target.dataset.action;
+    if (!action) return;
+    const nodeId = Number(event.target.dataset.nodeId);
+    if (!nodeId && action !== 'toggle') return;
+
+    if (action === 'toggle') {
+        const targetId = Number(event.target.dataset.nodeId);
+        if (expandedNodeIds.has(targetId)) {
+            expandedNodeIds.delete(targetId);
+        } else {
+            expandedNodeIds.add(targetId);
+        }
+        renderNodeList();
+        return;
+    }
+
+    if (action === 'add-child') {
+        openNodeForm('create', null, nodeId);
+        return;
+    }
+
+    if (action === 'edit') {
+        openNodeForm('edit', nodeId, null);
+        return;
+    }
+
+    if (action === 'delete') {
+        if (!confirm('このノードとリンクされたタスクを削除しますか？')) return;
+        try {
+            const response = await fetch(`/personal/mindmap/nodes/${nodeId}`, { method: 'DELETE' });
+            const data = await response.json();
+            if (data.success) {
+                alert('ノードを削除しました');
+                await loadMindmapNodes();
+            } else {
+                alert(data.message || 'ノードの削除に失敗しました');
+            }
+        } catch (error) {
+            console.error('Error deleting node:', error);
+            alert('ノードの削除に失敗しました');
+        }
+        return;
+    }
+
+    if (action === 'toggle-task') {
+        const node = nodes.find(n => n.id === nodeId);
+        if (!node) return;
+        const makeTask = !node.is_task;
+        const confirmMessage = makeTask ? 'このノードをタスクカードとして作成しますか？' : 'カード連携を解除し、紐付くタスクを削除しますか？';
+        if (!confirm(confirmMessage)) return;
+        try {
+            const response = await fetch(`/personal/mindmap/nodes/${nodeId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_task: makeTask })
+            });
+            const data = await response.json();
+            if (data.success) {
+                await loadMindmapNodes();
+            } else {
+                alert(data.message || '更新に失敗しました');
+            }
+        } catch (error) {
+            console.error('Error toggling task status:', error);
+            alert('更新に失敗しました');
+        }
+        return;
+    }
+
+    if (action === 'goto-card') {
+        // allow default link navigation
+        return;
+    }
+}
+
+selectEl.addEventListener('change', async (event) => {
+    const value = event.target.value;
+    currentMindmapId = value ? Number(value) : null;
+    expandedNodeIds.clear();
+    await updateMindmapView();
+});
+
+toggleMindmapFormButton.addEventListener('click', () => {
+    const shouldOpen = mindmapFormContainer.classList.contains('mobile-hidden');
+    toggleClass(mindmapFormContainer, shouldOpen);
+    if (shouldOpen) {
+        mindmapForm.name.focus();
+    }
+});
+
+mindmapCancelButton.addEventListener('click', () => {
+    mindmapForm.reset();
+    toggleClass(mindmapFormContainer, false);
+});
+
+mindmapForm.addEventListener('submit', handleMindmapSubmit);
+
+reloadMindmapsButton.addEventListener('click', async () => {
+    await loadMindmaps(true);
+});
+
+openNodeFormButton.addEventListener('click', () => {
+    if (!currentMindmapId) {
+        alert('マップを選択してください');
+        return;
+    }
+    openNodeForm('create');
+});
+
+nodeCancelButton.addEventListener('click', () => {
+    toggleClass(nodeFormContainer, false);
+});
+
+nodeForm.addEventListener('submit', handleNodeSubmit);
+
+nodeListEl.addEventListener('click', handleNodeAction);
+
+collapseAllButton.addEventListener('click', () => {
+    expandedNodeIds.clear();
+    renderNodeList();
+});
+
+expandAllButton.addEventListener('click', () => {
+    nodes.forEach(node => expandedNodeIds.add(node.id));
+    renderNodeList();
+});
+
+// 初期化
+loadMindmaps();
+</script>
+{% endblock %}
