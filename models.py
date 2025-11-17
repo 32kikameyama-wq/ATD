@@ -417,10 +417,11 @@ class TaskTemplate(db.Model):
             title=self.title,
             description=self.description,
             priority=self.priority,
-            category=self.category,
+            category=self.category or 'other',  # カテゴリがNoneの場合は'other'を使用
             user_id=self.user_id,
             start_date=target_date,
-            end_date=target_date
+            end_date=target_date,
+            archived=False  # 明示的にアーカイブされていない状態を設定
         )
         return new_task
 

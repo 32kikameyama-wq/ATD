@@ -571,8 +571,26 @@ def generate_task_from_template(template_id):
     
     # テンプレートからタスク作成
     new_task = template.create_task_from_template(target_date)
+    
+    # カテゴリが正しく設定されているか確認（Noneの場合は'other'を使用）
+    category = new_task.category or 'other'
+    new_task.category = category
+    
+    # 同じカテゴリのタスクの中で最大のorder_indexを取得
+    max_order = db.session.query(db.func.max(Task.order_index)).filter_by(
+        user_id=current_user.id,
+        category=category
+    ).scalar() or 0
+    
+    # order_indexを設定（タスク一覧で正しく表示されるように）
+    new_task.order_index = max_order + 1
+    
     db.session.add(new_task)
     db.session.commit()
+    
+    # パフォーマンスデータを更新
+    from models import UserPerformance
+    UserPerformance.update_daily_performance(current_user.id)
     
     flash(f'テンプレートからタスクを作成しました', 'success')
     return redirect(url_for('tasks.list_tasks'))

@@ -162,6 +162,62 @@
                 width: 100%;
             }
         }
+
+        .ranking-section {
+            margin-bottom: 2rem;
+        }
+
+        .ranking-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .ranking-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .ranking-description {
+            color: #777;
+            font-size: 0.9rem;
+        }
+
+        .ranking-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+
+        .ranking-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 4px solid #667eea;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .ranking-card .metric-label {
+            font-size: 0.95rem;
+            color: #555;
+        }
+
+        .ranking-card .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #222;
+            letter-spacing: 0.05em;
+        }
+
+        .ranking-card .metric-placeholder {
+            font-size: 0.85rem;
+            color: #999;
+        }
     </style>
 </head>
 <body>
@@ -218,10 +274,10 @@
         <!-- チーム・ユーザー選択 -->
         <div class="selection-section">
             <h2>フィルター</h2>
-            <div class="selection-row">
+            <form method="get" class="selection-row">
                 <div class="form-group">
                     <label for="team-select">チーム</label>
-                    <select id="team-select" class="form-control">
+                    <select id="team-select" name="team_id" class="form-control" onchange="this.form.submit()">
                         <option value="">-- チームを選択 --</option>
                         {% for team in teams %}
                             <option value="{{ team.id }}" {% if selected_team and selected_team.id == team.id %}selected{% endif %}>{{ team.name }}</option>
@@ -229,29 +285,47 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="user-select">ユーザー</label>
-                    <select id="user-select" class="form-control" {% if not selected_team %}disabled{% endif %}>
+                    <label for="member-select">ユーザー</label>
+                    <select id="member-select" name="member_id" class="form-control" {% if not members %}disabled{% endif %} onchange="this.form.submit()">
                         <option value="">-- ユーザーを選択 --</option>
-                        {% if selected_team %}
-                            {% for member in team_members %}
-                                <option value="{{ member.user.id }}" {% if selected_user and selected_user.id == member.user.id %}selected{% endif %}>
-                                    {{ member.user.display_name if member.user.display_name else member.user.username }}
-                                </option>
-                            {% endfor %}
-                        {% endif %}
+                        {% for member in members %}
+                            <option value="{{ member.id }}" {% if selected_member and selected_member.id == member.id %}selected{% endif %}>{{ member.username }}</option>
+                        {% endfor %}
                     </select>
                 </div>
-            </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">適用</button>
+                </div>
+            </form>
         </div>
 
+        <section class="ranking-section">
+            <div class="ranking-header">
+                <h2 class="ranking-title">ランキング</h2>
+                <p class="ranking-description">新規フォロワー数とインプレッションの指標を表示します（準備中）</p>
+            </div>
+            <div class="ranking-cards">
+                <article class="ranking-card" data-metric="new-followers">
+                    <span class="metric-label">新規フォロワー数</span>
+                    <span class="metric-value">--</span>
+                    <span class="metric-placeholder">スレッズ連携待ち</span>
+                </article>
+                <article class="ranking-card" data-metric="impressions">
+                    <span class="metric-label">インプレッション</span>
+                    <span class="metric-value">--</span>
+                    <span class="metric-placeholder">スレッズ連携待ち</span>
+                </article>
+            </div>
+        </section>
+
         <!-- 割り当てられたタスク一覧 -->
-        {% if selected_user %}
+        {% if selected_member %}
             <div class="task-list">
                 <h2>
-                    {% if selected_user.display_name %}
-                        {{ selected_user.display_name }}
+                    {% if selected_member.display_name %}
+                        {{ selected_member.display_name }}
                     {% else %}
-                        {{ selected_user.username }}
+                        {{ selected_member.username }}
                     {% endif %}
                     さんに割り当てられたタスク
                 </h2>
@@ -313,7 +387,7 @@
         // チーム選択時の処理
         document.getElementById('team-select').addEventListener('change', function() {
             const teamId = this.value;
-            const userSelect = document.getElementById('user-select');
+            const userSelect = document.getElementById('member-select');
             
             if (!teamId) {
                 userSelect.disabled = true;
@@ -330,7 +404,7 @@
         });
         
         // ユーザー選択時の処理
-        document.getElementById('user-select').addEventListener('change', function() {
+        document.getElementById('member-select').addEventListener('change', function() {
             const teamId = document.getElementById('team-select').value;
             const userId = this.value;
             
@@ -338,7 +412,7 @@
                 return;
             }
             
-            window.location.href = `{{ url_for('main.team_tasks') }}?team_id=${teamId}&user_id=${userId}`;
+            window.location.href = `{{ url_for('main.team_tasks') }}?team_id=${teamId}&member_id=${userId}`;
         });
         
         // タスク完了/未完了の切り替え

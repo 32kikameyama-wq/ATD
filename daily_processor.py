@@ -88,6 +88,21 @@ def process_daily_rollover(user_id=None):
             
             if not existing:
                 new_task = template.create_task_from_template(today)
+                
+                # カテゴリが正しく設定されているか確認（Noneの場合は'other'を使用）
+                category = new_task.category or 'other'
+                new_task.category = category
+                
+                # 同じカテゴリのタスクの中で最大のorder_indexを取得
+                from sqlalchemy import func
+                max_order = db_instance.session.query(func.max(Task.order_index)).filter_by(
+                    user_id=user_id,
+                    category=category
+                ).scalar() or 0
+                
+                # order_indexを設定（タスク一覧で正しく表示されるように）
+                new_task.order_index = max_order + 1
+                
                 db_instance.session.add(new_task)
                 generated_count += 1
     
