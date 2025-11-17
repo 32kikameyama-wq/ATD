@@ -97,15 +97,24 @@
                                 </div>
                             </div>
                             
-                            <div style="display: flex; gap: 0.5rem;">
-                                <form action="{{ url_for('main.generate_task_from_template', template_id=template.id) }}" method="POST" style="flex: 1;">
-                                    <button type="submit" class="btn btn-primary" style="width: 100%;">
-                                        {% if template.category == 'today' %}今日のタスクを作成
-                                        {% elif template.category == 'tomorrow' %}明日のタスクを作成
-                                        {% else %}その他のタスクを作成{% endif %}
-                                    </button>
-                                </form>
-                                <a href="{{ url_for('main.edit_task_template', template_id=template.id) }}" class="btn btn-secondary" style="flex: 1;">編集</a>
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <form action="{{ url_for('main.generate_task_from_template', template_id=template.id) }}" method="POST" style="flex: 1;">
+                                        <input type="hidden" name="category" value="today">
+                                        <button type="submit" class="btn btn-primary" style="width: 100%;">今日のタスクを作成</button>
+                                    </form>
+                                    <form action="{{ url_for('main.generate_task_from_template', template_id=template.id) }}" method="POST" style="flex: 1;">
+                                        <input type="hidden" name="category" value="tomorrow">
+                                        <button type="submit" class="btn btn-primary" style="width: 100%;">明日のタスクを作成</button>
+                                    </form>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <form action="{{ url_for('main.generate_task_from_template', template_id=template.id) }}" method="POST" style="flex: 1;">
+                                        <input type="hidden" name="category" value="other">
+                                        <button type="submit" class="btn btn-primary" style="width: 100%;">その他のタスクを作成</button>
+                                    </form>
+                                    <a href="{{ url_for('main.edit_task_template', template_id=template.id) }}" class="btn btn-secondary" style="flex: 1;">編集</a>
+                                </div>
                             </div>
 
                             <div style="margin-top: 0.5rem;">
