@@ -572,8 +572,8 @@ def generate_task_from_template(template_id):
     # テンプレートからタスク作成
     new_task = template.create_task_from_template(target_date)
     
-    # カテゴリが正しく設定されているか確認（Noneの場合は'other'を使用）
-    category = new_task.category or 'other'
+    # テンプレートのカテゴリを確実に使用（Noneの場合は'other'を使用）
+    category = template.category or 'other'
     new_task.category = category
     
     # 同じカテゴリのタスクの中で最大のorder_indexを取得
